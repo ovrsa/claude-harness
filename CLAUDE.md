@@ -18,6 +18,7 @@ Deeper references:
 - `~/.claude/HARNESS.md` for the canonical harness map
 - `~/.claude/AUTONOMY_POLICY.md` for approval and autonomy classes
 - `~/.claude/OBSERVE.md` for runtime observation rules
+- `~/.claude/SESSION.md` for session state and resume rules
 
 ## Required Artifact Chain
 
@@ -25,13 +26,15 @@ For any non-trivial task, keep task state in repository files instead of chat on
 
 - `research.md` for prior art, options, and risks
 - `plan.md` for approved execution intent
+- `review-summary.md` for findings and residual risks
 - `verification-summary.md` for proof of completion
 - `observation-summary.md` when runtime or UI behavior changed
-- `progress.md` only when work spans multiple sessions
+- `progress.md` as the durable session log for interrupted or multi-session work
 
 ## Execution Rules
 
 - do not implement before an approved `plan.md`
+- do not skip review for behavior-changing work
 - do not commit before `verification-summary.md`
 - do not skip `observation-summary.md` when behavior changed
 - do not claim done without verification evidence
@@ -43,6 +46,7 @@ For any non-trivial task, keep task state in repository files instead of chat on
 - keep always-loaded instructions short
 - prefer references to artifacts, docs, and skills over long inline guidance
 - restore the current task from repository artifacts first
+- treat `progress.md` as the durable session state when it exists
 - compact only after persisting current state
 
 ## Preferred Commands

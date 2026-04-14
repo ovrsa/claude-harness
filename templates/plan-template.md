@@ -32,7 +32,10 @@ observe_required: true
 ## Source Of Truth
 
 - `plan.md` tracks approved intent
-- `progress.md` tracks multi-session execution state when needed
+- `progress.md` tracks implementation execution state for non-trivial or multi-session work
+- `review-summary.md` tracks findings and residual risks for behavior-changing work
+- `verification-summary.md` tracks reproducible verification evidence
+- `observation-summary.md` tracks runtime or UI evidence when required
 
 ## Verify
 

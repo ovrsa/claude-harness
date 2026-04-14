@@ -12,6 +12,11 @@ const {
 } = require('../lib/utils');
 
 function summarize(input) {
+  const goal =
+    input.goal ||
+    input.task ||
+    input.prompt ||
+    '';
   const agent =
     input.subagent_name ||
     input.agent_name ||
@@ -21,19 +26,33 @@ function summarize(input) {
     input.status ||
     'completed';
   const message =
-    input.last_assistant_message ||
     input.summary ||
+    input.last_assistant_message ||
     'subagent completed';
+  const openRisks =
+    input.open_risks ||
+    input.openRisks ||
+    '';
   const nextAction =
     input.next_action ||
     input.nextAction ||
     '';
+  const filesTouched = Array.isArray(input.files_touched)
+    ? input.files_touched.join(', ')
+    : (input.files_touched || input.filesTouched || '');
+  const verificationRun = Array.isArray(input.verification_run)
+    ? input.verification_run.join(' | ')
+    : (input.verification_run || input.verificationRun || '');
 
   return {
+    goal: String(goal).replace(/\s+/g, ' ').slice(0, 200),
     agent: String(agent).replace(/\s+/g, ' ').slice(0, 120),
     status: String(status).replace(/\s+/g, ' ').slice(0, 120),
     summary: String(message).replace(/\s+/g, ' ').slice(0, 300),
+    openRisks: String(openRisks).replace(/\s+/g, ' ').slice(0, 200),
     nextAction: String(nextAction).replace(/\s+/g, ' ').slice(0, 200),
+    filesTouched: String(filesTouched).replace(/\s+/g, ' ').slice(0, 240),
+    verificationRun: String(verificationRun).replace(/\s+/g, ' ').slice(0, 240),
   };
 }
 
@@ -43,7 +62,18 @@ async function main() {
   ensureDir(sessionsDir);
 
   const summary = summarize(input);
-  const logLine = `[${getDateTimeString()}] agent=${summary.agent} status=${summary.status} summary=${summary.summary}${summary.nextAction ? ` next_action=${summary.nextAction}` : ''}\n`;
+  const parts = [
+    `[${getDateTimeString()}]`,
+    `agent=${summary.agent}`,
+    `status=${summary.status}`,
+  ];
+  if (summary.goal) parts.push(`goal=${summary.goal}`);
+  parts.push(`summary=${summary.summary}`);
+  if (summary.openRisks) parts.push(`open_risks=${summary.openRisks}`);
+  if (summary.nextAction) parts.push(`next_action=${summary.nextAction}`);
+  if (summary.filesTouched) parts.push(`files_touched=${summary.filesTouched}`);
+  if (summary.verificationRun) parts.push(`verification_run=${summary.verificationRun}`);
+  const logLine = `${parts.join(' ')}\n`;
   appendFile(path.join(sessionsDir, 'subagent-stop.log'), logLine);
 
   const sessions = findFiles(sessionsDir, '*-session.tmp');
@@ -53,7 +83,12 @@ async function main() {
       '### Subagent Update',
       `- agent=${summary.agent}`,
       `- status=${summary.status}`,
+      ...(summary.goal ? [`- goal=${summary.goal}`] : []),
       `- summary=${summary.summary}`,
+      `- result=${summary.summary}`,
+      ...(summary.openRisks ? [`- open_risks=${summary.openRisks}`] : []),
+      ...(summary.filesTouched ? [`- files_touched=${summary.filesTouched}`] : []),
+      ...(summary.verificationRun ? [`- verification_run=${summary.verificationRun}`] : []),
     ];
     if (summary.nextAction) {
       lines.push(`- next_action=${summary.nextAction}`);

@@ -49,6 +49,7 @@ See:
 - `HARNESS.md`
 - `AUTONOMY_POLICY.md`
 - `OBSERVE.md`
+- `SESSION.md`
 
 ---
 

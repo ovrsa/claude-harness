@@ -30,7 +30,7 @@ Observation is required when a task changes runtime behavior, user-visible behav
 
 `observation-summary.md` should include:
 
-- what behavior was observed
-- how it was observed
-- what evidence was seen
-- any remaining uncertainty
+- `Behavior Checked`
+- `Method`
+- `Evidence`
+- `Remaining Uncertainty`

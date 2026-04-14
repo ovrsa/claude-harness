@@ -206,6 +206,65 @@ async function runTests() {
     }
   })) passed++; else failed++;
 
+  if (await asyncTest('prefers repository session state over raw previous session summaries', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    const isoHome = path.join(testDir, 'home');
+    const sessionsDir = path.join(isoHome, '.claude', 'sessions');
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.mkdirSync(sessionsDir, { recursive: true });
+
+    fs.writeFileSync(path.join(sessionsDir, '2026-04-14-main-session.tmp'), '# Session\n\nThis older summary should not win.\n');
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Session restore test',
+        'status: approved',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Session restore test',
+        '',
+        '## Summary',
+        '',
+        '- restore from artifacts first'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 2: tighten lifecycle state',
+        '',
+        '## Last Completed Step',
+        '- Added the approved plan artifact',
+        '',
+        '## Next Action',
+        '- Update task artifact helpers',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- docs-writer: drafted the session spec'
+      ].join('\n'));
+
+      const result = await runScriptInDir(path.join(scriptsDir, 'session-start.js'), repoDir, '', {
+        HOME: isoHome, USERPROFILE: isoHome
+      });
+      assert.strictEqual(result.code, 0);
+      assert.ok(result.stdout.includes('current_phase=Phase 2: tighten lifecycle state'),
+        `Expected current phase in stdout, got: ${result.stdout}`);
+      assert.ok(result.stdout.includes('next_action=Update task artifact helpers'),
+        `Expected next action in stdout, got: ${result.stdout}`);
+      assert.ok(!result.stdout.includes('Previous session summary'),
+        'Artifact-backed session state should take precedence over old session summaries');
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
   if (await asyncTest('reports learned skills count', async () => {
     const isoHome = path.join(os.tmpdir(), `ecc-skills-start-${Date.now()}`);
     const learnedDir = path.join(isoHome, '.claude', 'skills', 'learned');
@@ -3820,6 +3879,39 @@ Some random content without the expected ### Context to Load section
     }
   })) passed++; else failed++;
 
+  if (await asyncTest('includes goal and open risks in structured subagent handoff output', async () => {
+    const isoHome = path.join(os.tmpdir(), `ecc-subagent-schema-${Date.now()}`);
+    const sessionsDir = path.join(isoHome, '.claude', 'sessions');
+    fs.mkdirSync(sessionsDir, { recursive: true });
+    const sessionFile = path.join(sessionsDir, '2026-04-10-main-session.tmp');
+    fs.writeFileSync(sessionFile, '# Session\n');
+
+    try {
+      const input = JSON.stringify({
+        subagent_name: 'worker-1',
+        stop_reason: 'completed',
+        goal: 'Harden session restore contract',
+        summary: 'Added parser coverage for progress.md state.',
+        open_risks: 'Need smoke coverage for interrupted sessions',
+        next_action: 'Run smoke checks',
+        files_touched: ['SESSION.md', 'HARNESS.md'],
+        verification_run: ['node smoke-harness-lifecycle.js']
+      });
+      const result = await runScript(path.join(scriptsDir, 'subagent-stop.js'), input, {
+        HOME: isoHome, USERPROFILE: isoHome
+      });
+      assert.strictEqual(result.code, 0, 'Should exit 0');
+      const content = fs.readFileSync(sessionFile, 'utf8');
+      assert.ok(content.includes('goal=Harden session restore contract'), 'Should include goal');
+      assert.ok(content.includes('open_risks=Need smoke coverage for interrupted sessions'), 'Should include open risks');
+      assert.ok(content.includes('next_action=Run smoke checks'), 'Should include next action');
+      assert.ok(content.includes('files_touched=SESSION.md, HARNESS.md'), 'Should include files touched');
+      assert.ok(content.includes('verification_run=node smoke-harness-lifecycle.js'), 'Should include verification run');
+    } finally {
+      fs.rmSync(isoHome, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
   // pre-compact.js richer snapshot tests
   console.log('\npre-compact.js (artifact lifecycle state):');
 
@@ -3847,7 +3939,24 @@ Some random content without the expected ### Context to Load section
         '',
         '- verify artifact state'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), '# Progress\n\n- waiting on verify\n');
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 3: checkpoint semantics',
+        '',
+        '## Last Completed Step',
+        '- Added session-aware plan',
+        '',
+        '## Next Action',
+        '- Extend smoke checks',
+        '',
+        '## Blockers',
+        '- waiting on verification',
+        '',
+        '## Delegated Work',
+        '- worker-1: drafted the handoff contract'
+      ].join('\n'));
 
       const result = await runScriptInDir(
         path.join(scriptsDir, 'pre-compact.js'),
@@ -3860,8 +3969,273 @@ Some random content without the expected ### Context to Load section
       assert.ok(content.includes('### Lifecycle State'), 'Should include lifecycle state section');
       assert.ok(content.includes('plan_status=approved'), 'Should include plan status');
       assert.ok(content.includes('progress_present=true'), 'Should include progress presence');
-      assert.ok(content.includes('blocked=missing verification-summary.md, missing observation-summary.md'),
+      assert.ok(content.includes('### Session State'), 'Should include session state section');
+      assert.ok(content.includes('current_phase=Phase 3: checkpoint semantics'), 'Should include current phase');
+      assert.ok(content.includes('next_action=Extend smoke checks'), 'Should include next action');
+      assert.ok(content.includes('blockers=waiting on verification'), 'Should include blockers');
+      assert.ok(content.includes('blocked=missing verification-summary.md, missing review-summary.md, missing observation-summary.md'),
         `Expected blocked reasons, got: ${content}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  // lifecycle guardrail tests
+  console.log('\nlifecycle guardrails:');
+
+  if (await asyncTest('lifecycle-pre-edit blocks non-trivial code edits without progress.md', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Edit guard progress test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Edit guard progress test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
+      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
+      );
+      assert.strictEqual(result.code, 2, `Expected exit 2, got ${result.code}`);
+      assert.ok(result.stderr.includes('progress.md'), `Expected progress guidance, got: ${result.stderr}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-pre-edit allows non-trivial code edits when progress.md has minimum schema', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Edit guard allow test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Edit guard allow test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 2: implementation',
+        '',
+        '## Last Completed Step',
+        '- Approved the plan',
+        '',
+        '## Next Action',
+        '- Edit lifecycle guardrails',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
+      );
+      assert.strictEqual(result.code, 0, `Expected exit 0, got ${result.code}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-pre-commit blocks when review-summary.md is missing for behavior-changing work', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Commit guard warning test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: true',
+        '---',
+        '',
+        '# Plan: Commit guard warning test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 4: verification',
+        '',
+        '## Last Completed Step',
+        '- Wrote verification artifacts',
+        '',
+        '## Next Action',
+        '- Review diff and commit',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { command: 'git commit -m "test"' } })
+      );
+      assert.strictEqual(result.code, 2, `Expected exit 2, got ${result.code}`);
+      assert.ok(result.stderr.includes('review-summary.md'), `Expected review guidance, got: ${result.stderr}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-pre-commit warns when progress.md still has a next action after review, verification, and observation pass', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Commit guard warning test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: true',
+        '---',
+        '',
+        '# Plan: Commit guard warning test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 4: verification',
+        '',
+        '## Last Completed Step',
+        '- Wrote review and verification artifacts',
+        '',
+        '## Next Action',
+        '- Review diff and commit',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
+        '# Review Summary',
+        '',
+        '## Review Scope',
+        '- lifecycle guard behavior',
+        '',
+        '## Findings',
+        '- none',
+        '',
+        '## Residual Risks',
+        '- none',
+        '',
+        '## Next Action',
+        '- Run verification and commit'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+      fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
+        '# Observation Summary',
+        '',
+        '## Behavior Checked',
+        '- commit guard warning path',
+        '',
+        '## Method',
+        '- hook test fixture',
+        '',
+        '## Evidence',
+        '- warning emitted when Next Action stayed active',
+        '',
+        '## Remaining Uncertainty',
+        '- none'
+      ].join('\n'));
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { command: 'git commit -m "test"' } })
+      );
+      assert.strictEqual(result.code, 0, `Expected exit 0, got ${result.code}`);
+      assert.ok(result.stderr.includes('Next Action'), `Expected next action warning, got: ${result.stderr}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-pre-commit blocks when progress.md still declares blockers', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Commit guard blocker test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Commit guard blocker test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 4: verification',
+        '',
+        '## Last Completed Step',
+        '- Wrote verification summary',
+        '',
+        '## Next Action',
+        '- none',
+        '',
+        '## Blockers',
+        '- waiting on reviewer sign-off',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { command: 'git commit -m "test"' } })
+      );
+      assert.strictEqual(result.code, 2, `Expected exit 2, got ${result.code}`);
+      assert.ok(result.stderr.includes('Blockers'), `Expected blocker message, got: ${result.stderr}`);
     } finally {
       fs.rmSync(testDir, { recursive: true, force: true });
     }

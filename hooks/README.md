@@ -101,11 +101,24 @@ Expected files for non-trivial work:
 
 - `research.md`
 - `plan.md`
+- `review-summary.md`
 - `verification-summary.md`
 - `observation-summary.md`
 - `progress.md` for multi-session work
 
 `SessionStart` will surface these artifacts first, and `PreCompact` will snapshot their presence into the active session file before context is summarized.
+
+For interrupted or multi-session work, `progress.md` is the durable session log.
+
+Minimum recommended sections:
+
+- `Current Phase`
+- `Last Completed Step`
+- `Next Action`
+- `Blockers`
+- `Delegated Work`
+
+See `~/.claude/SESSION.md` for the canonical session model.
 
 ### Autonomy Policy
 
@@ -117,6 +130,18 @@ The permission boundary is intentionally narrower than the rest of the harness.
 - `audit-only` is for low-risk metadata commands that should still leave a trace
 
 See `~/.claude/AUTONOMY_POLICY.md` for the canonical policy.
+
+### Progress-Aware Guardrails
+
+For non-trivial implementation work, lifecycle guardrails now treat `progress.md` as part of the required operating state.
+
+- code edits are blocked if `progress.md` is missing for non-trivial implementation work
+- commits are blocked if `progress.md` still declares active blockers
+- commits warn if `Next Action` still contains active follow-up work
+- behavior-changing commits are blocked if `review-summary.md` is missing or incomplete
+- observation-required commits are blocked if `observation-summary.md` is missing or incomplete
+
+See `~/.claude/SESSION.md` for the durable session schema.
 
 ### Writing Your Own Hook
 
