@@ -42,8 +42,19 @@ Execute verification in this exact order:
 
 9. **Observe Runtime Behavior**
    - For UI changes: use browser verification, screenshots, or flow checks
-   - For backend/runtime changes: inspect logs, error output, or equivalent runtime evidence
+   - For backend/runtime changes: inspect logs, stderr/stdout output, runtime health, process state, traces, or equivalent runtime evidence
+   - Record the evidence source explicitly in `observation-summary.md`
+   - Valid evidence-source labels include:
+     - `browser`
+     - `screenshot`
+     - `logs`
+     - `stderr` / `stdout`
+     - `trace`
+     - `runtime health`
+     - `process state`
+     - `metrics`
    - Treat build/test success as necessary but not sufficient when behavior changed
+   - Do not write generic observation notes such as `looks good` or `manual check passed` without naming the source of evidence
 
 10. **Update Durable Session State**
    - For non-trivial implementation work, update `progress.md`

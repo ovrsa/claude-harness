@@ -25,8 +25,15 @@ Use this command for the `Review` phase before commit.
    - `Findings`
    - `Residual Risks`
    - `Next Action`
-5. Block CRITICAL and HIGH issues.
-6. If verification has not run yet, leave `Next Action` pointing to verification instead of treating the task as approval-ready.
+5. Use `Findings` only for unresolved issues. Prefix every finding with one of:
+   - `CRITICAL:`
+   - `HIGH:`
+   - `MEDIUM:`
+   - `LOW:`
+   - `INFO:`
+6. Move accepted or non-blocking concerns to `Residual Risks`.
+7. Treat review as approval-ready only when `Findings` is `none`.
+8. If verification has not run yet, leave `Next Action` pointing to verification instead of treating the task as approval-ready.
 
 ## Hard guardrails
 
@@ -34,4 +41,6 @@ Use this command for the `Review` phase before commit.
 - Do not approve behavior-changing work without `review-summary.md`.
 - Do not approve changes that skipped verification.
 - Do not approve non-trivial implementation work with stale blockers in `progress.md`.
+- Do not leave unresolved findings in `Findings` and still mark review as approval-ready.
+- Do not write findings without severity prefixes.
 - Prefer high-confidence findings only.

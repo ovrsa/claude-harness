@@ -13,6 +13,11 @@ const ARTIFACT_FILES = [
   'observation-summary.md',
 ];
 
+const PROGRESS_SECTION_LATEST_CHECKPOINT = 'Latest Checkpoint';
+const PROGRESS_SECTION_LATEST_HANDOFF = 'Latest Delegated Handoff';
+const REVIEW_FINDING_PATTERN = /^(CRITICAL|HIGH|MEDIUM|LOW|INFO)\s*:\s+(.+)$/i;
+const OBSERVATION_EVIDENCE_SOURCE_PATTERN = /\b(browser|screenshot|log|logs|stderr|stdout|trace|traces|metric|metrics|health|process)\b/i;
+
 function findArtifactByName(artifacts, name) {
   return artifacts.find(artifact => artifact.name === name) || null;
 }
@@ -92,6 +97,20 @@ function normalizeSectionLine(line) {
     .trim();
 }
 
+function parseSectionState(lines) {
+  const rawValues = (lines || [])
+    .map(normalizeSectionLine)
+    .filter(Boolean);
+  const values = rawValues.filter(line => !/^none$/i.test(line));
+  return {
+    rawValues,
+    values,
+    firstValue: values[0] || '',
+    hasEntries: rawValues.length > 0,
+    explicitNone: rawValues.some(line => /^none$/i.test(line)),
+  };
+}
+
 function firstSectionValue(lines) {
   for (const line of lines || []) {
     const normalized = normalizeSectionLine(line);
@@ -107,15 +126,102 @@ function listSectionValues(lines) {
     .filter(line => !/^none$/i.test(line));
 }
 
-function parseProgressState(content) {
+function parseDelimitedValues(rawValue, delimiterPattern) {
+  const value = String(rawValue || '').trim();
+  if (!value || /^none$/i.test(value)) return [];
+  return value
+    .split(delimiterPattern)
+    .map(part => part.trim())
+    .filter(Boolean)
+    .filter(part => !/^none$/i.test(part));
+}
+
+function parseKeyValueSection(lines) {
+  const keyValues = {};
+  for (const line of parseSectionState(lines).rawValues) {
+    if (/^none$/i.test(line)) continue;
+    const idx = line.indexOf('=');
+    if (idx === -1) continue;
+    keyValues[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+  }
+  return keyValues;
+}
+
+function parseProgressAutomationState(content) {
   const sections = parseMarkdownSections(content);
+  const checkpoint = parseKeyValueSection(sections[PROGRESS_SECTION_LATEST_CHECKPOINT]);
+  const handoff = parseKeyValueSection(sections[PROGRESS_SECTION_LATEST_HANDOFF]);
 
   return {
-    currentPhase: firstSectionValue(sections['Current Phase']),
-    lastCompletedStep: firstSectionValue(sections['Last Completed Step']),
-    nextAction: firstSectionValue(sections['Next Action']),
-    blockers: listSectionValues(sections.Blockers),
-    delegatedWork: listSectionValues(sections['Delegated Work']),
+    checkpoint: {
+      updatedAt: checkpoint.updated_at || '',
+      event: checkpoint.event || '',
+      currentPhase: checkpoint.current_phase || '',
+      lastCompletedStep: checkpoint.last_completed_step || '',
+      suggestedNextAction: checkpoint.suggested_next_action || '',
+      blockers: parseDelimitedValues(checkpoint.blockers, /\s*;\s*/),
+      delegatedWork: parseDelimitedValues(checkpoint.delegated_work, /\s*;\s*/),
+    },
+    latestHandoff: {
+      updatedAt: handoff.updated_at || '',
+      agent: handoff.agent || '',
+      status: handoff.status || '',
+      goal: handoff.goal || '',
+      result: handoff.result || '',
+      filesTouched: parseDelimitedValues(handoff.files_touched, /\s*,\s*/),
+      verificationRun: parseDelimitedValues(handoff.verification_run, /\s*\|\s*/),
+      openRisks: handoff.open_risks || '',
+      nextAction: handoff.next_action || '',
+    },
+  };
+}
+
+function parseProgressState(content) {
+  const sections = parseMarkdownSections(content);
+  const currentPhaseState = parseSectionState(sections['Current Phase']);
+  const lastCompletedState = parseSectionState(sections['Last Completed Step']);
+  const nextActionState = parseSectionState(sections['Next Action']);
+  const blockerState = parseSectionState(sections.Blockers);
+  const delegatedState = parseSectionState(sections['Delegated Work']);
+  const automation = parseProgressAutomationState(content);
+
+  const resolvedCurrentPhase = currentPhaseState.firstValue || automation.checkpoint.currentPhase;
+  const resolvedLastCompletedStep =
+    lastCompletedState.firstValue ||
+    automation.checkpoint.lastCompletedStep ||
+    automation.latestHandoff.result;
+  const resolvedNextAction = nextActionState.explicitNone
+    ? ''
+    : (
+        nextActionState.firstValue ||
+        automation.latestHandoff.nextAction ||
+        automation.checkpoint.suggestedNextAction
+      );
+  const resolvedBlockers = blockerState.hasEntries
+    ? blockerState.values
+    : automation.checkpoint.blockers;
+  const resolvedDelegatedWork = delegatedState.hasEntries
+    ? delegatedState.values
+    : (
+        automation.checkpoint.delegatedWork.length > 0
+          ? automation.checkpoint.delegatedWork
+          : (automation.latestHandoff.goal
+              ? [`${automation.latestHandoff.agent || 'subagent'}: ${automation.latestHandoff.goal}`]
+              : [])
+      );
+
+  return {
+    currentPhase: resolvedCurrentPhase,
+    lastCompletedStep: resolvedLastCompletedStep,
+    nextAction: resolvedNextAction,
+    blockers: resolvedBlockers,
+    delegatedWork: resolvedDelegatedWork,
+    currentPhasePresent: Boolean(resolvedCurrentPhase),
+    lastCompletedStepPresent: Boolean(resolvedLastCompletedStep),
+    nextActionPresent: nextActionState.hasEntries || Boolean(automation.latestHandoff.nextAction) || Boolean(automation.checkpoint.suggestedNextAction),
+    nextActionExplicitNone: nextActionState.explicitNone,
+    hasActionableNextAction: Boolean(resolvedNextAction),
+    automation,
   };
 }
 
@@ -135,13 +241,42 @@ function parseReviewState(content) {
     'Residual Risks',
     'Next Action',
   ]);
+  const reviewScopeState = parseSectionState(sections['Review Scope']);
+  const findingsState = parseSectionState(sections.Findings);
+  const residualRiskState = parseSectionState(sections['Residual Risks']);
+  const nextActionState = parseSectionState(sections['Next Action']);
+  const parsedFindings = findingsState.values
+    .map(line => {
+      const match = line.match(REVIEW_FINDING_PATTERN);
+      return match
+        ? {
+            severity: match[1].toUpperCase(),
+            message: match[2].trim(),
+            raw: line,
+          }
+        : null;
+    })
+    .filter(Boolean);
+  const invalidFindings = findingsState.values.filter(line => !REVIEW_FINDING_PATTERN.test(line));
+  const missingValues = [];
+  if (!reviewScopeState.hasEntries) missingValues.push('Review Scope');
+  if (!findingsState.hasEntries) missingValues.push('Findings');
+  if (!residualRiskState.hasEntries) missingValues.push('Residual Risks');
+  if (!nextActionState.hasEntries) missingValues.push('Next Action');
+  const complete = status.complete && missingValues.length === 0 && invalidFindings.length === 0;
 
   return {
-    reviewScope: listSectionValues(sections['Review Scope']),
-    findings: listSectionValues(sections.Findings),
-    residualRisks: listSectionValues(sections['Residual Risks']),
-    nextAction: firstSectionValue(sections['Next Action']),
+    reviewScope: reviewScopeState.values,
+    findings: findingsState.values,
+    residualRisks: residualRiskState.values,
+    nextAction: nextActionState.explicitNone ? 'none' : nextActionState.firstValue,
+    parsedFindings,
+    invalidFindings,
+    missingValues,
+    blockingFindings: parsedFindings,
+    hasBlockingFindings: parsedFindings.length > 0,
     ...status,
+    complete,
   };
 }
 
@@ -153,13 +288,34 @@ function parseObservationState(content) {
     'Evidence',
     'Remaining Uncertainty',
   ]);
+  const behaviorCheckedState = parseSectionState(sections['Behavior Checked']);
+  const methodState = parseSectionState(sections.Method);
+  const evidenceState = parseSectionState(sections.Evidence);
+  const remainingUncertaintyState = parseSectionState(sections['Remaining Uncertainty']);
+  const concreteEvidenceLines = [
+    ...methodState.values,
+    ...evidenceState.values,
+  ].filter(line => OBSERVATION_EVIDENCE_SOURCE_PATTERN.test(line));
+  const missingValues = [];
+  if (!behaviorCheckedState.hasEntries) missingValues.push('Behavior Checked');
+  if (!methodState.hasEntries) missingValues.push('Method');
+  if (!evidenceState.hasEntries) missingValues.push('Evidence');
+  if (!remainingUncertaintyState.hasEntries) missingValues.push('Remaining Uncertainty');
+  const complete =
+    status.complete &&
+    missingValues.length === 0 &&
+    concreteEvidenceLines.length > 0;
 
   return {
-    behaviorChecked: listSectionValues(sections['Behavior Checked']),
-    method: listSectionValues(sections.Method),
-    evidence: listSectionValues(sections.Evidence),
-    remainingUncertainty: listSectionValues(sections['Remaining Uncertainty']),
+    behaviorChecked: behaviorCheckedState.values,
+    method: methodState.values,
+    evidence: evidenceState.values,
+    remainingUncertainty: remainingUncertaintyState.values,
+    missingValues,
+    concreteEvidenceLines,
+    hasConcreteEvidence: concreteEvidenceLines.length > 0,
     ...status,
+    complete,
   };
 }
 
@@ -170,6 +326,33 @@ function defaultSessionState() {
     nextAction: '',
     blockers: [],
     delegatedWork: [],
+    currentPhasePresent: false,
+    lastCompletedStepPresent: false,
+    nextActionPresent: false,
+    nextActionExplicitNone: false,
+    hasActionableNextAction: false,
+    automation: {
+      checkpoint: {
+        updatedAt: '',
+        event: '',
+        currentPhase: '',
+        lastCompletedStep: '',
+        suggestedNextAction: '',
+        blockers: [],
+        delegatedWork: [],
+      },
+      latestHandoff: {
+        updatedAt: '',
+        agent: '',
+        status: '',
+        goal: '',
+        result: '',
+        filesTouched: [],
+        verificationRun: [],
+        openRisks: '',
+        nextAction: '',
+      },
+    },
   };
 }
 
@@ -236,7 +419,17 @@ function buildLifecycleState(artifacts) {
   if (observeRequired && !observation) {
     blocked.push('missing observation-summary.md');
   } else if (observeRequired && observation && observation.observation_state && !observation.observation_state.complete) {
-    blocked.push(`incomplete observation-summary.md: missing ${observation.observation_state.missingSections.join(', ')}`);
+    const details = [];
+    if (observation.observation_state.missingSections.length > 0) {
+      details.push(`missing sections ${observation.observation_state.missingSections.join(', ')}`);
+    }
+    if (observation.observation_state.missingValues.length > 0) {
+      details.push(`empty sections ${observation.observation_state.missingValues.join(', ')}`);
+    }
+    if (!observation.observation_state.hasConcreteEvidence) {
+      details.push('no concrete evidence source');
+    }
+    blocked.push(`incomplete observation-summary.md: ${details.join(' | ')}`);
   }
 
   return {
@@ -281,9 +474,17 @@ function buildArtifactContext(repoRoot) {
     lines.push('Session state:');
     lines.push(`- current_phase=${state.sessionState.currentPhase || 'unknown'}`);
     lines.push(`- last_completed_step=${state.sessionState.lastCompletedStep || 'unknown'}`);
-    lines.push(`- next_action=${state.sessionState.nextAction || 'unknown'}`);
+    lines.push(`- next_action=${state.sessionState.nextAction || (state.sessionState.nextActionExplicitNone ? 'none' : 'unknown')}`);
     lines.push(`- blockers=${formatListValue(state.sessionState.blockers)}`);
     lines.push(`- delegated_work=${formatListValue(state.sessionState.delegatedWork)}`);
+    if (state.sessionState.automation.checkpoint.event) {
+      lines.push(`- checkpoint_event=${state.sessionState.automation.checkpoint.event}`);
+      lines.push(`- checkpoint_next_action=${state.sessionState.automation.checkpoint.suggestedNextAction || 'none'}`);
+    }
+    if (state.sessionState.automation.latestHandoff.agent) {
+      lines.push(`- latest_handoff_agent=${state.sessionState.automation.latestHandoff.agent}`);
+      lines.push(`- latest_handoff_next_action=${state.sessionState.automation.latestHandoff.nextAction || 'none'}`);
+    }
   }
 
   return lines.join('\n');
@@ -314,11 +515,101 @@ function buildArtifactSnapshot(repoRoot) {
     lines.push('### Session State');
     lines.push(`- current_phase=${state.sessionState.currentPhase || 'unknown'}`);
     lines.push(`- last_completed_step=${state.sessionState.lastCompletedStep || 'unknown'}`);
-    lines.push(`- next_action=${state.sessionState.nextAction || 'unknown'}`);
+    lines.push(`- next_action=${state.sessionState.nextAction || (state.sessionState.nextActionExplicitNone ? 'none' : 'unknown')}`);
     lines.push(`- blockers=${formatListValue(state.sessionState.blockers)}`);
     lines.push(`- delegated_work=${formatListValue(state.sessionState.delegatedWork)}`);
+    if (state.sessionState.automation.checkpoint.event) {
+      lines.push(`- checkpoint_event=${state.sessionState.automation.checkpoint.event}`);
+      lines.push(`- checkpoint_next_action=${state.sessionState.automation.checkpoint.suggestedNextAction || 'none'}`);
+    }
+    if (state.sessionState.automation.latestHandoff.agent) {
+      lines.push(`- latest_handoff_agent=${state.sessionState.automation.latestHandoff.agent}`);
+      lines.push(`- latest_handoff_next_action=${state.sessionState.automation.latestHandoff.nextAction || 'none'}`);
+    }
   }
   return lines.join('\n');
+}
+
+function buildManagedSectionContent(heading, lines) {
+  return [`## ${heading}`, '', ...(lines.length > 0 ? lines : ['- none']), ''].join('\n');
+}
+
+function replaceMarkdownSection(content, heading, replacementLines) {
+  const sectionHeading = `## ${heading}`;
+  const replacement = buildManagedSectionContent(heading, replacementLines);
+  const normalized = String(content || '').replace(/\r\n/g, '\n');
+  const lines = normalized.split('\n');
+  const startIndex = lines.findIndex(line => line.trim() === sectionHeading);
+
+  if (startIndex !== -1) {
+    let endIndex = lines.length;
+    for (let i = startIndex + 1; i < lines.length; i += 1) {
+      if (/^##\s+/.test(lines[i])) {
+        endIndex = i;
+        break;
+      }
+    }
+    const replacementBlock = replacement.replace(/\n$/, '').split('\n');
+    const updatedLines = [
+      ...lines.slice(0, startIndex),
+      ...replacementBlock,
+      ...lines.slice(endIndex),
+    ];
+    const updated = updatedLines.join('\n').replace(/\n{3,}/g, '\n\n');
+    return updated.endsWith('\n') ? updated : `${updated}\n`;
+  }
+
+  const trimmed = normalized.replace(/\s*$/, '');
+  const prefix = trimmed ? `${trimmed}\n\n` : '';
+  return `${prefix}${replacement}`;
+}
+
+function serializeSectionValue(value, delimiter = '; ') {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join(delimiter) : 'none';
+  }
+  const normalized = String(value || '').trim();
+  return normalized ? normalized : 'none';
+}
+
+function updateProgressManagedSection(progressPath, heading, entries) {
+  if (!progressPath || !fs.existsSync(progressPath)) return false;
+  const content = fs.readFileSync(progressPath, 'utf8');
+  const lines = entries
+    .map(([key, value, delimiter]) => [`${key}=${serializeSectionValue(value, delimiter)}`])
+    .map(([line]) => `- ${line}`);
+  const updated = replaceMarkdownSection(content, heading, lines);
+  if (updated !== content) {
+    fs.writeFileSync(progressPath, updated, 'utf8');
+    return true;
+  }
+  return false;
+}
+
+function writeProgressCheckpoint(progressPath, checkpoint) {
+  return updateProgressManagedSection(progressPath, PROGRESS_SECTION_LATEST_CHECKPOINT, [
+    ['updated_at', checkpoint.updatedAt],
+    ['event', checkpoint.event],
+    ['current_phase', checkpoint.currentPhase],
+    ['last_completed_step', checkpoint.lastCompletedStep],
+    ['suggested_next_action', checkpoint.suggestedNextAction],
+    ['blockers', checkpoint.blockers, '; '],
+    ['delegated_work', checkpoint.delegatedWork, '; '],
+  ]);
+}
+
+function writeProgressDelegatedHandoff(progressPath, handoff) {
+  return updateProgressManagedSection(progressPath, PROGRESS_SECTION_LATEST_HANDOFF, [
+    ['updated_at', handoff.updatedAt],
+    ['agent', handoff.agent],
+    ['status', handoff.status],
+    ['goal', handoff.goal],
+    ['result', handoff.result],
+    ['files_touched', handoff.filesTouched, ', '],
+    ['verification_run', handoff.verificationRun, ' | '],
+    ['open_risks', handoff.openRisks],
+    ['next_action', handoff.nextAction],
+  ]);
 }
 
 module.exports = {
@@ -329,6 +620,9 @@ module.exports = {
   buildArtifactSnapshot,
   buildLifecycleState,
   parseProgressState,
+  parseProgressAutomationState,
   parseReviewState,
   parseObservationState,
+  writeProgressCheckpoint,
+  writeProgressDelegatedHandoff,
 };

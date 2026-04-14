@@ -117,6 +117,8 @@ Minimum recommended sections:
 - `Next Action`
 - `Blockers`
 - `Delegated Work`
+- `Latest Checkpoint`
+- `Latest Delegated Handoff`
 
 See `~/.claude/SESSION.md` for the canonical session model.
 
@@ -139,7 +141,11 @@ For non-trivial implementation work, lifecycle guardrails now treat `progress.md
 - commits are blocked if `progress.md` still declares active blockers
 - commits warn if `Next Action` still contains active follow-up work
 - behavior-changing commits are blocked if `review-summary.md` is missing or incomplete
+- behavior-changing commits are blocked if `review-summary.md` still has unresolved findings
 - observation-required commits are blocked if `observation-summary.md` is missing or incomplete
+- observation-required commits are blocked if `observation-summary.md` has no concrete evidence source such as `browser`, `logs`, `stderr/stdout`, `trace`, `runtime health`, `metrics`, or `process state`
+
+Hooks may update only the machine-managed `Latest Checkpoint` and `Latest Delegated Handoff` sections. Operator-owned progress fields remain the source of truth when they are populated.
 
 See `~/.claude/SESSION.md` for the durable session schema.
 

@@ -71,7 +71,19 @@ function parseFrontmatter(md) {
     }
     const review = parseReviewState(fs.readFileSync(reviewPath, 'utf8'));
     if (!review.complete) {
-      console.error(`[Lifecycle Guardrail] review-summary.md is incomplete. Missing sections: ${review.missingSections.join(', ')}`);
+      const details = [];
+      if (review.missingSections.length > 0) details.push(`Missing sections: ${review.missingSections.join(', ')}`);
+      if (review.missingValues.length > 0) details.push(`Empty sections: ${review.missingValues.join(', ')}`);
+      if (review.invalidFindings.length > 0) details.push(`Findings without severity prefix: ${review.invalidFindings.join('; ')}`);
+      console.error(`[Lifecycle Guardrail] review-summary.md is incomplete. ${details.join(' | ')}`);
+      process.exit(2);
+    }
+    if (review.hasBlockingFindings) {
+      const findingsPreview = review.blockingFindings
+        .slice(0, 3)
+        .map(finding => `${finding.severity}: ${finding.message}`)
+        .join(' | ');
+      console.error(`[Lifecycle Guardrail] review-summary.md still has unresolved findings. Move accepted concerns to Residual Risks and clear Findings before commit. ${findingsPreview}`);
       process.exit(2);
     }
   }
@@ -83,7 +95,11 @@ function parseFrontmatter(md) {
     }
     const observation = parseObservationState(fs.readFileSync(observationPath, 'utf8'));
     if (!observation.complete) {
-      console.error(`[Lifecycle Guardrail] observation-summary.md is incomplete. Missing sections: ${observation.missingSections.join(', ')}`);
+      const details = [];
+      if (observation.missingSections.length > 0) details.push(`Missing sections: ${observation.missingSections.join(', ')}`);
+      if (observation.missingValues.length > 0) details.push(`Empty sections: ${observation.missingValues.join(', ')}`);
+      if (!observation.hasConcreteEvidence) details.push('Concrete evidence source required in Method or Evidence (browser, logs, runtime health, stderr/stdout, trace, screenshot, metrics, or process state).');
+      console.error(`[Lifecycle Guardrail] observation-summary.md is incomplete. ${details.join(' | ')}`);
       process.exit(2);
     }
   }
@@ -96,8 +112,8 @@ function parseFrontmatter(md) {
     }
 
     const progress = parseProgressState(fs.readFileSync(progressPath, 'utf8'));
-    if (!progress.currentPhase || !progress.lastCompletedStep || !progress.nextAction) {
-      console.error('[Lifecycle Guardrail] progress.md is incomplete. Fill Current Phase, Last Completed Step, and Next Action before commit.');
+    if (!progress.currentPhasePresent || !progress.lastCompletedStepPresent || !progress.nextActionPresent) {
+      console.error('[Lifecycle Guardrail] progress.md is incomplete. Fill Current Phase and Last Completed Step, and set Next Action to an active step or `none` before commit.');
       process.exit(2);
     }
 
@@ -106,7 +122,7 @@ function parseFrontmatter(md) {
       process.exit(2);
     }
 
-    if (!/^none$/i.test(progress.nextAction)) {
+    if (progress.hasActionableNextAction) {
       console.error(`[Lifecycle Guardrail] Warning: Next Action in progress.md is still active: ${progress.nextAction}`);
     }
   }

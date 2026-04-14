@@ -76,6 +76,41 @@ For non-trivial work, state must live in repository artifacts:
 - Do not treat tests/build alone as sufficient when behavior changed
 - Do not use `.codex` or other adapters as a second lifecycle source of truth
 - Do not treat compact summaries as the source of truth when `progress.md` exists
+- Do not treat `review-summary.md` as complete while `Findings` contains unresolved items
+- Do not leave accepted concerns in `Findings`; move them to `Residual Risks`
+
+## Review Gate Semantics
+
+`review-summary.md` is findings-first and approval-oriented.
+
+- `Findings` contains unresolved issues only
+- each finding must use a severity prefix:
+  - `CRITICAL:`
+  - `HIGH:`
+  - `MEDIUM:`
+  - `LOW:`
+  - `INFO:`
+- `Residual Risks` contains accepted or non-blocking concerns
+- review is approval-ready only when `Findings` is `none`
+- commit must stop while `Findings` still contains unresolved items
+
+## Observation Gate Semantics
+
+`observation-summary.md` is evidence-first and source-aware.
+
+- `Behavior Checked` states what runtime behavior was validated
+- `Method` states how it was inspected
+- `Evidence` states what concrete artifact or signal was seen
+- at least one `Method` or `Evidence` line must name a concrete source:
+  - `browser`
+  - `screenshot`
+  - `logs`
+  - `stderr` / `stdout`
+  - `trace`
+  - `runtime health`
+  - `process state`
+  - `metrics`
+- generic prose without a named evidence source is not observation-ready
 
 ## Adapter Rule
 
