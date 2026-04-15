@@ -2,6 +2,10 @@
 
 Analyze the codebase structure and generate token-lean architecture documentation.
 
+Codemaps are deep architecture references, not the first repo entrypoint.
+
+If the repository lacks a thin orientation doc, create or refresh root `AGENTS.md` with `/repo-map` before expanding codemaps.
+
 ## Step 1: Scan Project Structure
 
 1. Identify the project type (monorepo, single app, library, microservice)
@@ -65,6 +69,7 @@ Write a summary to `.reports/codemap-diff.txt`:
 
 ## Tips
 
+- treat the repo-local map and the codemap as different layers
 - Focus on **high-level structure**, not implementation details
 - Prefer **file paths and function signatures** over full code blocks
 - Keep each codemap under **1000 tokens** for efficient context loading
