@@ -1,0 +1,157 @@
+'use strict';
+
+const {
+  loadGuardrailCandidates,
+  buildCandidateKey,
+} = require('./guardrail-candidates');
+
+function toTimestamp(value) {
+  if (!value) return 0;
+  const timestamp = Date.parse(String(value));
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function toIsoString(timestamp) {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return '';
+  return new Date(timestamp).toISOString();
+}
+
+function getCandidateKey(candidate) {
+  if (candidate && typeof candidate === 'object') {
+    const explicitKey = String(candidate.candidate_key || '').trim();
+    if (explicitKey) return explicitKey;
+    return buildCandidateKey(candidate);
+  }
+  return '';
+}
+
+function loadHealthCandidates(registryPath) {
+  return loadGuardrailCandidates(registryPath);
+}
+
+function groupHealthCandidates(candidates = []) {
+  const grouped = new Map();
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object') continue;
+
+    const candidateKey = getCandidateKey(candidate);
+    if (!candidateKey) continue;
+
+    const capturedAt = String(candidate.captured_at || '').trim();
+    const capturedTimestamp = toTimestamp(capturedAt);
+
+    const existing = grouped.get(candidateKey) || {
+      candidate_key: candidateKey,
+      count: 0,
+      first_seen: '',
+      last_seen: '',
+      first_seen_ts: 0,
+      last_seen_ts: 0,
+      recommended_layer: String(candidate.recommended_layer || '').trim().toLowerCase(),
+      failure_pattern: String(candidate.failure_pattern || '').trim(),
+      source_artifact: String(candidate.source_artifact || candidate.source || '').trim(),
+      entries: [],
+    };
+
+    existing.count += 1;
+    existing.entries.push(candidate);
+
+    if (!existing.first_seen_ts || (capturedTimestamp && capturedTimestamp < existing.first_seen_ts)) {
+      existing.first_seen_ts = capturedTimestamp;
+      existing.first_seen = capturedAt;
+    }
+    if (capturedTimestamp >= existing.last_seen_ts) {
+      existing.last_seen_ts = capturedTimestamp;
+      existing.last_seen = capturedAt;
+      existing.recommended_layer = String(candidate.recommended_layer || existing.recommended_layer || '').trim().toLowerCase();
+      existing.failure_pattern = String(candidate.failure_pattern || existing.failure_pattern || '').trim();
+      existing.source_artifact = String(candidate.source_artifact || candidate.source || existing.source_artifact || '').trim();
+    }
+
+    grouped.set(candidateKey, existing);
+  }
+
+  return Array.from(grouped.values()).map(group => ({
+    candidate_key: group.candidate_key,
+    count: group.count,
+    first_seen: group.first_seen || toIsoString(group.first_seen_ts),
+    last_seen: group.last_seen || toIsoString(group.last_seen_ts),
+    recommended_layer: group.recommended_layer,
+    failure_pattern: group.failure_pattern,
+    source_artifact: group.source_artifact,
+    entries: group.entries,
+  }));
+}
+
+function hasResolvedEntry(entries = []) {
+  return entries.some(entry => {
+    const values = [
+      entry.status,
+      entry.state,
+      entry.disposition,
+      entry.resolution,
+      entry.result,
+    ].map(value => String(value || '').trim().toLowerCase());
+    return values.includes('resolved');
+  });
+}
+
+function classifyHealthGroup(group, options = {}) {
+  const promotionThreshold = Number(options.promotionThreshold) || 3;
+  const recurringThreshold = Number(options.recurringThreshold) || 2;
+  const staleAfterDays = Number(options.staleAfterDays) || 14;
+  const nowTimestamp = toTimestamp(options.now || new Date().toISOString());
+  const lastSeenTimestamp = toTimestamp(group.last_seen);
+  const staleThresholdTimestamp = nowTimestamp - (staleAfterDays * 24 * 60 * 60 * 1000);
+
+  if (hasResolvedEntry(group.entries)) {
+    return 'resolved';
+  }
+  if (group.count >= promotionThreshold) {
+    return 'promotion-ready';
+  }
+  if (lastSeenTimestamp && lastSeenTimestamp < staleThresholdTimestamp) {
+    return 'stale';
+  }
+  if (group.count >= recurringThreshold) {
+    return 'recurring';
+  }
+  return 'new';
+}
+
+function sortGroups(groups) {
+  return groups.sort((a, b) => {
+    const lastSeenDiff = toTimestamp(b.last_seen) - toTimestamp(a.last_seen);
+    if (lastSeenDiff !== 0) return lastSeenDiff;
+    const countDiff = b.count - a.count;
+    if (countDiff !== 0) return countDiff;
+    return a.candidate_key.localeCompare(b.candidate_key);
+  });
+}
+
+function summarizeHealthLoop(candidates = [], options = {}) {
+  const groups = sortGroups(groupHealthCandidates(candidates)).map(group => ({
+    ...group,
+    state: classifyHealthGroup(group, options),
+  }));
+
+  const byState = {};
+  for (const group of groups) {
+    byState[group.state] = (byState[group.state] || 0) + 1;
+  }
+
+  return {
+    totalEntries: Array.isArray(candidates) ? candidates.length : 0,
+    totalGroups: groups.length,
+    byState,
+    groups,
+  };
+}
+
+module.exports = {
+  loadHealthCandidates,
+  groupHealthCandidates,
+  classifyHealthGroup,
+  summarizeHealthLoop,
+};

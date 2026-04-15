@@ -13,6 +13,8 @@ This file is the thin operating entrypoint for my personal agent harness.
 
 `~/.codex` is a runtime bridge, not a second harness.
 
+Active repositories should expose a thin repo-local map, preferably root `AGENTS.md`, that points to the real truth sources without duplicating the lifecycle.
+
 Deeper references:
 
 - `~/.claude/HARNESS.md` for the canonical harness map
@@ -25,6 +27,8 @@ Completion model:
 - `verify` proves rerunnable checks passed
 - `evaluate` proves the work is acceptable to accept
 - `observe` proves runtime behavior when changed behavior needs concrete evidence
+- recurring failures should be recorded as `guardrail candidates` and later promoted into the narrowest durable layer that can prevent them
+- health and triage should summarize recurring candidates into explicit next-task recommendations before broader automation is added
 
 ## Required Artifact Chain
 
@@ -36,6 +40,7 @@ For any non-trivial task, keep task state in repository files instead of chat on
 - `verification-summary.md` for rerunnable verification evidence
 - `observation-summary.md` when runtime or UI behavior changed
 - `progress.md` as the durable session log for interrupted or multi-session work
+- optional `Guardrail Candidates` sections when a failure pattern is worth promoting beyond the current task
 
 ## Execution Rules
 
@@ -51,7 +56,9 @@ For any non-trivial task, keep task state in repository files instead of chat on
 ## Context Rules
 
 - keep always-loaded instructions short
+- prefer a thin repo-local map over ad hoc repository orientation
 - prefer references to artifacts, docs, and skills over long inline guidance
+- keep repo-local maps pointed at truth sources instead of copying global lifecycle rules
 - restore the current task from repository artifacts first
 - treat `progress.md` as the durable session state when it exists
 - compact only after persisting current state

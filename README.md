@@ -42,7 +42,9 @@ For this local installation:
 
 - `~/.claude` is the canonical harness implementation
 - `~/.codex` is a runtime bridge, not a second lifecycle source of truth
+- root `AGENTS.md` should act as a thin repo-local map when a repository needs local orientation
 - repository task artifacts are the source of truth for session continuity
+- recurring failures should become explicit guardrail candidates before they are promoted into durable harness behavior
 
 See:
 
@@ -50,6 +52,39 @@ See:
 - `AUTONOMY_POLICY.md`
 - `OBSERVE.md`
 - `SESSION.md`
+
+### Feedback-to-Guardrail Loop
+
+This local harness treats repeated failures as promotion candidates, not just session noise.
+
+- task artifacts may include optional `Guardrail Candidates`
+- candidates should recommend the narrowest durable layer:
+  - `docs`
+  - `command`
+  - `hook`
+  - `skill`
+- capture can be automatic at lifecycle boundaries
+- promotion remains a deliberate follow-up decision
+
+### Triage And Health Loop
+
+The next layer after capture is summary and triage.
+
+- `health` groups recent candidate patterns into a current local snapshot
+- `triage` turns grouped patterns into explicit next-task recommendations
+- this phase stays local and command-driven; it does not auto-create tickets or auto-promote changes
+- grouped patterns should distinguish `new`, `recurring`, `promotion-ready`, `stale`, and `resolved`
+
+### Repo-Local Maps
+
+Use a thin root `AGENTS.md` as the preferred repo-local map.
+
+- keep it short enough to read by default
+- point to the real truth sources for the repo
+- link to codemaps or architecture docs only when they add value
+- do not copy the whole global lifecycle into the repo-local map
+
+Codemaps remain deep architecture references. They are not the first repo entrypoint.
 
 ---
 
@@ -1034,6 +1069,9 @@ OpenCode's plugin system is MORE sophisticated than Claude Code with 20+ event t
 | `/checkpoint` | Save verification state |
 | `/verify` | Run verification loop |
 | `/eval` | Acceptance gate for implementation work |
+| `/repo-map` | Create or refresh a thin repo-local map |
+| `/health-status` | Summarize current local harness health |
+| `/triage-loop` | Turn grouped patterns into next-task recommendations |
 | `/update-docs` | Update documentation |
 | `/update-codemaps` | Update codemaps |
 | `/test-coverage` | Analyze coverage |

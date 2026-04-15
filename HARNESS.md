@@ -6,7 +6,7 @@ Use this file as the authoritative map for how the personal harness is organized
 
 ## Core Model
 
-The harness is split into four layers:
+The harness is split into five layers:
 
 1. **Invariant entry layer**
    - short always-loaded instructions
@@ -27,7 +27,12 @@ The harness is split into four layers:
    - `progress.md`
    - `SESSION.md`
 
-4. **Adapter layer**
+4. **Repo-local map layer**
+   - thin repository orientation, preferably via root `AGENTS.md`
+   - points agents to local truth sources without redefining lifecycle behavior
+   - may link to codemaps or deeper docs when they are useful
+
+5. **Adapter layer**
    - `.codex`, Cursor, and other runtimes consume `.claude`
    - adapters inherit the workflow, not redefine it
 
@@ -51,6 +56,8 @@ The harness is split into four layers:
   Own artifact structure.
 - `commands/`
   Own workflow entrypoints.
+- root `AGENTS.md` in active repos
+  Owns thin repo-local orientation and truth-source routing only.
 - `AUTONOMY_POLICY.md`
   Owns autonomy classes and escalation rules.
 - `OBSERVE.md`
@@ -68,6 +75,12 @@ For non-trivial work, state must live in repository artifacts:
 - `review-summary.md` for acceptance findings and residual risks
 - `observation-summary.md` when runtime or user-visible behavior changed
 - `progress.md` as the durable session log for interrupted or multi-session work
+
+Optional promotion-oriented sections may also exist inside the primary artifacts:
+
+- `Guardrail Candidates` in `review-summary.md`
+- `Guardrail Candidates` in `verification-summary.md`
+- `Guardrail Candidates` in `observation-summary.md`
 
 ## Completion Model
 
@@ -101,6 +114,45 @@ Work is done only when all required gates have passed. `verify` and `evaluate` a
 - Do not treat compact summaries as the source of truth when `progress.md` exists
 - Do not treat `review-summary.md` as complete while `Findings` contains unresolved items
 - Do not leave accepted concerns in `Findings`; move them to `Residual Risks`
+- Do not promote a one-off failure into a durable global rule without recurrence or clear severity justification
+
+## Feedback-To-Guardrail Loop
+
+The harness should learn from repeated failures without immediately over-automating noisy signals.
+
+Promotion ladder:
+
+- `docs` when the main problem is missing explanation, terminology, or checklist clarity
+- `command` when the problem recurs but still needs operator judgment
+- `hook` when the problem is high-confidence, low-noise, and machine-detectable at the right lifecycle boundary
+- `skill` when the pattern is stable, reusable, and too rich for a narrow command or hook
+
+Operating rules:
+
+- capture can be automatic
+- promotion stays human-directed in this phase
+- guardrail candidates belong in task artifacts before they become durable harness changes
+- use the narrowest layer that can prevent the failure reliably
+
+## Triage And Health Loop
+
+Health and triage sit on top of guardrail capture.
+
+- `health` summarizes the current grouped failure landscape from recent harness signals
+- `triage` decides which grouped patterns should become the next follow-up tasks
+- both remain local and human-directed in this phase
+- grouped patterns should distinguish `new`, `recurring`, `promotion-ready`, `stale`, and `resolved`
+- the output should generate next-task candidates rather than just describing symptoms
+
+## Repo-Local Maps
+
+Repo-local maps are orientation docs, not lifecycle authorities.
+
+- prefer root `AGENTS.md` as the thin repo-local map
+- keep the map short enough to be default-readable
+- point to the real truth sources instead of duplicating them
+- use codemaps as deeper architecture references, not as the first repo entrypoint
+- do not restate `~/.claude` lifecycle rules in full when a short bridge is enough
 
 ## Review Gate Semantics
 
