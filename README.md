@@ -48,10 +48,13 @@ For this local installation:
 
 See:
 
+- `OPERATING_MODEL.md`
 - `HARNESS.md`
 - `AUTONOMY_POLICY.md`
 - `OBSERVE.md`
 - `SESSION.md`
+
+`OPERATING_MODEL.md` is the shortest current summary of the full local loop, including `review -> verify -> evaluate -> observe`, guardrail capture, and later `health / triage`.
 
 ### Feedback-to-Guardrail Loop
 

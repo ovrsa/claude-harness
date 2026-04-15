@@ -20,6 +20,7 @@ function assertIncludes(content, needle, label) {
 function main() {
   const claude = read('CLAUDE.md');
   const harness = read('HARNESS.md');
+  const operatingModel = read('OPERATING_MODEL.md');
   const session = read('SESSION.md');
   const observe = read('OBSERVE.md');
   const hooksReadme = read('hooks/README.md');
@@ -39,6 +40,7 @@ function main() {
   const observationTemplate = read('templates/observation-summary-template.md');
   const postCommitCapture = read('commands/post-commit-capture.md');
   const hookSuite = read('tests/hooks/hooks.test.js');
+  const operatingModelPath = path.join(ROOT, 'OPERATING_MODEL.md');
   const healthTemplatePath = path.join(ROOT, 'templates/health-summary-template.md');
   const reviewTemplatePath = path.join(ROOT, 'templates/review-summary-template.md');
   const observationTemplatePath = path.join(ROOT, 'templates/observation-summary-template.md');
@@ -46,11 +48,13 @@ function main() {
   const triageTemplatePath = path.join(ROOT, 'templates/triage-summary-template.md');
   const verificationTemplatePath = path.join(ROOT, 'templates/verification-summary-template.md');
 
+  assertIncludes(claude, 'OPERATING_MODEL.md', 'CLAUDE.md');
   assertIncludes(claude, 'review-summary.md', 'CLAUDE.md');
   assertIncludes(claude, 'guardrail candidates', 'CLAUDE.md');
   assertIncludes(claude, 'repo-local map', 'CLAUDE.md');
   assertIncludes(claude, 'AGENTS.md', 'CLAUDE.md');
   assertIncludes(claude, 'health and triage', 'CLAUDE.md');
+  assertIncludes(harness, 'OPERATING_MODEL.md', 'HARNESS.md');
   assertIncludes(harness, 'review-summary.md', 'HARNESS.md');
   assertIncludes(harness, 'severity prefix', 'HARNESS.md');
   assertIncludes(harness, 'concrete source', 'HARNESS.md');
@@ -63,6 +67,11 @@ function main() {
   assertIncludes(harness, 'Triage And Health Loop', 'HARNESS.md');
   assertIncludes(harness, 'promotion-ready', 'HARNESS.md');
   assertIncludes(harness, 'resolved', 'HARNESS.md');
+  assertIncludes(operatingModel, 'Lifecycle Loop', 'OPERATING_MODEL.md');
+  assertIncludes(operatingModel, 'post-commit capture', 'OPERATING_MODEL.md');
+  assertIncludes(operatingModel, 'Enforced Now', 'OPERATING_MODEL.md');
+  assertIncludes(operatingModel, 'Not Enforced Yet', 'OPERATING_MODEL.md');
+  assertIncludes(operatingModel, 'health / triage', 'OPERATING_MODEL.md');
   assertIncludes(session, 'review-summary.md', 'SESSION.md');
   assertIncludes(observe, 'Behavior Checked', 'OBSERVE.md');
   assertIncludes(observe, 'runtime health', 'OBSERVE.md');
@@ -114,6 +123,9 @@ function main() {
   assertIncludes(hookSuite, '--allow-known-baseline', 'hooks.test.js');
   assertIncludes(hookSuite, 'Unexpected failures', 'hooks.test.js');
 
+  if (!fs.existsSync(operatingModelPath)) {
+    throw new Error('OPERATING_MODEL.md is missing');
+  }
   if (!fs.existsSync(healthTemplatePath)) {
     throw new Error('templates/health-summary-template.md is missing');
   }

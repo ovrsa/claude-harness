@@ -4,6 +4,8 @@
 
 Use this file as the authoritative map for how the personal harness is organized.
 
+For the fastest end-to-end summary of the current loop, start with `OPERATING_MODEL.md` and return here for the deeper ownership and gate semantics.
+
 ## Core Model
 
 The harness is split into five layers:

@@ -17,6 +17,7 @@ Active repositories should expose a thin repo-local map, preferably root `AGENTS
 
 Deeper references:
 
+- `~/.claude/OPERATING_MODEL.md` for the fastest end-to-end operating loop summary
 - `~/.claude/HARNESS.md` for the canonical harness map
 - `~/.claude/AUTONOMY_POLICY.md` for approval and autonomy classes
 - `~/.claude/OBSERVE.md` for runtime observation rules
