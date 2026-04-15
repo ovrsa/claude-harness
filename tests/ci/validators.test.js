@@ -135,10 +135,11 @@ function runTests() {
   // ==========================================
   console.log('validate-agents.js:');
 
-  if (test('passes on real project agents', () => {
+  if (test('real project agents surface is quarantined and reports known contract mismatches', () => {
     const result = runValidator('validate-agents');
-    assert.strictEqual(result.code, 0, `Should pass, got stderr: ${result.stderr}`);
-    assert.ok(result.stdout.includes('Validated'), 'Should output validation count');
+    assert.strictEqual(result.code, 1, 'Quarantined agents surface should not be treated as canonical green');
+    assert.ok(result.stderr.includes('Invalid model'), 'Should report the known model contract mismatch');
+    assert.ok(result.stderr.includes('tools'), 'Should report the known tools contract mismatch');
   })) passed++; else failed++;
 
   if (test('fails on agent without frontmatter', () => {
@@ -352,6 +353,113 @@ function runTests() {
     cleanupTestDir(testDir);
   })) passed++; else failed++;
 
+  // ==========================================
+  // validate-runtime-surface.js
+  // ==========================================
+  console.log('\nvalidate-runtime-surface.js:');
+
+  if (test('passes on real project runtime surface', () => {
+    const result = runValidator('validate-runtime-surface');
+    assert.strictEqual(result.code, 0, `Should pass, got stderr: ${result.stderr}`);
+    assert.ok(result.stdout.includes('Validated runtime surface'), 'Should output runtime surface count');
+  })) passed++; else failed++;
+
+  if (test('fails when referenced runtime hook file is missing', () => {
+    const testDir = createTestDir();
+    const hooksDir = path.join(testDir, '.claude', 'hooks');
+    fs.mkdirSync(hooksDir, { recursive: true });
+    const hooksFile = path.join(hooksDir, 'hooks.json');
+    fs.writeFileSync(hooksFile, JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'Bash',
+            hooks: [
+              { type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/missing-hook.js"' }
+            ]
+          }
+        ]
+      }
+    }, null, 2));
+    execFileSync('git', ['init'], { cwd: testDir, stdio: 'ignore' });
+    execFileSync('git', ['add', '.claude/hooks/hooks.json'], { cwd: testDir, stdio: 'ignore' });
+
+    const result = runValidatorWithDirs('validate-runtime-surface', {
+      HOOKS_FILE: hooksFile,
+      REPO_ROOT: testDir,
+    });
+    assert.strictEqual(result.code, 1, 'Should fail when referenced runtime file is missing');
+    assert.ok(result.stderr.includes('runtime surface file is missing'), 'Should report missing runtime file');
+    cleanupTestDir(testDir);
+  })) passed++; else failed++;
+
+  if (test('fails when referenced runtime hook file exists but is untracked', () => {
+    const testDir = createTestDir();
+    const hooksDir = path.join(testDir, '.claude', 'hooks');
+    const scriptsDir = path.join(testDir, '.claude', 'scripts', 'hooks');
+    fs.mkdirSync(hooksDir, { recursive: true });
+    fs.mkdirSync(scriptsDir, { recursive: true });
+    const hooksFile = path.join(hooksDir, 'hooks.json');
+    fs.writeFileSync(hooksFile, JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'Bash',
+            hooks: [
+              { type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/example.js"' }
+            ]
+          }
+        ]
+      }
+    }, null, 2));
+    fs.writeFileSync(path.join(scriptsDir, 'example.js'), 'module.exports = {};\n');
+    execFileSync('git', ['init'], { cwd: testDir, stdio: 'ignore' });
+    execFileSync('git', ['add', '.claude/hooks/hooks.json'], { cwd: testDir, stdio: 'ignore' });
+
+    const result = runValidatorWithDirs('validate-runtime-surface', {
+      HOOKS_FILE: hooksFile,
+      REPO_ROOT: testDir,
+    });
+    assert.strictEqual(result.code, 1, 'Should fail when runtime file is untracked');
+    assert.ok(result.stderr.includes('not tracked by git'), 'Should report untracked runtime file');
+    cleanupTestDir(testDir);
+  })) passed++; else failed++;
+
+  if (test('fails when tracked runtime hook depends on an untracked local library', () => {
+    const testDir = createTestDir();
+    const hooksDir = path.join(testDir, '.claude', 'hooks');
+    const scriptsHooksDir = path.join(testDir, '.claude', 'scripts', 'hooks');
+    const scriptsLibDir = path.join(testDir, '.claude', 'scripts', 'lib');
+    fs.mkdirSync(hooksDir, { recursive: true });
+    fs.mkdirSync(scriptsHooksDir, { recursive: true });
+    fs.mkdirSync(scriptsLibDir, { recursive: true });
+    const hooksFile = path.join(hooksDir, 'hooks.json');
+    fs.writeFileSync(hooksFile, JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'Bash',
+            hooks: [
+              { type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/example.js"' }
+            ]
+          }
+        ]
+      }
+    }, null, 2));
+    fs.writeFileSync(path.join(scriptsHooksDir, 'example.js'), "require('../lib/helper');\n");
+    fs.writeFileSync(path.join(scriptsLibDir, 'helper.js'), 'module.exports = {};\n');
+    execFileSync('git', ['init'], { cwd: testDir, stdio: 'ignore' });
+    execFileSync('git', ['add', '.claude/hooks/hooks.json', '.claude/scripts/hooks/example.js'], { cwd: testDir, stdio: 'ignore' });
+
+    const result = runValidatorWithDirs('validate-runtime-surface', {
+      HOOKS_FILE: hooksFile,
+      REPO_ROOT: testDir,
+    });
+    assert.strictEqual(result.code, 1, 'Should fail when a local runtime dependency is untracked');
+    assert.ok(result.stderr.includes('.claude/scripts/lib/helper.js'), 'Should report the untracked local dependency');
+    cleanupTestDir(testDir);
+  })) passed++; else failed++;
+
   if (test('passes valid inline JS commands', () => {
     const testDir = createTestDir();
     const hooksFile = path.join(testDir, 'hooks.json');
@@ -411,10 +519,10 @@ function runTests() {
   // ==========================================
   console.log('\nvalidate-skills.js:');
 
-  if (test('passes on real project skills', () => {
+  if (test('real project skills surface is quarantined and reports known contract mismatch', () => {
     const result = runValidator('validate-skills');
-    assert.strictEqual(result.code, 0, `Should pass, got stderr: ${result.stderr}`);
-    assert.ok(result.stdout.includes('Validated'), 'Should output validation count');
+    assert.strictEqual(result.code, 1, 'Quarantined skills surface should not be treated as canonical green');
+    assert.ok(result.stderr.includes('Missing SKILL.md'), 'Should report the known learned/ contract mismatch');
   })) passed++; else failed++;
 
   if (test('exits 0 when directory does not exist', () => {
