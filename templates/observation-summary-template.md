@@ -22,6 +22,10 @@
 
 - none
 
+## Guardrail Candidates
+
+- none
+
 <!--
 Use only the evidence-source lines that apply.
 At least one Method or Evidence line must name a concrete source such as

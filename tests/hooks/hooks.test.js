@@ -4638,6 +4638,158 @@ Some random content without the expected ### Context to Load section
     }
   })) passed++; else failed++;
 
+  if (await asyncTest('lifecycle-pre-commit captures guardrail candidates without blocking commit', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Guardrail capture success test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Guardrail capture success test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 4: ready to commit',
+        '',
+        '## Last Completed Step',
+        '- Finished verification and review',
+        '',
+        '## Next Action',
+        '- none',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
+        '# Verification Summary',
+        '',
+        '## Scope',
+        '- guardrail capture behavior',
+        '',
+        '## Commands Run',
+        '- node .claude/tests/hooks/hooks.test.js --allow-known-baseline',
+        '',
+        '## Verification Outcome',
+        '- pending commit guard capture',
+        '',
+        '## Guardrail Candidates',
+        '- failure_pattern: repeated missing acceptance artifact',
+        '  source: verification-summary.md',
+        '  recommended_layer: hook',
+        '  confidence: high',
+        '  promotion_hint: block commit when review artifact is absent',
+        '',
+        '## Assessment',
+        '- verify remains rerunnable and non-acceptance-oriented'
+      ].join('\n'));
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { command: 'git commit -m "capture"' } }),
+        { HOME: testDir }
+      );
+      assert.strictEqual(result.code, 0, `Expected candidate capture to stay non-blocking, got ${result.code}`);
+
+      const registryPath = path.join(testDir, '.claude', '.state', 'guardrail-candidates.jsonl');
+      assert.ok(fs.existsSync(registryPath), 'Expected guardrail candidate registry to be created');
+      const rows = fs.readFileSync(registryPath, 'utf8').trim().split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
+      assert.strictEqual(rows.length, 1, 'Expected one captured candidate');
+      assert.strictEqual(rows[0].recommended_layer, 'hook');
+      assert.strictEqual(rows[0].source_artifact, 'verification-summary.md');
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-pre-commit warns on malformed guardrail candidates without blocking commit', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Guardrail capture malformed test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Guardrail capture malformed test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 4: ready to commit',
+        '',
+        '## Last Completed Step',
+        '- Finished verification',
+        '',
+        '## Next Action',
+        '- none',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
+        '# Verification Summary',
+        '',
+        '## Scope',
+        '- malformed guardrail candidate behavior',
+        '',
+        '## Commands Run',
+        '- node .claude/tests/hooks/hooks.test.js --allow-known-baseline',
+        '',
+        '## Verification Outcome',
+        '- pending malformed capture check',
+        '',
+        '## Guardrail Candidates',
+        '- source: verification-summary.md',
+        '  recommended_layer: hook',
+        '  confidence: medium',
+        '',
+        '## Assessment',
+        '- malformed candidates should warn, not block'
+      ].join('\n'));
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { command: 'git commit -m "capture"' } }),
+        { HOME: testDir }
+      );
+      assert.strictEqual(result.code, 0, `Expected malformed candidate warning to stay non-blocking, got ${result.code}`);
+      assert.ok(result.stderr.includes('guardrail candidates'), `Expected guardrail warning, got: ${result.stderr}`);
+
+      const registryPath = path.join(testDir, '.claude', '.state', 'guardrail-candidates.jsonl');
+      if (fs.existsSync(registryPath)) {
+        const content = fs.readFileSync(registryPath, 'utf8').trim();
+        assert.strictEqual(content, '', 'Malformed candidates should not be appended');
+      }
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
   if (await asyncTest('lifecycle-pre-commit blocks when progress.md still declares blockers', async () => {
     const testDir = createTestDir();
     const repoDir = path.join(testDir, 'repo');

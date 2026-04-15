@@ -106,6 +106,12 @@ Expected files for non-trivial work:
 - `observation-summary.md`
 - `progress.md` for multi-session work
 
+Optional sections for promotion-worthy failures:
+
+- `Guardrail Candidates` in `review-summary.md`
+- `Guardrail Candidates` in `verification-summary.md`
+- `Guardrail Candidates` in `observation-summary.md`
+
 `SessionStart` will surface these artifacts first, and `PreCompact` will snapshot their presence into the active session file before context is summarized.
 
 For interrupted or multi-session work, `progress.md` is the durable session log.
@@ -148,6 +154,22 @@ For non-trivial implementation work, lifecycle guardrails now treat `progress.md
 Hooks may update only the machine-managed `Latest Checkpoint` and `Latest Delegated Handoff` sections. Operator-owned progress fields remain the source of truth when they are populated.
 
 See `~/.claude/SESSION.md` for the durable session schema.
+
+### Guardrail Candidate Capture
+
+The lifecycle hooks may capture `guardrail candidates` as a non-blocking side effect once task artifacts are complete enough to parse.
+
+Use this for recurring failures only. A candidate should explain:
+
+- the failure pattern
+- where it showed up
+- the recommended destination:
+  - `docs`
+  - `command`
+  - `hook`
+  - `skill`
+
+Capture does not mean promotion. In this phase, promotion remains an explicit follow-up decision.
 
 ### Writing Your Own Hook
 

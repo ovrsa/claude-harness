@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { parseGuardrailCandidates } = require('./guardrail-candidates');
 
 const ARTIFACT_FILES = [
   'research.md',
@@ -245,6 +246,7 @@ function parseReviewState(content) {
   const findingsState = parseSectionState(sections.Findings);
   const residualRiskState = parseSectionState(sections['Residual Risks']);
   const nextActionState = parseSectionState(sections['Next Action']);
+  const guardrailCandidatesState = parseGuardrailCandidates(sections['Guardrail Candidates']);
   const parsedFindings = findingsState.values
     .map(line => {
       const match = line.match(REVIEW_FINDING_PATTERN);
@@ -270,6 +272,8 @@ function parseReviewState(content) {
     findings: findingsState.values,
     residualRisks: residualRiskState.values,
     nextAction: nextActionState.explicitNone ? 'none' : nextActionState.firstValue,
+    guardrailCandidates: guardrailCandidatesState.candidates,
+    guardrailCandidateWarnings: guardrailCandidatesState.warnings,
     parsedFindings,
     invalidFindings,
     missingValues,
@@ -292,6 +296,7 @@ function parseObservationState(content) {
   const methodState = parseSectionState(sections.Method);
   const evidenceState = parseSectionState(sections.Evidence);
   const remainingUncertaintyState = parseSectionState(sections['Remaining Uncertainty']);
+  const guardrailCandidatesState = parseGuardrailCandidates(sections['Guardrail Candidates']);
   const concreteEvidenceLines = [
     ...methodState.values,
     ...evidenceState.values,
@@ -311,9 +316,44 @@ function parseObservationState(content) {
     method: methodState.values,
     evidence: evidenceState.values,
     remainingUncertainty: remainingUncertaintyState.values,
+    guardrailCandidates: guardrailCandidatesState.candidates,
+    guardrailCandidateWarnings: guardrailCandidatesState.warnings,
     missingValues,
     concreteEvidenceLines,
     hasConcreteEvidence: concreteEvidenceLines.length > 0,
+    ...status,
+    complete,
+  };
+}
+
+function parseVerificationState(content) {
+  const sections = parseMarkdownSections(content);
+  const status = summarizeSectionStatus(sections, [
+    'Scope',
+    'Commands Run',
+    'Verification Outcome',
+    'Assessment',
+  ]);
+  const scopeState = parseSectionState(sections.Scope);
+  const commandsRunState = parseSectionState(sections['Commands Run']);
+  const verificationOutcomeState = parseSectionState(sections['Verification Outcome']);
+  const assessmentState = parseSectionState(sections.Assessment);
+  const guardrailCandidatesState = parseGuardrailCandidates(sections['Guardrail Candidates']);
+  const missingValues = [];
+  if (!scopeState.hasEntries) missingValues.push('Scope');
+  if (!commandsRunState.hasEntries) missingValues.push('Commands Run');
+  if (!verificationOutcomeState.hasEntries) missingValues.push('Verification Outcome');
+  if (!assessmentState.hasEntries) missingValues.push('Assessment');
+  const complete = status.complete && missingValues.length === 0;
+
+  return {
+    scope: scopeState.values,
+    commandsRun: commandsRunState.values,
+    verificationOutcome: verificationOutcomeState.values,
+    assessment: assessmentState.values,
+    guardrailCandidates: guardrailCandidatesState.candidates,
+    guardrailCandidateWarnings: guardrailCandidatesState.warnings,
+    missingValues,
     ...status,
     complete,
   };
@@ -378,6 +418,7 @@ function findTaskArtifacts(repoRoot) {
         review_required: meta.review_required || '',
         review_state: entry.name === 'review-summary.md' ? parseReviewState(content) : null,
         observation_state: entry.name === 'observation-summary.md' ? parseObservationState(content) : null,
+        verification_state: entry.name === 'verification-summary.md' ? parseVerificationState(content) : null,
         progress_state: entry.name === 'progress.md' ? parseProgressState(content) : null,
         preview,
       };
@@ -623,6 +664,7 @@ module.exports = {
   parseProgressAutomationState,
   parseReviewState,
   parseObservationState,
+  parseVerificationState,
   writeProgressCheckpoint,
   writeProgressDelegatedHandoff,
 };

@@ -43,6 +43,9 @@ Execute verification in this exact order:
    - Set `Last Completed Step` to the latest verified milestone
    - Set `Blockers` to `none` only if no mechanical blockers remain
    - Point `Next Action` to `eval` or observation if those gates are still pending
+9. **Record Guardrail Candidates When Appropriate**
+   - If a mechanical failure pattern is likely to recur, add it to `Guardrail Candidates`
+   - Include `failure_pattern`, `source`, `recommended_layer`, and `confidence`
 
 ## Scope Boundaries
 
@@ -56,6 +59,7 @@ Do not use `/verify` to:
 - treat `runtime health`, `process state`, `logs`, `browser`, or similar evidence as verified unless they are captured in observation
 - treat passing tests as equivalent to "done"
 - write generic observation prose such as `looks good`
+- skip `Guardrail Candidates` when a repeated failure obviously needs a docs, command, or hook follow-up
 
 `/verify` feeds `/eval`; it does not replace `/eval`.
 

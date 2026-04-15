@@ -1,11 +1,17 @@
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const {
   parseObservationState,
   parseProgressState,
   parseReviewState,
+  parseVerificationState,
 } = require('../scripts/lib/task-artifacts');
+const {
+  appendGuardrailCandidates,
+  normalizeGuardrailCandidate,
+} = require('../scripts/lib/guardrail-candidates');
 
 function readStdin() {
   return new Promise(resolve => {
@@ -38,6 +44,38 @@ function parseFrontmatter(md) {
     out[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
   }
   return out;
+}
+
+function getGuardrailRegistryPath() {
+  const homeDir = process.env.HOME || os.homedir();
+  return path.join(homeDir, '.claude', '.state', 'guardrail-candidates.jsonl');
+}
+
+function collectGuardrailCandidates(repo) {
+  const artifactParsers = [
+    ['review-summary.md', parseReviewState],
+    ['verification-summary.md', parseVerificationState],
+    ['observation-summary.md', parseObservationState],
+  ];
+  const candidates = [];
+  const warnings = [];
+
+  for (const [artifactName, parser] of artifactParsers) {
+    const artifactPath = path.join(repo, artifactName);
+    if (!fs.existsSync(artifactPath)) continue;
+    const state = parser(fs.readFileSync(artifactPath, 'utf8'));
+    const parsedCandidates = Array.isArray(state.guardrailCandidates) ? state.guardrailCandidates : [];
+    const parsedWarnings = Array.isArray(state.guardrailCandidateWarnings) ? state.guardrailCandidateWarnings : [];
+
+    for (const warning of parsedWarnings) {
+      warnings.push(`${artifactName}: ${warning}`);
+    }
+    for (const candidate of parsedCandidates) {
+      candidates.push(normalizeGuardrailCandidate(candidate, { sourceArtifact: artifactName }));
+    }
+  }
+
+  return { candidates, warnings };
 }
 
 (async () => {
@@ -124,6 +162,19 @@ function parseFrontmatter(md) {
 
     if (progress.hasActionableNextAction) {
       console.error(`[Lifecycle Guardrail] Warning: Next Action in progress.md is still active: ${progress.nextAction}`);
+    }
+  }
+
+  const { candidates, warnings } = collectGuardrailCandidates(repo);
+  if (warnings.length > 0) {
+    console.error(`[Lifecycle Guardrail] Warning: malformed guardrail candidates skipped. ${warnings.join(' | ')}`);
+  }
+  if (candidates.length > 0) {
+    try {
+      appendGuardrailCandidates(getGuardrailRegistryPath(), candidates);
+      console.error(`[Lifecycle Guardrail] Captured ${candidates.length} guardrail candidates.`);
+    } catch (err) {
+      console.error(`[Lifecycle Guardrail] Warning: failed to record guardrail candidates. ${err.message}`);
     }
   }
 })();
