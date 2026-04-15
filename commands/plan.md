@@ -6,6 +6,8 @@ description: Restate requirements, assess risks, and create step-by-step impleme
 
 This command invokes the **planner** agent to create a comprehensive implementation plan before writing any code.
 
+`/plan` is the conversational planning entrypoint. If the repository needs a durable artifact, use `/plan-task` as the primary artifact-producing companion.
+
 ## What This Command Does
 
 1. **Restate Requirements** - Clarify what needs to be built
@@ -38,6 +40,13 @@ The planner agent will:
 9. **Describe verification and observation steps** for runtime confidence
 10. **Estimate complexity** (High/Medium/Low)
 11. **Present the plan** and WAIT for your explicit confirmation
+
+## Relationship To `/plan-task`
+
+- `/plan` is the lightweight planning conversation.
+- `/plan-task` is the durable planning artifact flow that writes `plan.md`.
+- Prefer `/plan` when you want to discuss the approach first.
+- Prefer `/plan-task` when the repository needs a formal task plan before implementation.
 
 ## Example Usage
 

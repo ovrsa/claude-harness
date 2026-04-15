@@ -6,6 +6,10 @@ command: true
 
 # Promote Command
 
+## Position
+
+Secondary / optional command for explicitly promoting qualified instincts from project scope to global scope. This is a deliberate operator step, not a core lifecycle action.
+
 Promote instincts from project scope to global scope in continuous-learning-v2.
 
 ## Implementation

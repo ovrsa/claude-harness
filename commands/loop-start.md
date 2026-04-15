@@ -1,5 +1,9 @@
 # Loop Start Command
 
+## Position
+
+Retained secondary command. Use it to start a managed autonomous loop when you intentionally want loop orchestration, but do not treat it as part of the core lifecycle path.
+
 Start a managed autonomous loop pattern with safety defaults.
 
 ## Usage

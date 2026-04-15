@@ -25,6 +25,7 @@ Use this command for the `Review` phase before commit.
    - `Findings`
    - `Residual Risks`
    - `Next Action`
+   - optional `Guardrail Candidates`
 5. Use `Findings` only for unresolved issues. Prefix every finding with one of:
    - `CRITICAL:`
    - `HIGH:`
@@ -35,6 +36,18 @@ Use this command for the `Review` phase before commit.
 7. Treat review as approval-ready only when `Findings` is `none`.
 8. If verification has not run yet, leave `Next Action` pointing to verification instead of treating the task as approval-ready.
 9. Treat review as the primary input to `/eval`, not as a substitute for `/verify`.
+10. When the same class of failure looks promotion-worthy, record it in `Guardrail Candidates` with:
+    - `failure_pattern`
+    - `source`
+    - `recommended_layer`
+    - `confidence`
+
+## Relationship To Other Commands
+
+- `/review-task` is the primary review phase for implementation and bug-fix work.
+- `/verify` is the mechanical gate that comes before acceptance.
+- `/eval` is the acceptance decision that consumes `review-summary.md` and `verification-summary.md`.
+- `review-summary.md` should make the acceptance question easier to answer, not duplicate verification output.
 
 ## Hard guardrails
 

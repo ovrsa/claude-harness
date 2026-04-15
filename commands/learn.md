@@ -1,5 +1,9 @@
 # /learn - Extract Reusable Patterns
 
+## Position
+
+Secondary / optional command. Use this when a session has produced a reusable pattern worth turning into a skill. Lifecycle-adjacent capture itself stays separate in `post-commit-capture`.
+
 Analyze the current session and extract any patterns worth saving as skills.
 
 ## Trigger

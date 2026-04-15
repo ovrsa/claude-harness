@@ -28,9 +28,15 @@ function main() {
   const taskArtifacts = read('scripts/lib/task-artifacts.js');
   const preCommit = read('hooks/lifecycle-pre-commit.js');
   const readme = read('README.md');
+  const commandIndex = read('commands/COMMANDS.md');
+  const evalCommand = read('commands/eval.md');
   const healthStatusCommand = read('commands/health-status.md');
+  const planCommand = read('commands/plan.md');
+  const planTaskCommand = read('commands/plan-task.md');
   const reviewTask = read('commands/review-task.md');
   const repoMapCommand = read('commands/repo-map.md');
+  const researchCommand = read('commands/research.md');
+  const researchTaskCommand = read('commands/research-task.md');
   const triageLoopCommand = read('commands/triage-loop.md');
   const healthTemplate = read('templates/health-summary-template.md');
   const reviewTemplate = read('templates/review-summary-template.md');
@@ -40,6 +46,7 @@ function main() {
   const observationTemplate = read('templates/observation-summary-template.md');
   const postCommitCapture = read('commands/post-commit-capture.md');
   const hookSuite = read('tests/hooks/hooks.test.js');
+  const commandIndexPath = path.join(ROOT, 'commands/COMMANDS.md');
   const operatingModelPath = path.join(ROOT, 'OPERATING_MODEL.md');
   const healthTemplatePath = path.join(ROOT, 'templates/health-summary-template.md');
   const reviewTemplatePath = path.join(ROOT, 'templates/review-summary-template.md');
@@ -49,12 +56,14 @@ function main() {
   const verificationTemplatePath = path.join(ROOT, 'templates/verification-summary-template.md');
 
   assertIncludes(claude, 'OPERATING_MODEL.md', 'CLAUDE.md');
+  assertIncludes(claude, 'commands/COMMANDS.md', 'CLAUDE.md');
   assertIncludes(claude, 'review-summary.md', 'CLAUDE.md');
   assertIncludes(claude, 'guardrail candidates', 'CLAUDE.md');
   assertIncludes(claude, 'repo-local map', 'CLAUDE.md');
   assertIncludes(claude, 'AGENTS.md', 'CLAUDE.md');
   assertIncludes(claude, 'health and triage', 'CLAUDE.md');
   assertIncludes(harness, 'OPERATING_MODEL.md', 'HARNESS.md');
+  assertIncludes(harness, 'commands/COMMANDS.md', 'HARNESS.md');
   assertIncludes(harness, 'review-summary.md', 'HARNESS.md');
   assertIncludes(harness, 'severity prefix', 'HARNESS.md');
   assertIncludes(harness, 'concrete source', 'HARNESS.md');
@@ -77,10 +86,24 @@ function main() {
   assertIncludes(observe, 'runtime health', 'OBSERVE.md');
   assertIncludes(observe, 'Verify vs Observe', 'OBSERVE.md');
   assertIncludes(readme, 'Repo-Local Maps', 'README.md');
+  assertIncludes(readme, 'commands/COMMANDS.md', 'README.md');
   assertIncludes(readme, 'AGENTS.md', 'README.md');
   assertIncludes(readme, 'Triage And Health Loop', 'README.md');
   assertIncludes(readme, '/health-status', 'README.md');
   assertIncludes(readme, '/triage-loop', 'README.md');
+  assertIncludes(commandIndex, 'Preferred Lifecycle Path', 'commands/COMMANDS.md');
+  assertIncludes(commandIndex, '/eval', 'commands/COMMANDS.md');
+  assertIncludes(commandIndex, 'Core Lifecycle Pairs', 'commands/COMMANDS.md');
+  assertIncludes(commandIndex, 'Continuous Learning And Promotion', 'commands/COMMANDS.md');
+  assertIncludes(commandIndex, 'Advanced Orchestration And Loops', 'commands/COMMANDS.md');
+  assertIncludes(commandIndex, 'Visibility Tiers', 'commands/COMMANDS.md');
+  assertIncludes(evalCommand, 'acceptance gate', 'eval.md');
+  assertIncludes(evalCommand, '/review-task', 'eval.md');
+  assertIncludes(evalCommand, '/verify', 'eval.md');
+  assertIncludes(planCommand, '/plan-task', 'plan.md');
+  assertIncludes(planTaskCommand, '/plan', 'plan-task.md');
+  assertIncludes(researchCommand, '/research-task', 'research.md');
+  assertIncludes(researchTaskCommand, '/research', 'research-task.md');
   assertIncludes(hooksReadme, 'review-summary.md', 'hooks/README.md');
   assertIncludes(hooksReadme, 'unresolved findings', 'hooks/README.md');
   assertIncludes(hooksReadme, 'concrete evidence source', 'hooks/README.md');
@@ -125,6 +148,9 @@ function main() {
 
   if (!fs.existsSync(operatingModelPath)) {
     throw new Error('OPERATING_MODEL.md is missing');
+  }
+  if (!fs.existsSync(commandIndexPath)) {
+    throw new Error('commands/COMMANDS.md is missing');
   }
   if (!fs.existsSync(healthTemplatePath)) {
     throw new Error('templates/health-summary-template.md is missing');

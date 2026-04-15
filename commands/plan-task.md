@@ -6,6 +6,8 @@ description: Turn research into an implementation-ready plan.md. Use a plan file
 
 Use this command for the `Plan` and `Confirm` phases of the coding lifecycle.
 
+`/plan-task` is the artifact-producing planning path. It is the primary command when the repository needs a durable `plan.md`.
+
 ## Required behavior
 
 1. Read `research.md` or `{task}_research.md`.
@@ -21,3 +23,9 @@ Use this command for the `Plan` and `Confirm` phases of the coding lifecycle.
 - Do not continue if research is missing for a non-trivial task.
 - Do not leave plan steps vague.
 - Do not omit verify or observe.
+
+## Relationship To `/plan`
+
+- `/plan` is the conversational planning entrypoint.
+- `/plan-task` writes the repository artifact and should be used when the plan needs to survive beyond chat.
+- Keep both commands aligned on the same scope and acceptance criteria.

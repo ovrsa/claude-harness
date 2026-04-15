@@ -1,5 +1,9 @@
 # Orchestrate Command
 
+## Position
+
+Preferred advanced workflow. Use this when a task benefits from a structured agent chain and you want one named orchestration surface instead of ad hoc agent selection.
+
 Sequential agent workflow for complex tasks.
 
 ## Usage

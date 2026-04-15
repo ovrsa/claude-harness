@@ -4,6 +4,10 @@ description: Extract reusable patterns from the session, self-evaluate quality b
 
 # /learn-eval - Extract, Evaluate, then Save
 
+## Position
+
+Secondary / optional command. This is the quality-gated version of `/learn` for patterns that need a stronger save-location decision and self-evaluation before writing a skill file.
+
 Extends `/learn` with a quality gate and save-location decision before writing any skill file.
 
 ## What to Extract

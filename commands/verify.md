@@ -2,6 +2,8 @@
 
 Run rerunnable mechanical verification on current codebase state.
 
+`/verify` is the primary mechanical gate. It proves the checks passed, but it does not decide acceptance.
+
 ## Instructions
 
 Execute verification in this exact order:
@@ -54,6 +56,8 @@ Do not use `/verify` to:
 - treat `runtime health`, `process state`, `logs`, `browser`, or similar evidence as verified unless they are captured in observation
 - treat passing tests as equivalent to "done"
 - write generic observation prose such as `looks good`
+
+`/verify` feeds `/eval`; it does not replace `/eval`.
 
 ## Output
 

@@ -19,6 +19,7 @@ Deeper references:
 
 - `~/.claude/OPERATING_MODEL.md` for the fastest end-to-end operating loop summary
 - `~/.claude/HARNESS.md` for the canonical harness map
+- `~/.claude/commands/COMMANDS.md` for the grouped command surface and preferred command path
 - `~/.claude/AUTONOMY_POLICY.md` for approval and autonomy classes
 - `~/.claude/OBSERVE.md` for runtime observation rules
 - `~/.claude/SESSION.md` for session state and resume rules
@@ -69,8 +70,11 @@ For any non-trivial task, keep task state in repository files instead of chat on
 - `/research` before non-trivial implementation
 - `/plan` to decide the approach and get human confirmation
 - `/plan-task` when a repository `plan.md` artifact is required by lifecycle hooks
+- `/review-task` to record findings and residual risks before acceptance
 - `/eval` to decide whether implementation or bug-fix work is acceptable to accept
 - `/verify` before completion or commit
+
+See `~/.claude/commands/COMMANDS.md` for the grouped command taxonomy, lifecycle pairs, and secondary surfaces.
 
 ## Personal Default
 

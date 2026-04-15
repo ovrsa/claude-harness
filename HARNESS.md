@@ -4,7 +4,7 @@
 
 Use this file as the authoritative map for how the personal harness is organized.
 
-For the fastest end-to-end summary of the current loop, start with `OPERATING_MODEL.md` and return here for the deeper ownership and gate semantics.
+For the fastest end-to-end summary of the current loop, start with `OPERATING_MODEL.md`, then use `commands/COMMANDS.md` for the grouped command surface, and return here for the deeper ownership and gate semantics.
 
 ## Core Model
 
@@ -58,6 +58,7 @@ The harness is split into five layers:
   Own artifact structure.
 - `commands/`
   Own workflow entrypoints.
+  `commands/COMMANDS.md` is the grouped summary of that surface, not a replacement for the command docs.
 - root `AGENTS.md` in active repos
   Owns thin repo-local orientation and truth-source routing only.
 - `AUTONOMY_POLICY.md`

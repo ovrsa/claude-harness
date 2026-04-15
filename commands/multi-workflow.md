@@ -1,5 +1,9 @@
 # Workflow - Multi-Model Collaborative Development
 
+## Position
+
+Preferred advanced workflow. This is the highest-level orchestration surface for the multi-model pack and should be treated as optional advanced tooling.
+
 Multi-model collaborative development workflow (Research → Ideation → Plan → Execute → Optimize → Review), with intelligent routing: Frontend → Gemini, Backend → Codex.
 
 Structured development workflow with quality gates, MCP services, and multi-model collaboration.

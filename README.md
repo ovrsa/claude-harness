@@ -50,11 +50,13 @@ See:
 
 - `OPERATING_MODEL.md`
 - `HARNESS.md`
+- `commands/COMMANDS.md`
 - `AUTONOMY_POLICY.md`
 - `OBSERVE.md`
 - `SESSION.md`
 
 `OPERATING_MODEL.md` is the shortest current summary of the full local loop, including `review -> verify -> evaluate -> observe`, guardrail capture, and later `health / triage`.
+`commands/COMMANDS.md` is the grouped command taxonomy, including the preferred lifecycle path, intentional command pairs, and secondary surfaces.
 
 ### Feedback-to-Guardrail Loop
 

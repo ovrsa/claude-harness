@@ -1,5 +1,9 @@
 # Plan - Multi-Model Collaborative Planning
 
+## Position
+
+Preferred advanced workflow for planning. Use this when you want multi-model analysis to produce a step-by-step implementation plan, but treat it as advanced operator tooling rather than core lifecycle.
+
 Multi-model collaborative planning - Context retrieval + Dual-model analysis → Generate step-by-step implementation plan.
 
 $ARGUMENTS

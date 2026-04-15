@@ -6,6 +6,10 @@ command: true
 
 # Evolve Command
 
+## Position
+
+Secondary / optional command for analyzing instincts and suggesting higher-level structures. Use it when you are actively curating continuous-learning output, not as part of the core lifecycle.
+
 ## Implementation
 
 Run the instinct CLI using the plugin root path:

@@ -1,5 +1,9 @@
 # Execute - Multi-Model Collaborative Execution
 
+## Position
+
+Preferred advanced workflow for execution handoff and audit loops. It belongs with the orchestration pack, not the base lifecycle commands.
+
 Multi-model collaborative execution - Get prototype from plan → Claude refactors and implements → Multi-model audit and delivery.
 
 $ARGUMENTS

@@ -17,12 +17,19 @@ This is distinct from:
 - `/verify`, which proves rerunnable checks passed
 - `observation-summary.md`, which proves runtime behavior when changed behavior needs concrete evidence
 
-`/eval` is the acceptance gate that ties together:
+`/eval` is the primary acceptance gate that ties together:
 
 - `review-summary.md`
 - acceptance criteria from `plan.md`
 - residual risks
 - whether additional observation evidence is still required
+
+The flow is:
+
+1. `/verify` proves the mechanical checks passed.
+2. `review-summary.md` records unresolved findings and accepted risks.
+3. `/eval` decides whether the change is acceptable to accept.
+4. `observation-summary.md` supplies runtime evidence only when the change needs it.
 
 ## Required behavior
 
@@ -80,3 +87,4 @@ Next Action:
 
 - The older feature-eval workflow should move to a different command name if retained later.
 - In this harness, `/eval` is reserved for the acceptance gate of implementation and bug-fix work.
+- `/review-task` feeds `/eval`; `/verify` feeds `/eval`; neither replaces `/eval`.

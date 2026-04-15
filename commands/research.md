@@ -6,6 +6,8 @@ description: 実装前リサーチ。既存コード、関連フロー、ライ�
 
 実装前の探索と前提整理を行う。
 
+`/research` is the conversational research entrypoint. Use `/research-task` when you need a durable research artifact in the repository.
+
 ## Usage
 
 `/research <task or spec>`
@@ -88,3 +90,9 @@ description: 実装前リサーチ。既存コード、関連フロー、ライ�
 ## 後続コマンド
 
 - `/plan` — 実装計画を作成
+
+## `/research-task` との関係
+
+- `/research` は会話ベースの探索入口。
+- `/research-task` は `research.md` を残す artifact-producing path。
+- まず `research` で前提を固め、repo に残す必要があるときだけ `research-task` に進む。

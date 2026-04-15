@@ -1,5 +1,9 @@
 # Loop Status Command
 
+## Position
+
+Retained secondary command. Use it to inspect an active managed loop; it supports the loop pack, but it is not itself core lifecycle machinery.
+
 Inspect active loop state, progress, and failure signals.
 
 ## Usage
