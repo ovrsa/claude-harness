@@ -20,22 +20,29 @@ Deeper references:
 - `~/.claude/OBSERVE.md` for runtime observation rules
 - `~/.claude/SESSION.md` for session state and resume rules
 
+Completion model:
+
+- `verify` proves rerunnable checks passed
+- `evaluate` proves the work is acceptable to accept
+- `observe` proves runtime behavior when changed behavior needs concrete evidence
+
 ## Required Artifact Chain
 
 For any non-trivial task, keep task state in repository files instead of chat only.
 
 - `research.md` for prior art, options, and risks
 - `plan.md` for approved execution intent
-- `review-summary.md` for findings and residual risks
-- `verification-summary.md` for proof of completion
+- `review-summary.md` for acceptance findings and residual risks
+- `verification-summary.md` for rerunnable verification evidence
 - `observation-summary.md` when runtime or UI behavior changed
 - `progress.md` as the durable session log for interrupted or multi-session work
 
 ## Execution Rules
 
 - do not implement before an approved `plan.md`
-- do not skip review for behavior-changing work
+- do not skip review or evaluate for implementation and bug-fix work
 - do not commit before `verification-summary.md`
+- do not treat verification as a substitute for evaluation
 - do not skip `observation-summary.md` when behavior changed
 - do not claim done without verification evidence
 - for UI or runtime behavior changes, build/test alone is not enough
@@ -54,6 +61,7 @@ For any non-trivial task, keep task state in repository files instead of chat on
 - `/research` before non-trivial implementation
 - `/plan` to decide the approach and get human confirmation
 - `/plan-task` when a repository `plan.md` artifact is required by lifecycle hooks
+- `/eval` to decide whether implementation or bug-fix work is acceptable to accept
 - `/verify` before completion or commit
 
 ## Personal Default

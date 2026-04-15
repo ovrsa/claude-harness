@@ -56,9 +56,16 @@ Generic statements such as `looks good`, `manual check`, or `ran verification` a
 
 Use `verify` for reproducible checks such as build, lint, tests, smoke, and contract audit.
 
+Use `evaluate` to decide whether implementation or bug-fix work is acceptable to accept after review findings, residual risks, and acceptance criteria are considered.
+
 Use `observe` when the task needs runtime evidence that those checks do not fully prove.
 
 - `verify` answers: "did the programmed checks pass?"
+- `evaluate` answers: "should this change be accepted?"
 - `observe` answers: "what concrete runtime signal showed the changed behavior?"
 
-The two phases compose, but neither substitutes for the other on behavior-changing work.
+The three gates compose, but none substitutes for the others:
+
+- passing `verify` does not settle acceptance
+- passing `evaluate` does not invent runtime evidence
+- passing `observe` does not remove unresolved review findings

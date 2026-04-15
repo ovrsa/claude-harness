@@ -135,11 +135,10 @@ function runTests() {
   // ==========================================
   console.log('validate-agents.js:');
 
-  if (test('real project agents surface is quarantined and reports known contract mismatches', () => {
+  if (test('passes on real project agents surface', () => {
     const result = runValidator('validate-agents');
-    assert.strictEqual(result.code, 1, 'Quarantined agents surface should not be treated as canonical green');
-    assert.ok(result.stderr.includes('Invalid model'), 'Should report the known model contract mismatch');
-    assert.ok(result.stderr.includes('tools'), 'Should report the known tools contract mismatch');
+    assert.strictEqual(result.code, 0, `Should pass, got stderr: ${result.stderr}`);
+    assert.ok(result.stdout.includes('Validated'), 'Should output validation count');
   })) passed++; else failed++;
 
   if (test('fails on agent without frontmatter', () => {

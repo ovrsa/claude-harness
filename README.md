@@ -374,7 +374,7 @@ everything-claude-code/
 |   |-- multi-workflow.md   # /multi-workflow - General multi-service workflows (NEW)
 |   |-- orchestrate.md      # /orchestrate - Multi-agent coordination
 |   |-- sessions.md         # /sessions - Session history management
-|   |-- eval.md             # /eval - Evaluate against criteria
+|   |-- eval.md             # /eval - Acceptance gate for implementation work
 |   |-- test-coverage.md    # /test-coverage - Test coverage analysis
 |   |-- update-docs.md      # /update-docs - Update documentation
 |   |-- update-codemaps.md  # /update-codemaps - Update codemaps
@@ -1033,7 +1033,7 @@ OpenCode's plugin system is MORE sophisticated than Claude Code with 20+ event t
 | `/learn` | Extract patterns from session |
 | `/checkpoint` | Save verification state |
 | `/verify` | Run verification loop |
-| `/eval` | Evaluate against criteria |
+| `/eval` | Acceptance gate for implementation work |
 | `/update-docs` | Update documentation |
 | `/update-codemaps` | Update codemaps |
 | `/test-coverage` | Analyze coverage |

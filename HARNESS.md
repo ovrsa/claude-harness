@@ -37,7 +37,8 @@ The harness is split into four layers:
 - Artifact-first over chat-history-first
 - Session-first over transcript-first continuity
 - Constrained autonomy over unbounded autonomy
-- Observe-first completion for behavior changes
+- Evaluate-before-completion for implementation and bug-fix work
+- Observe-first evidence for behavior changes
 - Mechanical enforcement over informal reminders
 
 ## Ownership
@@ -63,16 +64,38 @@ For non-trivial work, state must live in repository artifacts:
 
 - `research.md` for prior art, options, constraints, and risks
 - `plan.md` for approved execution intent
-- `verification-summary.md` for proof of completion
-- `review-summary.md` for findings-first review output and residual risks
+- `verification-summary.md` for rerunnable verification evidence
+- `review-summary.md` for acceptance findings and residual risks
 - `observation-summary.md` when runtime or user-visible behavior changed
 - `progress.md` as the durable session log for interrupted or multi-session work
+
+## Completion Model
+
+Implementation and bug-fix work use three distinct gates:
+
+1. `verify`
+   - answers: "did the programmed checks pass?"
+   - artifact: `verification-summary.md`
+   - scope: rerunnable checks such as build, lint, types, tests, and contract audits
+
+2. `evaluate`
+   - answers: "should this change be accepted?"
+   - artifact: `review-summary.md`
+   - scope: unresolved findings, acceptance criteria, residual risk, and approval readiness
+
+3. `observe`
+   - answers: "what concrete runtime evidence showed the changed behavior?"
+   - artifact: `observation-summary.md`
+   - scope: runtime, UI, or system interactions that tests alone do not fully prove
+
+Work is done only when all required gates have passed. `verify` and `evaluate` are required for implementation and bug-fix work. `observe` is additionally required when behavior changes need runtime evidence.
 
 ## Canonical Rules
 
 - Do not implement before an approved `plan.md`
 - Do not commit before `verification-summary.md`
-- Do not treat verification as a substitute for review on behavior-changing work
+- Do not treat verification as a substitute for evaluation
+- Do not treat review as complete while acceptance blockers remain unresolved
 - Do not treat tests/build alone as sufficient when behavior changed
 - Do not use `.codex` or other adapters as a second lifecycle source of truth
 - Do not treat compact summaries as the source of truth when `progress.md` exists
@@ -81,7 +104,7 @@ For non-trivial work, state must live in repository artifacts:
 
 ## Review Gate Semantics
 
-`review-summary.md` is findings-first and approval-oriented.
+`review-summary.md` is the primary `evaluate` artifact for implementation and bug-fix work.
 
 - `Findings` contains unresolved issues only
 - each finding must use a severity prefix:
@@ -92,7 +115,17 @@ For non-trivial work, state must live in repository artifacts:
   - `INFO:`
 - `Residual Risks` contains accepted or non-blocking concerns
 - review is approval-ready only when `Findings` is `none`
+- evaluation is incomplete while `Findings` still contains unresolved items
 - commit must stop while `Findings` still contains unresolved items
+
+## Verification Gate Semantics
+
+`verification-summary.md` is the primary `verify` artifact.
+
+- capture rerunnable checks only
+- record the commands run and their results
+- treat verification as necessary but not sufficient for acceptance
+- do not fold unresolved review findings or observation evidence into verification
 
 ## Observation Gate Semantics
 
@@ -111,6 +144,7 @@ For non-trivial work, state must live in repository artifacts:
   - `process state`
   - `metrics`
 - generic prose without a named evidence source is not observation-ready
+- observation evidence does not settle review or acceptance concerns on its own
 
 ## Adapter Rule
 

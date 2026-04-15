@@ -1,120 +1,82 @@
 # Eval Command
 
-Manage eval-driven development workflow.
+Run the acceptance gate for implementation and bug-fix work.
 
 ## Usage
 
-`/eval [define|check|report|list] [feature-name]`
+`/eval`
 
-## Define Evals
+## Purpose
 
-`/eval define feature-name`
+`/eval` answers:
 
-Create a new eval definition:
+> Should this change be accepted?
 
-1. Create `.claude/evals/feature-name.md` with template:
+This is distinct from:
 
-```markdown
-## EVAL: feature-name
-Created: $(date)
+- `/verify`, which proves rerunnable checks passed
+- `observation-summary.md`, which proves runtime behavior when changed behavior needs concrete evidence
 
-### Capability Evals
-- [ ] [Description of capability 1]
-- [ ] [Description of capability 2]
+`/eval` is the acceptance gate that ties together:
 
-### Regression Evals
-- [ ] [Existing behavior 1 still works]
-- [ ] [Existing behavior 2 still works]
+- `review-summary.md`
+- acceptance criteria from `plan.md`
+- residual risks
+- whether additional observation evidence is still required
 
-### Success Criteria
-- pass@3 > 90% for capability evals
-- pass^3 = 100% for regression evals
+## Required behavior
+
+1. Read the approved `plan.md` when it exists.
+2. Read `review-summary.md`.
+3. Confirm `review-summary.md` uses the canonical sections:
+   - `Review Scope`
+   - `Findings`
+   - `Residual Risks`
+   - `Next Action`
+4. Treat `Findings` as unresolved blockers only.
+5. Treat evaluation as incomplete while `Findings` is not `none`.
+6. Confirm `verification-summary.md` exists for implementation and bug-fix work.
+7. If the task changed runtime behavior, UI behavior, or system interaction patterns that tests alone do not fully prove:
+   - require `observation-summary.md`
+   - require concrete evidence sources in that artifact
+8. Compare the current change against the acceptance criteria in `plan.md`.
+9. Move accepted non-blocking concerns to `Residual Risks`, not `Findings`.
+10. Produce an acceptance decision:
+    - `ACCEPT`
+    - `NEEDS WORK`
+    - `BLOCKED`
+
+## Output
+
+Produce a concise evaluation report:
+
+```text
+EVALUATION: [ACCEPT/NEEDS WORK/BLOCKED]
+
+Plan:      [OK/MISSING]
+Verify:    [OK/MISSING]
+Review:    [OK/X findings]
+Observe:   [OK/NOT REQUIRED/MISSING]
+
+Findings:
+- [none or unresolved items]
+
+Residual Risks:
+- [none or accepted concerns]
+
+Next Action:
+- [what must happen before the work is acceptable]
 ```
 
-2. Prompt user to fill in specific criteria
+## Guardrails
 
-## Check Evals
+- Do not treat passing tests as equivalent to acceptance.
+- Do not accept work while `Findings` still contains unresolved issues.
+- Do not treat observation evidence as a substitute for review.
+- Do not treat review prose without canonical sections as an acceptable evaluation artifact.
+- Do not approve behavior-changing work when required observation evidence is missing.
 
-`/eval check feature-name`
+## Notes
 
-Run evals for a feature:
-
-1. Read eval definition from `.claude/evals/feature-name.md`
-2. For each capability eval:
-   - Attempt to verify criterion
-   - Record PASS/FAIL
-   - Log attempt in `.claude/evals/feature-name.log`
-3. For each regression eval:
-   - Run relevant tests
-   - Compare against baseline
-   - Record PASS/FAIL
-4. Report current status:
-
-```
-EVAL CHECK: feature-name
-========================
-Capability: X/Y passing
-Regression: X/Y passing
-Status: IN PROGRESS / READY
-```
-
-## Report Evals
-
-`/eval report feature-name`
-
-Generate comprehensive eval report:
-
-```
-EVAL REPORT: feature-name
-=========================
-Generated: $(date)
-
-CAPABILITY EVALS
-----------------
-[eval-1]: PASS (pass@1)
-[eval-2]: PASS (pass@2) - required retry
-[eval-3]: FAIL - see notes
-
-REGRESSION EVALS
-----------------
-[test-1]: PASS
-[test-2]: PASS
-[test-3]: PASS
-
-METRICS
--------
-Capability pass@1: 67%
-Capability pass@3: 100%
-Regression pass^3: 100%
-
-NOTES
------
-[Any issues, edge cases, or observations]
-
-RECOMMENDATION
---------------
-[SHIP / NEEDS WORK / BLOCKED]
-```
-
-## List Evals
-
-`/eval list`
-
-Show all eval definitions:
-
-```
-EVAL DEFINITIONS
-================
-feature-auth      [3/5 passing] IN PROGRESS
-feature-search    [5/5 passing] READY
-feature-export    [0/4 passing] NOT STARTED
-```
-
-## Arguments
-
-$ARGUMENTS:
-- `define <name>` - Create new eval definition
-- `check <name>` - Run and check evals
-- `report <name>` - Generate full report
-- `list` - Show all evals
-- `clean` - Remove old eval logs (keeps last 10 runs)
+- The older feature-eval workflow should move to a different command name if retained later.
+- In this harness, `/eval` is reserved for the acceptance gate of implementation and bug-fix work.

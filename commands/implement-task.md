@@ -4,7 +4,7 @@ description: Execute an approved plan.md with TDD and small batches. Require pla
 
 # Implement Task
 
-Use this command for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, and `Observe` phases.
+Use this command for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, `Evaluate`, and `Observe` phases.
 
 ## Preconditions
 
@@ -23,14 +23,15 @@ Use this command for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, and 
    - Given / When / Then
 5. Implement in small batches using RED -> GREEN -> REFACTOR.
 6. Update the Execution Todo checklist and `progress.md` as work completes.
-7. Write `review-summary.md` for behavior-changing work before commit.
-8. Write `verification-summary.md`.
-9. If `observe_required: true`, write `observation-summary.md`.
-10. Before commit, update `progress.md` so `Blockers` and `Next Action` are `none` unless follow-up work remains intentionally open.
+7. Write or update `review-summary.md` so unresolved findings and residual risks are explicit.
+8. Write `verification-summary.md` with rerunnable verification evidence.
+9. Run the acceptance gate represented by `/eval`.
+10. If `observe_required: true`, write `observation-summary.md`.
+11. Before commit, update `progress.md` so `Blockers` and `Next Action` are `none` unless follow-up work remains intentionally open.
 
 ## Hard guardrails
 
 - Do not start without approved `plan.md`.
 - Do not drift from the plan without returning to planning.
-- Do not skip review, tests, verify, or observe.
+- Do not skip review, tests, verify, eval, or observe.
 - Do not batch unrelated changes together.

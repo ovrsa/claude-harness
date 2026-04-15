@@ -33,7 +33,7 @@ observe_required: true
 
 - `plan.md` tracks approved intent
 - `progress.md` tracks implementation execution state for non-trivial or multi-session work
-- `review-summary.md` tracks findings and residual risks for behavior-changing work
+- `review-summary.md` tracks acceptance findings and residual risks
 - `verification-summary.md` tracks reproducible verification evidence
 - `observation-summary.md` tracks runtime or UI evidence when required
 
@@ -44,6 +44,12 @@ observe_required: true
 - lint:
 - tests:
 - coverage:
+
+## Evaluate
+
+- review findings resolved:
+- residual risks explicit:
+- acceptance criteria checked:
 
 ## Observe
 

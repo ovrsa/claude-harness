@@ -1,6 +1,6 @@
 # Verification Command
 
-Run comprehensive verification on current codebase state.
+Run rerunnable mechanical verification on current codebase state.
 
 ## Instructions
 
@@ -36,31 +36,24 @@ Execute verification in this exact order:
    - Show uncommitted changes
    - Show files modified since last commit
 
-8. **Review Findings**
-   - Confirm `review-summary.md` exists for behavior-changing work
-   - Ensure CRITICAL and HIGH findings are resolved or explicitly called out as residual risk
-
-9. **Observe Runtime Behavior**
-   - For UI changes: use browser verification, screenshots, or flow checks
-   - For backend/runtime changes: inspect logs, stderr/stdout output, runtime health, process state, traces, or equivalent runtime evidence
-   - Record the evidence source explicitly in `observation-summary.md`
-   - Valid evidence-source labels include:
-     - `browser`
-     - `screenshot`
-     - `logs`
-     - `stderr` / `stdout`
-     - `trace`
-     - `runtime health`
-     - `process state`
-     - `metrics`
-   - Treat build/test success as necessary but not sufficient when behavior changed
-   - Do not write generic observation notes such as `looks good` or `manual check passed` without naming the source of evidence
-
-10. **Update Durable Session State**
+8. **Update Durable Session State**
    - For non-trivial implementation work, update `progress.md`
    - Set `Last Completed Step` to the latest verified milestone
-   - Set `Blockers` to `none` if verification cleared them
-   - Set `Next Action` to `none` when the task is commit-ready
+   - Set `Blockers` to `none` only if no mechanical blockers remain
+   - Point `Next Action` to `eval` or observation if those gates are still pending
+
+## Scope Boundaries
+
+`/verify` handles rerunnable checks only.
+
+Do not use `/verify` to:
+
+- make an acceptance decision
+- clear unresolved review findings
+- claim runtime evidence that belongs in `observation-summary.md`
+- treat `runtime health`, `process state`, `logs`, `browser`, or similar evidence as verified unless they are captured in observation
+- treat passing tests as equivalent to "done"
+- write generic observation prose such as `looks good`
 
 ## Output
 
@@ -69,19 +62,17 @@ Produce a concise verification report:
 ```
 VERIFICATION: [PASS/FAIL]
 
-Review:   [OK/X findings]
 Build:    [OK/FAIL]
 Types:    [OK/X errors]
 Lint:     [OK/X issues]
 Tests:    [X/Y passed, Z% coverage]
-Secrets:  [OK/X found]
 Logs:     [OK/X console.logs]
-Observe:  [OK/X findings]
+Audit:    [OK/FAIL]
 
-Ready for PR: [YES/NO]
+Ready for Eval: [YES/NO]
 ```
 
-If any critical issues, list them with fix suggestions.
+If any mechanical failures remain, list them with fix suggestions.
 
 ## Arguments
 

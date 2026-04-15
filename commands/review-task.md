@@ -1,5 +1,5 @@
 ---
-description: Review current changes before commit. Check security, regressions, plan drift, and missing verify/observe evidence.
+description: Review current changes before commit. Feed the acceptance gate with findings, residual risks, and missing verify/observe evidence.
 ---
 
 # Review Task
@@ -34,12 +34,14 @@ Use this command for the `Review` phase before commit.
 6. Move accepted or non-blocking concerns to `Residual Risks`.
 7. Treat review as approval-ready only when `Findings` is `none`.
 8. If verification has not run yet, leave `Next Action` pointing to verification instead of treating the task as approval-ready.
+9. Treat review as the primary input to `/eval`, not as a substitute for `/verify`.
 
 ## Hard guardrails
 
 - Do not approve behavior-changing work without required observation evidence.
 - Do not approve behavior-changing work without `review-summary.md`.
 - Do not approve changes that skipped verification.
+- Do not treat review alone as sufficient to accept implementation or bug-fix work.
 - Do not approve non-trivial implementation work with stale blockers in `progress.md`.
 - Do not leave unresolved findings in `Findings` and still mark review as approval-ready.
 - Do not write findings without severity prefixes.
