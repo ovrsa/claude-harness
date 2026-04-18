@@ -15,19 +15,20 @@ Use this command for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, `Eva
 
 1. Read approved `plan.md`.
 2. If `task_type: non_trivial` or `worktree_required: true`, use an isolated worktree.
-3. Initialize or update `progress.md` from `~/.claude/templates/progress-template.md`.
+3. Initialize or update `progress.md` from `~/.claude/templates/progress-template.md`, but treat the SQLite memory plane as the runtime source of truth.
 4. Refine TDD spec:
    - normal
    - boundary
    - abnormal
    - Given / When / Then
 5. Implement in small batches using RED -> GREEN -> REFACTOR.
-6. Update the Execution Todo checklist and `progress.md` as work completes.
+6. Update the Execution Todo checklist and persist current run state so `SessionStart` can resume from SQLite before reading Markdown views.
 7. Write or update `review-summary.md` so unresolved findings and residual risks are explicit.
 8. Write `verification-summary.md` with rerunnable verification evidence.
 9. Run the acceptance gate represented by `/eval`.
 10. If `observe_required: true`, write `observation-summary.md`.
 11. Before commit, update `progress.md` so `Blockers` and `Next Action` are `none` unless follow-up work remains intentionally open.
+12. Keep automatic adaptation limited to low-risk tactics such as resume hints, prechecks, and verification ordering. Never auto-relax governance or approval gates.
 
 ## Hard guardrails
 

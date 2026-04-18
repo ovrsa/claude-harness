@@ -95,7 +95,15 @@ Profiles:
 
 ### Artifact-First Continuity
 
-The lifecycle hooks now prefer repository task artifacts over raw transcript recall when available.
+The lifecycle hooks now prefer the local SQLite runtime state over repository task artifacts, and both over raw transcript recall.
+
+Runtime source of truth:
+
+- `~/.claude/telemetry/telemetry.db`
+- current `run_state`
+- lifecycle telemetry
+- verification and review persistence
+- low-risk tactical memory
 
 Expected files for non-trivial work:
 
@@ -112,9 +120,9 @@ Optional sections for promotion-worthy failures:
 - `Guardrail Candidates` in `verification-summary.md`
 - `Guardrail Candidates` in `observation-summary.md`
 
-`SessionStart` will surface these artifacts first, and `PreCompact` will snapshot their presence into the active session file before context is summarized.
+`SessionStart` will surface SQLite-backed runtime state first, then repository artifacts, and `PreCompact` will snapshot their presence into the active session file before context is summarized.
 
-For interrupted or multi-session work, `progress.md` is the durable session log.
+For interrupted or multi-session work, `progress.md` is the human-readable projection of durable session state.
 
 Minimum recommended sections:
 
@@ -144,6 +152,7 @@ See `~/.claude/AUTONOMY_POLICY.md` for the canonical policy.
 For non-trivial implementation work, lifecycle guardrails now treat `progress.md` as part of the required operating state.
 
 - code edits are blocked if `progress.md` is missing for non-trivial implementation work
+- `progress.md` cannot be moved into an explicit completion state until required completion artifacts are present
 - commits are blocked if `progress.md` still declares active blockers
 - commits warn if `Next Action` still contains active follow-up work
 - behavior-changing commits are blocked if `review-summary.md` is missing or incomplete
@@ -151,7 +160,7 @@ For non-trivial implementation work, lifecycle guardrails now treat `progress.md
 - observation-required commits are blocked if `observation-summary.md` is missing or incomplete
 - observation-required commits are blocked if `observation-summary.md` has no concrete evidence source such as `browser`, `logs`, `stderr/stdout`, `trace`, `runtime health`, `metrics`, or `process state`
 
-Hooks may update only the machine-managed `Latest Checkpoint` and `Latest Delegated Handoff` sections. Operator-owned progress fields remain the source of truth when they are populated.
+Hooks may update only the machine-managed `Latest Checkpoint` and `Latest Delegated Handoff` sections. Operator-owned progress fields remain the human-authored view when they are populated.
 
 See `~/.claude/SESSION.md` for the durable session schema.
 

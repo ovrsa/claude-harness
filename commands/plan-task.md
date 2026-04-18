@@ -13,9 +13,14 @@ Use this command for the `Plan` and `Confirm` phases of the coding lifecycle.
 1. Read `research.md` or `{task}_research.md`.
 2. Produce `plan.md` using `~/.claude/templates/plan-template.md`.
 3. Keep `status: draft` until the human explicitly approves.
-4. Include phases, risks, review steps, verify steps, observe steps, and an execution todo list.
-5. For non-trivial work that will span implementation, prepare `progress.md` from `~/.claude/templates/progress-template.md`.
-6. Stop and wait for explicit confirmation.
+4. Include non-goals, touched files, interface expectations, rollback, verify steps, observe steps, and an execution todo list.
+5. Use explicit annotation states:
+   - `draft`
+   - `needs_annotation`
+   - `revised`
+   - `approved`
+6. For non-trivial work that will span implementation, prepare `progress.md` as a human-readable projection and assume runtime state will also persist into the SQLite memory plane.
+7. Stop and wait for explicit confirmation.
 
 ## Hard guardrails
 
@@ -23,6 +28,7 @@ Use this command for the `Plan` and `Confirm` phases of the coding lifecycle.
 - Do not continue if research is missing for a non-trivial task.
 - Do not leave plan steps vague.
 - Do not omit verify or observe.
+- Do not treat `progress.md` as the only durable execution state.
 
 ## Relationship To `/plan`
 

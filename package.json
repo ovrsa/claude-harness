@@ -48,6 +48,7 @@
     "scripts/hooks/",
     "scripts/lib/",
     "scripts/claw.js",
+    "scripts/trace-status.js",
     "scripts/setup-package-manager.js",
     "scripts/skill-create-output.js",
     "skills/continuous-learning-v2/hooks/observe.sh",

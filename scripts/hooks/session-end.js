@@ -22,6 +22,8 @@ const {
   replaceInFile,
   log
 } = require('../lib/utils');
+const { getRepoRoot } = require('../lib/task-artifacts');
+const { recordLifecycleSnapshot, recordSessionEvent, getRunId } = require('../lib/session-trace');
 
 const SUMMARY_START_MARKER = '<!-- ECC:SUMMARY:START -->';
 const SUMMARY_END_MARKER = '<!-- ECC:SUMMARY:END -->';
@@ -143,6 +145,8 @@ async function main() {
   const today = getDateString();
   const shortId = getSessionIdShort();
   const sessionFile = path.join(sessionsDir, `${today}-${shortId}-session.tmp`);
+  const sessionId = String(process.env.CLAUDE_SESSION_ID || '').trim() || undefined;
+  const runId = getRunId(sessionId);
 
   ensureDir(sessionsDir);
 
@@ -217,8 +221,38 @@ ${summarySection}
     log(`[SessionEnd] Created session file: ${sessionFile}`);
   }
 
+  const repoRoot = getRepoRoot(process.cwd());
+  const humanInterventionCount = summary ? Math.max(summary.totalMessages - 1, 0) : 0;
+  if (repoRoot) {
+    recordLifecycleSnapshot({
+      sessionId,
+      runId,
+      repoRoot,
+      cwd: process.cwd(),
+      createdBy: 'session-end',
+      humanInterventionCount,
+      includeArtifactContextLoaded: false,
+    });
+  }
+
+  recordSessionEvent({
+    sessionId,
+    runId,
+    eventType: 'session_ended',
+    status: 'ended',
+    repoRoot: repoRoot || '',
+    cwd: process.cwd(),
+    createdBy: 'session-end',
+    metadata: {
+      final_status: repoRoot ? 'persisted' : DEFAULT_EXIT_STATUS,
+      human_intervention_count: humanInterventionCount,
+    },
+  });
+
   process.exit(0);
 }
+
+const DEFAULT_EXIT_STATUS = 'persisted';
 
 function buildSummarySection(summary) {
   let section = '## Session Summary\n\n';

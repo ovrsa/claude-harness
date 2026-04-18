@@ -21,6 +21,7 @@ The harness is split into five layers:
    - permission and escalation policy
 
 3. **Artifact and session continuity layer**
+   - SQLite runtime state in `telemetry/telemetry.db`
    - `research.md`
    - `plan.md`
    - `review-summary.md`
@@ -42,6 +43,7 @@ The harness is split into five layers:
 
 - Plan-first over prompt-first
 - Artifact-first over chat-history-first
+- DB-first runtime state over Markdown-only checkpoints
 - Session-first over transcript-first continuity
 - Constrained autonomy over unbounded autonomy
 - Evaluate-before-completion for implementation and bug-fix work
@@ -49,6 +51,10 @@ The harness is split into five layers:
 - Mechanical enforcement over informal reminders
 
 ## Ownership
+
+- `~/.claude/`
+  Owns the canonical control plane plus device-local runtime state.
+  Future harness changes should land here directly; mirrors, archives, plugins, and upstream repos are reference or distribution layers only.
 
 - `CLAUDE.md`
   Owns the thin invariant entry layer only.
@@ -78,6 +84,11 @@ For non-trivial work, state must live in repository artifacts:
 - `review-summary.md` for acceptance findings and residual risks
 - `observation-summary.md` when runtime or user-visible behavior changed
 - `progress.md` as the durable session log for interrupted or multi-session work
+
+The artifact chain is complemented by the SQLite memory plane:
+
+- `telemetry/telemetry.db` stores runtime state, lifecycle telemetry, and low-risk tactical memory
+- repository artifacts remain the approval-facing and human-readable layer
 
 Optional promotion-oriented sections may also exist inside the primary artifacts:
 
@@ -115,6 +126,7 @@ Work is done only when all required gates have passed. `verify` and `evaluate` a
 - Do not treat tests/build alone as sufficient when behavior changed
 - Do not use `.codex` or other adapters as a second lifecycle source of truth
 - Do not treat compact summaries as the source of truth when `progress.md` exists
+- Do not treat `progress.md` as the authoritative runtime state when the SQLite memory plane is available
 - Do not treat `review-summary.md` as complete while `Findings` contains unresolved items
 - Do not leave accepted concerns in `Findings`; move them to `Residual Risks`
 - Do not promote a one-off failure into a durable global rule without recurrence or clear severity justification
@@ -134,6 +146,7 @@ Operating rules:
 
 - capture can be automatic
 - promotion stays human-directed in this phase
+- low-risk tactic adoption may be automatic when it does not change governance
 - guardrail candidates belong in task artifacts before they become durable harness changes
 - use the narrowest layer that can prevent the failure reliably
 
@@ -214,3 +227,12 @@ It must not:
 - redefine the lifecycle
 - weaken edit/commit gates
 - replace the artifact chain with chat-only continuity
+
+## External Sources Policy
+
+External frameworks such as Superpowers may be mined for ideas, workflow patterns, or one-time skill harvests.
+
+- they are reference sources only
+- they must not become the live source of truth for `.claude`
+- local lifecycle policy must be justified on its own terms once adopted
+- plugin enablement is optional and not required for the core harness to function

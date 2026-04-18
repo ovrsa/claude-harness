@@ -59,6 +59,7 @@ Secondary surface. Use when a pattern is worth extracting or promoting beyond th
 - `/promote`
 - `/post-commit-capture`
 - `/guardrail-status`
+- `/trace-status`
 - `/health-status`
 - `/triage-loop`
 

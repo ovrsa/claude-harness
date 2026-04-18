@@ -291,6 +291,75 @@ async function runTests() {
     }
   })) passed++; else failed++;
 
+  if (await asyncTest('prefers persisted sqlite runtime state over repository artifact summaries', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    const isoHome = path.join(testDir, 'home');
+    const telemetryDir = path.join(isoHome, '.claude', 'telemetry');
+    const dbPath = path.join(telemetryDir, 'telemetry.db');
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.mkdirSync(path.join(isoHome, '.claude', 'sessions'), { recursive: true });
+    fs.mkdirSync(path.join(isoHome, '.claude', 'skills', 'learned'), { recursive: true });
+    fs.mkdirSync(telemetryDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Session restore DB test',
+        'status: approved',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Session restore DB test',
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 2: artifact fallback',
+        '',
+        '## Last Completed Step',
+        '- Added artifact fallback state',
+        '',
+        '## Next Action',
+        '- Keep using progress.md',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none',
+      ].join('\n'));
+
+      const seed = require('../../scripts/lib/session-trace');
+      seed.recordSessionEvent({
+        sessionId: 'session-db',
+        runId: 'run-db',
+        eventType: 'session_started',
+        status: 'started',
+        repoRoot: repoDir,
+        cwd: repoDir,
+      }, { dbPath });
+      seed.recordLifecycleSnapshot({
+        sessionId: 'session-db',
+        runId: 'run-db',
+        repoRoot: repoDir,
+        cwd: repoDir,
+      }, { dbPath });
+
+      const result = await runScriptInDir(path.join(scriptsDir, 'session-start.js'), repoDir, '', {
+        HOME: isoHome, USERPROFILE: isoHome
+      });
+      assert.strictEqual(result.code, 0);
+      assert.ok(result.stdout.includes('Persisted runtime state:'), `Expected persisted state output, got: ${result.stdout}`);
+      assert.ok(result.stdout.includes('current_phase=Phase 2: artifact fallback'), `Expected sqlite current phase, got: ${result.stdout}`);
+      assert.ok(!result.stdout.includes('Active repository task artifacts:'), 'SQLite state should take precedence over artifact summary');
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
   if (await asyncTest('reports learned skills count', async () => {
     const isoHome = path.join(os.tmpdir(), `ecc-skills-start-${Date.now()}`);
     const learnedDir = path.join(isoHome, '.claude', 'skills', 'learned');
@@ -4176,6 +4245,466 @@ Some random content without the expected ### Context to Load section
         JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
       );
       assert.strictEqual(result.code, 0, `Expected fallback continuity to allow edit, got ${result.code}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-pre-edit blocks when progress.md still looks like planning state', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Edit guard planning state test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Edit guard planning state test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Planning and approval',
+        '',
+        '## Last Completed Step',
+        '- Approved the plan',
+        '',
+        '## Next Action',
+        '- Start implementing lifecycle guardrails',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
+      );
+      assert.strictEqual(result.code, 2, `Expected planning-state block, got ${result.code}`);
+      assert.ok(result.stderr.includes('still looks like planning state'), `Expected planning-state guidance, got: ${result.stderr}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-pre-edit allows ambiguous progress wording to avoid false positives', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Edit guard ambiguous wording test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Edit guard ambiguous wording test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 2: plan continuity hardening',
+        '',
+        '## Last Completed Step',
+        '- Tightened guardrail heuristics',
+        '',
+        '## Next Action',
+        '- Keep refining lifecycle wording',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
+      );
+      assert.strictEqual(result.code, 0, `Expected ambiguous wording to allow edit, got ${result.code}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-progress-complete blocks completion-state progress updates when verification-summary.md is missing', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Completion guard verification test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: false',
+        'review_required: false',
+        '---',
+        '',
+        '# Plan: Completion guard verification test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 4: verification',
+        '',
+        '## Last Completed Step',
+        '- Completed implementation',
+        '',
+        '## Next Action',
+        '- Run verification',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+
+      const nextProgress = [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Ready to commit',
+        '',
+        '## Last Completed Step',
+        '- Finished lifecycle verification',
+        '',
+        '## Next Action',
+        '- none',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-progress-complete.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'progress.md'), content: nextProgress } })
+      );
+      assert.strictEqual(result.code, 2, `Expected completion-state block, got ${result.code}`);
+      assert.ok(result.stderr.includes('verification-summary.md'), `Expected verification guidance, got: ${result.stderr}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-progress-complete blocks completion-state progress updates when required review or observation artifacts are incomplete', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Completion guard review-observe test',
+        'status: approved',
+        'task_type: non_trivial',
+        'review_required: true',
+        'observe_required: true',
+        '---',
+        '',
+        '# Plan: Completion guard review-observe test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 4: review',
+        '',
+        '## Last Completed Step',
+        '- Completed verification',
+        '',
+        '## Next Action',
+        '- Finish review and observe',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
+        '# Verification Summary',
+        '',
+        '## Scope',
+        '- completion guard coverage',
+        '',
+        '## Commands Run',
+        '- node .claude/tests/hooks/hooks.test.js --allow-known-baseline',
+        '',
+        '## Verification Outcome',
+        '- verification artifacts exist',
+        '',
+        '## Assessment',
+        '- verification is complete'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
+        '# Review Summary',
+        '',
+        '## Review Scope',
+        '- completion guard behavior',
+        '',
+        '## Findings',
+        '- HIGH: review is still unresolved',
+        '',
+        '## Residual Risks',
+        '- none',
+        '',
+        '## Next Action',
+        '- Resolve findings'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
+        '# Observation Summary',
+        '',
+        '## Behavior Checked',
+        '- completion guard behavior',
+        '',
+        '## Method',
+        '- manual check',
+        '',
+        '## Evidence',
+        '- looks good',
+        '',
+        '## Remaining Uncertainty',
+        '- none'
+      ].join('\n'));
+
+      const nextProgress = [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Ready to finish',
+        '',
+        '## Last Completed Step',
+        '- Finished review and observation',
+        '',
+        '## Next Action',
+        '- none',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-progress-complete.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'progress.md'), content: nextProgress } })
+      );
+      assert.strictEqual(result.code, 2, `Expected review/observe block, got ${result.code}`);
+      assert.ok(result.stderr.includes('review-summary.md'), `Expected review guidance, got: ${result.stderr}`);
+      assert.ok(result.stderr.includes('observation-summary.md'), `Expected observation guidance, got: ${result.stderr}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-progress-complete allows completion-state progress updates when required artifacts are complete', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Completion guard allow test',
+        'status: approved',
+        'task_type: non_trivial',
+        'review_required: true',
+        'observe_required: true',
+        '---',
+        '',
+        '# Plan: Completion guard allow test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 4: observe',
+        '',
+        '## Last Completed Step',
+        '- Completed review and verification',
+        '',
+        '## Next Action',
+        '- Wrap up the task',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
+        '# Verification Summary',
+        '',
+        '## Scope',
+        '- completion guard allow coverage',
+        '',
+        '## Commands Run',
+        '- node .claude/tests/hooks/hooks.test.js --allow-known-baseline',
+        '',
+        '## Verification Outcome',
+        '- pass',
+        '',
+        '## Assessment',
+        '- verification is complete'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
+        '# Review Summary',
+        '',
+        '## Review Scope',
+        '- completion guard allow behavior',
+        '',
+        '## Findings',
+        '- none',
+        '',
+        '## Residual Risks',
+        '- none',
+        '',
+        '## Next Action',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
+        '# Observation Summary',
+        '',
+        '## Behavior Checked',
+        '- completion guard allow behavior',
+        '',
+        '## Method',
+        '- stderr: targeted execution of lifecycle-progress-complete',
+        '',
+        '## Evidence',
+        '- stderr: no block is emitted when required artifacts are complete',
+        '',
+        '## Remaining Uncertainty',
+        '- none'
+      ].join('\n'));
+
+      const nextProgress = [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Ready to commit',
+        '',
+        '## Last Completed Step',
+        '- Finished lifecycle verification',
+        '',
+        '## Next Action',
+        '- none',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-progress-complete.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'progress.md'), content: nextProgress } })
+      );
+      assert.strictEqual(result.code, 0, `Expected completion-state update to allow, got ${result.code}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-progress-complete ignores non-completion progress updates and ambiguous wording', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Completion guard ambiguity test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: false',
+        'review_required: false',
+        '---',
+        '',
+        '# Plan: Completion guard ambiguity test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 2: implementation',
+        '',
+        '## Last Completed Step',
+        '- Approved the plan',
+        '',
+        '## Next Action',
+        '- Keep implementing',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+
+      const ambiguousProgress = [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 3: completion hardening',
+        '',
+        '## Last Completed Step',
+        '- Tightened hook messaging',
+        '',
+        '## Next Action',
+        '- Keep refining wording',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-progress-complete.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'progress.md'), content: ambiguousProgress } })
+      );
+      assert.strictEqual(result.code, 0, `Expected ambiguous/non-completion update to allow, got ${result.code}`);
     } finally {
       fs.rmSync(testDir, { recursive: true, force: true });
     }

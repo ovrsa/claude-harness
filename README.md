@@ -42,8 +42,10 @@ For this local installation:
 
 - `~/.claude` is the canonical harness implementation
 - `~/.codex` is a runtime bridge, not a second lifecycle source of truth
+- external frameworks such as Superpowers are reference-only and must not become the live lifecycle authority
 - root `AGENTS.md` should act as a thin repo-local map when a repository needs local orientation
-- repository task artifacts are the source of truth for session continuity
+- the local SQLite memory plane is the runtime source of truth for session continuity
+- repository task artifacts remain the approval-facing and human-readable source of truth
 - recurring failures should become explicit guardrail candidates before they are promoted into durable harness behavior
 
 See:

@@ -16,6 +16,10 @@ const testFiles = [
   { file: 'lib/session-manager.test.js' },
   { file: 'lib/session-aliases.test.js' },
   { file: 'lib/project-detect.test.js' },
+  { file: 'lib/task-artifacts.test.js' },
+  { file: 'lib/session-trace.test.js' },
+  { file: 'lib/telemetry-health.test.js' },
+  { file: 'lib/triage-loop.test.js' },
   { file: 'hooks/hooks.test.js', args: ['--allow-known-baseline'] },
   { file: 'hooks/evaluate-session.test.js' },
   { file: 'hooks/suggest-compact.test.js' },
@@ -50,7 +54,7 @@ for (const testEntry of testFiles) {
 
   console.log(`\n━━━ Running ${testFile} ━━━`);
 
-  const result = spawnSync('node', [testPath, ...testArgs], {
+  const result = spawnSync(process.execPath, [testPath, ...testArgs], {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe']
   });

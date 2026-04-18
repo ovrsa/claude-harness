@@ -3,6 +3,18 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/telemetry-pre-tool.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ],
+        "description": "Record tool invocation telemetry in the local SQLite memory plane"
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -65,6 +77,16 @@
         "description": "Capture tool use observations for continuous learning"
       },
       {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/lifecycle-progress-complete.js\""
+          }
+        ],
+        "description": "Lifecycle guardrail: block premature task completion when required verify/review/observe artifacts are missing"
+      },
+      {
         "matcher": "tool == \"Edit\" || tool == \"Write\" || tool == \"MultiEdit\"",
         "hooks": [
           {
@@ -122,6 +144,18 @@
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/telemetry-post-tool.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ],
+        "description": "Record tool completion telemetry in the local SQLite memory plane"
+      },
       {
         "matcher": "Bash",
         "hooks": [

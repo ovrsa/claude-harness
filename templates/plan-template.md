@@ -10,15 +10,31 @@ observe_required: true
 
 ## Summary
 
-- 
+-
+
+## Non-Goals
+
+-
 
 ## Acceptance Criteria
 
-- 
+-
+
+## Touched Files
+
+-
+
+## Interface Expectations
+
+-
+
+## Rollback
+
+-
 
 ## Risks
 
-- 
+-
 
 ## Phases
 
@@ -27,12 +43,13 @@ observe_required: true
 
 ## Stop Conditions
 
-- 
+-
 
 ## Source Of Truth
 
 - `plan.md` tracks approved intent
-- `progress.md` tracks implementation execution state for non-trivial or multi-session work
+- `~/.claude/telemetry/telemetry.db` tracks runtime execution state for non-trivial or multi-session work
+- `progress.md` is the default human-readable execution view
 - `review-summary.md` tracks acceptance findings and residual risks
 - `verification-summary.md` tracks reproducible verification evidence
 - `observation-summary.md` tracks runtime or UI evidence when required
@@ -58,6 +75,6 @@ observe_required: true
 
 ## Execution Todo
 
-- [ ] 
-- [ ] 
-- [ ] 
+- [ ]
+- [ ]
+- [ ]

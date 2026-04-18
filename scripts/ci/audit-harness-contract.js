@@ -25,6 +25,7 @@ function main() {
   const observe = read('OBSERVE.md');
   const hooksReadme = read('hooks/README.md');
   const hooksJson = read('hooks/hooks.json');
+  const sessionTrace = read('scripts/lib/session-trace.js');
   const taskArtifacts = read('scripts/lib/task-artifacts.js');
   const preCommit = read('hooks/lifecycle-pre-commit.js');
   const readme = read('README.md');
@@ -82,6 +83,8 @@ function main() {
   assertIncludes(operatingModel, 'Not Enforced Yet', 'OPERATING_MODEL.md');
   assertIncludes(operatingModel, 'health / triage', 'OPERATING_MODEL.md');
   assertIncludes(session, 'review-summary.md', 'SESSION.md');
+  assertIncludes(session, 'telemetry.db', 'SESSION.md');
+  assertIncludes(session, 'run_state', 'SESSION.md');
   assertIncludes(observe, 'Behavior Checked', 'OBSERVE.md');
   assertIncludes(observe, 'runtime health', 'OBSERVE.md');
   assertIncludes(observe, 'Verify vs Observe', 'OBSERVE.md');
@@ -105,10 +108,15 @@ function main() {
   assertIncludes(researchCommand, '/research-task', 'research.md');
   assertIncludes(researchTaskCommand, '/research', 'research-task.md');
   assertIncludes(hooksReadme, 'review-summary.md', 'hooks/README.md');
+  assertIncludes(hooksReadme, 'telemetry.db', 'hooks/README.md');
   assertIncludes(hooksReadme, 'unresolved findings', 'hooks/README.md');
   assertIncludes(hooksReadme, 'concrete evidence source', 'hooks/README.md');
   assertIncludes(hooksReadme, 'guardrail candidates', 'hooks/README.md');
   assertIncludes(hooksJson, 'review, verify, and observe artifacts', 'hooks/hooks.json');
+  assertIncludes(hooksJson, 'telemetry-pre-tool.js', 'hooks/hooks.json');
+  assertIncludes(hooksJson, 'telemetry-post-tool.js', 'hooks/hooks.json');
+  assertIncludes(sessionTrace, 'CREATE TABLE IF NOT EXISTS run_state', 'session-trace.js');
+  assertIncludes(sessionTrace, 'CREATE TABLE IF NOT EXISTS tool_executions', 'session-trace.js');
   assertIncludes(taskArtifacts, "'review-summary.md'", 'task-artifacts.js');
   assertIncludes(taskArtifacts, 'OBSERVATION_EVIDENCE_SOURCE_PATTERN', 'task-artifacts.js');
   assertIncludes(preCommit, 'Missing review-summary.md', 'lifecycle-pre-commit.js');

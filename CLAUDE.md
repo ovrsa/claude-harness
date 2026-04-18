@@ -5,6 +5,7 @@ This file is the thin operating entrypoint for my personal agent harness.
 ## Core Rule
 
 `~/.claude` is the source of truth for lifecycle behavior.
+Future improvements should be implemented into `~/.claude` directly instead of introducing a second canonical source.
 
 - hooks live in `~/.claude/hooks/` and `~/.claude/scripts/hooks/`
 - reusable commands live in `~/.claude/commands/`
@@ -12,6 +13,7 @@ This file is the thin operating entrypoint for my personal agent harness.
 - templates live in `~/.claude/templates/`
 
 `~/.codex` is a runtime bridge, not a second harness.
+External frameworks, plugin packs, and upstream repos may inform local improvements, but they are never the canonical source of lifecycle behavior.
 
 Active repositories should expose a thin repo-local map, preferably root `AGENTS.md`, that points to the real truth sources without duplicating the lifecycle.
 
@@ -44,6 +46,15 @@ For any non-trivial task, keep task state in repository files instead of chat on
 - `progress.md` as the durable session log for interrupted or multi-session work
 - optional `Guardrail Candidates` sections when a failure pattern is worth promoting beyond the current task
 
+The local SQLite memory plane under `~/.claude/telemetry/telemetry.db` is the runtime source of truth for:
+
+- current run state and resume hints
+- lifecycle telemetry
+- verification/review persistence
+- low-risk tactical learning
+
+Repository artifacts remain the human-readable control surface and approval surface.
+
 ## Execution Rules
 
 - do not implement before an approved `plan.md`
@@ -62,7 +73,8 @@ For any non-trivial task, keep task state in repository files instead of chat on
 - prefer references to artifacts, docs, and skills over long inline guidance
 - keep repo-local maps pointed at truth sources instead of copying global lifecycle rules
 - restore the current task from repository artifacts first
-- treat `progress.md` as the durable session state when it exists
+- restore from the SQLite runtime state before falling back to repository artifacts
+- treat `progress.md` as a human-readable projection of durable session state
 - compact only after persisting current state
 
 ## Preferred Commands
