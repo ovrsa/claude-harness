@@ -2,10 +2,11 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const REPO_ROOT = path.resolve(__dirname, '../../..');
+const REPO_ROOT = os.homedir();
 const CLAUDE_ROOT = path.join(REPO_ROOT, '.claude');
 const HOOKS_FILE = path.join(CLAUDE_ROOT, 'hooks', 'hooks.json');
 

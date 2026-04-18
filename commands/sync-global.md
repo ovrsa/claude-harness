@@ -1,6 +1,6 @@
 # /sync-global — AI Config グローバル同期
 
-Claude Code を正本として、Cursor と Codex にグローバル設定を反映する。
+`~/.claude` を正本として、必要な mirror や runtime bridge に反映する。
 
 ## 使用方法
 
@@ -38,9 +38,9 @@ sync-ai-configs.sh --global codex
 
 ## 同期ルール
 
-- `~/.claude/` が唯一の canonical source
-- lifecycle の正本は常に `~/.claude/` に置く
-- **Cursor**: `~/.claude/` から `rules` と `agents` を生成
+- lifecycle の正本は `~/.claude/`
+- 外部 archive や mirror は補助用途であり、運用の authority ではない
+- **Cursor**: live `~/.claude/` から `rules` と `agents` を生成
 - **Codex**: 以下を共有
   - `~/.codex/agents` -> `~/.claude/agents`
   - `~/.codex/commands` -> `~/.claude/commands`

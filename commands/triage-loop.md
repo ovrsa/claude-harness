@@ -10,7 +10,7 @@ Use this command after reviewing current health status to decide what follow-up 
 
 ## Required behavior
 
-1. Read the grouped health view from the current local candidate registry.
+1. Read the grouped health view from the current local candidate registry and telemetry-backed health summaries when available.
 2. Review grouped patterns by state, recency, and likely layer.
 3. Identify which items should become the next follow-up tasks.
 4. Recommend the narrowest durable destination for each selected group.

@@ -1,9 +1,13 @@
 'use strict';
 
+const path = require('path');
+
 const {
   loadGuardrailCandidates,
   buildCandidateKey,
 } = require('./guardrail-candidates');
+const { loadTelemetryHealthCandidates } = require('./telemetry-health');
+const { getClaudeDir } = require('./utils');
 
 function toTimestamp(value) {
   if (!value) return 0;
@@ -25,8 +29,16 @@ function getCandidateKey(candidate) {
   return '';
 }
 
-function loadHealthCandidates(registryPath) {
-  return loadGuardrailCandidates(registryPath);
+function loadHealthCandidates(registryPath, options = {}) {
+  const registryCandidates = loadGuardrailCandidates(registryPath);
+  if (!options || options.includeTelemetry !== true) {
+    return registryCandidates;
+  }
+  return registryCandidates.concat(loadTelemetryHealthCandidates(options));
+}
+
+function getDefaultGuardrailRegistryPath() {
+  return path.join(getClaudeDir(), '.state', 'guardrail-candidates.jsonl');
 }
 
 function groupHealthCandidates(candidates = []) {
@@ -149,9 +161,39 @@ function summarizeHealthLoop(candidates = [], options = {}) {
   };
 }
 
+function summarizeCurrentHealth(options = {}) {
+  const registryPath = String(options.registryPath || getDefaultGuardrailRegistryPath()).trim();
+  const candidates = loadHealthCandidates(registryPath, {
+    ...options,
+    includeTelemetry: options.includeTelemetry !== false,
+  });
+  return summarizeHealthLoop(candidates, options);
+}
+
+function formatHealthStatus(summary = summarizeCurrentHealth(), options = {}) {
+  const lines = ['Health Status'];
+  lines.push(`- total_entries=${summary.totalEntries}`);
+  lines.push(`- total_groups=${summary.totalGroups}`);
+  lines.push(`- by_state=${Object.keys(summary.byState || {}).length > 0 ? JSON.stringify(summary.byState) : '{}'}`);
+
+  const groups = Array.isArray(summary.groups) ? summary.groups : [];
+  if (groups.length > 0) {
+    lines.push('Top groups:');
+    const limit = Math.max(1, Number(options.limit) || 5);
+    for (const group of groups.slice(0, limit)) {
+      lines.push(`- ${group.candidate_key} | state=${group.state} | count=${group.count} | layer=${group.recommended_layer || 'unknown'} | pattern=${group.failure_pattern || 'unknown'} | last_seen=${group.last_seen || 'n/a'}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
 module.exports = {
+  getDefaultGuardrailRegistryPath,
   loadHealthCandidates,
   groupHealthCandidates,
   classifyHealthGroup,
   summarizeHealthLoop,
+  summarizeCurrentHealth,
+  formatHealthStatus,
 };

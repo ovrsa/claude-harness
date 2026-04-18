@@ -1,7 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { parseProgressState } = require('../scripts/lib/task-artifacts');
+const {
+  parseProgressState,
+  classifyProgressExecutionState,
+} = require('../scripts/lib/task-artifacts');
 
 function readStdin() {
   return new Promise(resolve => {
@@ -72,6 +75,11 @@ function parseFrontmatter(md) {
     const progress = parseProgressState(fs.readFileSync(progressPath, 'utf8'));
     if (!progress.currentPhasePresent || !progress.lastCompletedStepPresent || !progress.hasActionableNextAction) {
       console.error('[Lifecycle Guardrail] progress.md is missing actionable session state. Fill Current Phase and Last Completed Step, and provide Next Action directly or via a hook-managed checkpoint before editing code.');
+      process.exit(2);
+    }
+
+    if (classifyProgressExecutionState(progress) === 'planning_only') {
+      console.error('[Lifecycle Guardrail] plan.md is approved, but progress.md still looks like planning state. Update Current Phase / Last Completed Step to execution state before editing code. If planning is not complete, finish /plan-task first.');
       process.exit(2);
     }
   }

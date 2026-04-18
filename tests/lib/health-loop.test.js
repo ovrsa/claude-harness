@@ -10,11 +10,17 @@ const os = require('os');
 const path = require('path');
 
 const {
+  getDefaultGuardrailRegistryPath,
   loadHealthCandidates,
   groupHealthCandidates,
   classifyHealthGroup,
   summarizeHealthLoop,
+  summarizeCurrentHealth,
+  formatHealthStatus,
 } = require('../../scripts/lib/health-loop');
+const {
+  recordSessionEvent,
+} = require('../../scripts/lib/session-trace');
 
 function test(name, fn) {
   try {
@@ -66,6 +72,42 @@ function runTests() {
       const rows = loadHealthCandidates(registryPath);
       assert.strictEqual(rows.length, 1);
       assert.strictEqual(rows[0].candidate_key, 'a');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('optionally merges telemetry-derived candidates', () => {
+    const dir = createTempDir();
+    try {
+      const dbPath = path.join(dir, 'telemetry.db');
+      const registryPath = path.join(dir, 'guardrail-candidates.jsonl');
+      writeRegistry(registryPath, [{
+        candidate_key: 'registry::candidate',
+        failure_pattern: 'manual_registry_pattern',
+        recommended_layer: 'docs',
+        captured_at: '2026-04-15T00:00:00.000Z',
+      }]);
+
+      recordSessionEvent({
+        sessionId: 'session-telemetry',
+        runId: 'run-telemetry',
+        occurredAt: '2026-04-17T00:00:00.000Z',
+        eventType: 'session_started',
+        status: 'started',
+        repoRoot: '/tmp/repo',
+        cwd: '/tmp/repo',
+        metadata: { resume_success: false },
+      }, { dbPath });
+
+      const rows = loadHealthCandidates(registryPath, {
+        includeTelemetry: true,
+        dbPath,
+      });
+      assert.strictEqual(rows.length, 3);
+      assert.ok(rows.some(row => row.failure_pattern === 'manual_registry_pattern'));
+      assert.ok(rows.some(row => row.failure_pattern === 'resume_failed'));
+      assert.ok(rows.some(row => row.failure_pattern === 'plan_missing_or_skipped'));
     } finally {
       cleanup(dir);
     }
@@ -155,6 +197,52 @@ function runTests() {
     assert.ok(summary.byState['promotion-ready'] >= 1);
     assert.strictEqual(summary.groups[0].candidate_key, 'beta');
     assert.strictEqual(summary.groups[1].candidate_key, 'alpha');
+  })) passed++; else failed++;
+
+  console.log('\nsummarizeCurrentHealth / formatHealthStatus:');
+
+  if (test('returns summarized health from registry and telemetry', () => {
+    const dir = createTempDir();
+    try {
+      const dbPath = path.join(dir, 'telemetry.db');
+      const registryPath = path.join(dir, 'guardrail-candidates.jsonl');
+      writeRegistry(registryPath, [{
+        candidate_key: 'registry::candidate',
+        failure_pattern: 'manual_registry_pattern',
+        recommended_layer: 'docs',
+        captured_at: '2026-04-15T00:00:00.000Z',
+      }]);
+
+      recordSessionEvent({
+        sessionId: 'session-health',
+        runId: 'run-health',
+        occurredAt: '2026-04-17T00:00:00.000Z',
+        eventType: 'session_started',
+        status: 'started',
+        repoRoot: '/tmp/repo',
+        cwd: '/tmp/repo',
+        metadata: { resume_success: false },
+      }, { dbPath });
+
+      const summary = summarizeCurrentHealth({
+        registryPath,
+        dbPath,
+      });
+      assert.strictEqual(summary.totalEntries, 3);
+      assert.ok(summary.totalGroups >= 2);
+
+      const formatted = formatHealthStatus(summary, { limit: 2 });
+      assert.ok(formatted.includes('Health Status'));
+      assert.ok(formatted.includes('total_entries=3'));
+      assert.ok(formatted.includes('Top groups:'));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('default guardrail registry path points under ~/.claude/.state', () => {
+    const registryPath = getDefaultGuardrailRegistryPath();
+    assert.ok(registryPath.endsWith(path.join('.claude', '.state', 'guardrail-candidates.jsonl')));
   })) passed++; else failed++;
 
   console.log(`\nResults: Passed: ${passed}, Failed: ${failed}`);

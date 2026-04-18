@@ -18,6 +18,29 @@ const PROGRESS_SECTION_LATEST_CHECKPOINT = 'Latest Checkpoint';
 const PROGRESS_SECTION_LATEST_HANDOFF = 'Latest Delegated Handoff';
 const REVIEW_FINDING_PATTERN = /^(CRITICAL|HIGH|MEDIUM|LOW|INFO)\s*:\s+(.+)$/i;
 const OBSERVATION_EVIDENCE_SOURCE_PATTERN = /\b(browser|screenshot|log|logs|stderr|stdout|trace|traces|metric|metrics|health|process)\b/i;
+const PROGRESS_PLANNING_PATTERNS = [
+  /\bresearch\b/i,
+  /\bplanning\b/i,
+  /\bscoping\b/i,
+  /\bapproval\b/i,
+  /\bplan(?:ning)?\s+(?:review|approval|draft|drafting|pending|ready|state)\b/i,
+];
+const PROGRESS_EXECUTION_PATTERNS = [
+  /\bimplement(?:ation)?\b/i,
+  /\bexecut(?:e|ion)\b/i,
+  /\bbuild\b/i,
+  /\bfix\b/i,
+  /\bverif(?:y|ication)\b/i,
+  /\breview\b/i,
+  /\bobserv(?:e|ation)\b/i,
+];
+const PROGRESS_COMPLETION_PATTERNS = [
+  /\bdone\b/i,
+  /\bcomplete(?:d)?\b/i,
+  /\bfinished\b/i,
+  /\bverified\b/i,
+  /\bready to (?:finish|complete|commit)\b/i,
+];
 
 function findArtifactByName(artifacts, name) {
   return artifacts.find(artifact => artifact.name === name) || null;
@@ -224,6 +247,78 @@ function parseProgressState(content) {
     hasActionableNextAction: Boolean(resolvedNextAction),
     automation,
   };
+}
+
+function classifyProgressExecutionState(progressState) {
+  if (!progressState || typeof progressState !== 'object') {
+    return 'unknown';
+  }
+
+  const currentPhase = String(progressState.currentPhase || '').trim();
+  const lastCompletedStep = String(progressState.lastCompletedStep || '').trim();
+  const combined = [currentPhase, lastCompletedStep]
+    .filter(Boolean)
+    .join('\n');
+
+  if (!combined) {
+    return 'unknown';
+  }
+
+  const hasExecutionSignals = PROGRESS_EXECUTION_PATTERNS.some(pattern => pattern.test(combined));
+  if (hasExecutionSignals) {
+    return 'execution';
+  }
+
+  const currentPhaseLooksPlanning = PROGRESS_PLANNING_PATTERNS.some(pattern => pattern.test(currentPhase));
+  const lastCompletedLooksPlanning =
+    /\bapproved (?:the )?plan\b/i.test(lastCompletedStep) ||
+    /\bfinished planning\b/i.test(lastCompletedStep) ||
+    /\bcompleted research\b/i.test(lastCompletedStep) ||
+    /\bdrafted (?:the )?plan\b/i.test(lastCompletedStep) ||
+    /\bplan(?:ning)?\b/i.test(lastCompletedStep);
+
+  if (currentPhaseLooksPlanning || lastCompletedLooksPlanning) {
+    return 'planning_only';
+  }
+
+  return 'unknown';
+}
+
+function classifyProgressCompletionState(progressState) {
+  if (!progressState || typeof progressState !== 'object') {
+    return 'unknown';
+  }
+
+  const currentPhase = String(progressState.currentPhase || '').trim();
+  const lastCompletedStep = String(progressState.lastCompletedStep || '').trim();
+  const combined = [currentPhase, lastCompletedStep]
+    .filter(Boolean)
+    .join('\n');
+
+  if (!combined) {
+    return 'unknown';
+  }
+
+  const currentPhaseHasExecutionSignals = PROGRESS_EXECUTION_PATTERNS.some(pattern => pattern.test(currentPhase));
+  const currentPhaseHasPlanningSignals = PROGRESS_PLANNING_PATTERNS.some(pattern => pattern.test(currentPhase));
+  const combinedHasExecutionSignals = PROGRESS_EXECUTION_PATTERNS.some(pattern => pattern.test(combined));
+  const combinedHasPlanningSignals = PROGRESS_PLANNING_PATTERNS.some(pattern => pattern.test(combined));
+  const currentPhaseHasCompletionSignals = PROGRESS_COMPLETION_PATTERNS.some(pattern => pattern.test(currentPhase));
+  const lastCompletedHasCompletionSignals = PROGRESS_COMPLETION_PATTERNS.some(pattern => pattern.test(lastCompletedStep));
+
+  if (currentPhaseHasCompletionSignals && !currentPhaseHasExecutionSignals && !currentPhaseHasPlanningSignals) {
+    return 'completion_candidate';
+  }
+
+  if (currentPhaseHasExecutionSignals || currentPhaseHasPlanningSignals) {
+    return 'not_complete';
+  }
+
+  if (lastCompletedHasCompletionSignals && !combinedHasExecutionSignals && !combinedHasPlanningSignals) {
+    return 'completion_candidate';
+  }
+
+  return 'unknown';
 }
 
 function summarizeSectionStatus(sections, requiredHeadings) {
@@ -661,6 +756,8 @@ module.exports = {
   buildArtifactSnapshot,
   buildLifecycleState,
   parseProgressState,
+  classifyProgressExecutionState,
+  classifyProgressCompletionState,
   parseProgressAutomationState,
   parseReviewState,
   parseObservationState,
