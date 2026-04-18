@@ -1,0 +1,36 @@
+# Local runtime state
+.codex-global-write-test
+backups/
+cache/
+claw/
+debug/
+file-history/
+history.jsonl
+ide/
+paste-cache/
+plans/
+plugins/
+policy-limits.json
+projects/
+session-aliases.json
+session-env/
+sessions/
+shell-snapshots/
+stats-cache.json
+statsig/
+tasks/
+telemetry/
+todos/
+
+# Sample / generated debris
+**/.DS_Store
+examples/sessions/*.tmp
+
+# Quarantined optional packs and helper tails
+agents/**
+examples/**
+skills/**
+scripts/codemaps/**
+scripts/hooks/pre-bash-dev-server-block.js
+scripts/hooks/pre-write-doc-warn.js
+scripts/release.sh
