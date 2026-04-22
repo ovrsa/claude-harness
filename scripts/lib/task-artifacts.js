@@ -29,6 +29,16 @@ const PLAN_REQUIRED_HEADINGS = [
   'Observe',
   'Execution Todo',
 ];
+const LIFECYCLE_CHAIN_LABELS = {
+  research: 'Research artifact',
+  plan: 'Approved implementation-ready plan',
+  progress: 'Execution session state',
+  implementation: 'Implementation batch',
+  verification: 'Verification evidence',
+  review: 'Review evidence',
+  observation: 'Observation evidence',
+  completion: 'Completion-ready artifact chain',
+};
 const PROGRESS_PLANNING_PATTERNS = [
   /\bresearch\b/i,
   /\bplanning\b/i,
@@ -55,6 +65,20 @@ const PROGRESS_COMPLETION_PATTERNS = [
 
 function findArtifactByName(artifacts, name) {
   return artifacts.find(artifact => artifact.name === name) || null;
+}
+
+function makeLifecycleStep(id, status, summary, artifact = '') {
+  return {
+    id,
+    label: LIFECYCLE_CHAIN_LABELS[id] || id,
+    status,
+    artifact,
+    summary,
+  };
+}
+
+function firstOpenLifecycleStep(chain) {
+  return chain.find(step => step.status === 'blocked' || step.status === 'pending' || step.status === 'active') || null;
 }
 
 function getRepoRoot(cwd = process.cwd()) {
@@ -556,11 +580,14 @@ function findTaskArtifacts(repoRoot) {
         ...entry,
         title: meta.title || '',
         status: meta.status || '',
+        task_type: meta.task_type || '',
+        worktree_required: meta.worktree_required || '',
         observe_required: meta.observe_required || '',
         review_required: meta.review_required || '',
         review_state: entry.name === 'review-summary.md' ? parseReviewState(content) : null,
         observation_state: entry.name === 'observation-summary.md' ? parseObservationState(content) : null,
         verification_state: entry.name === 'verification-summary.md' ? parseVerificationState(content) : null,
+        plan_state: entry.name === 'plan.md' ? parsePlanState(content) : null,
         progress_state: entry.name === 'progress.md' ? parseProgressState(content) : null,
         preview,
       };
@@ -573,13 +600,20 @@ function buildLifecycleState(artifacts) {
   const verification = findArtifactByName(artifacts, 'verification-summary.md');
   const observation = findArtifactByName(artifacts, 'observation-summary.md');
   const progress = findArtifactByName(artifacts, 'progress.md');
+  const research = findArtifactByName(artifacts, 'research.md');
 
   const observeRequired = Boolean(plan && /true/i.test(String(plan.observe_required || '')));
   const reviewRequired = Boolean(plan && (/true/i.test(String(plan.review_required || '')) || observeRequired));
+  const worktreeRequired = Boolean(plan && /true/i.test(String(plan.worktree_required || '')));
+  const nonTrivial = Boolean(plan && (/non_trivial/i.test(String(plan.task_type || '')) || worktreeRequired));
   const sessionState = progress && progress.progress_state
     ? progress.progress_state
     : defaultSessionState();
+  const progressExecutionState = progress && progress.progress_state
+    ? classifyProgressExecutionState(progress.progress_state)
+    : 'missing';
   const blocked = [];
+  const chain = [];
 
   if (!plan) {
     blocked.push('missing plan.md');
@@ -587,20 +621,92 @@ function buildLifecycleState(artifacts) {
     blocked.push(`plan.md status=${plan.status}`);
   }
 
+  chain.push(makeLifecycleStep(
+    'research',
+    research ? 'complete' : (nonTrivial ? 'pending' : 'skipped'),
+    research ? 'research.md present' : (nonTrivial ? 'create research.md before planning/implementation' : 'not required for trivial work'),
+    'research.md'
+  ));
+
+  let planStepStatus = 'pending';
+  let planStepSummary = 'create plan.md';
+  if (plan) {
+    if (plan.status !== 'approved') {
+      planStepStatus = 'blocked';
+      planStepSummary = `plan.md status=${plan.status || 'unknown'}`;
+    } else if (worktreeRequired && plan.plan_state && !plan.plan_state.complete) {
+      planStepStatus = 'blocked';
+      planStepSummary = 'plan.md approved but missing implementation-ready evidence';
+    } else {
+      planStepStatus = 'complete';
+      planStepSummary = 'plan.md approved';
+    }
+  }
+  chain.push(makeLifecycleStep('plan', planStepStatus, planStepSummary, 'plan.md'));
+
+  let progressStepStatus = 'skipped';
+  let progressStepSummary = 'not required for trivial work';
+  if (nonTrivial) {
+    if (!progress) {
+      progressStepStatus = 'pending';
+      progressStepSummary = 'create progress.md execution state';
+    } else if (
+      !progress.progress_state.currentPhasePresent ||
+      !progress.progress_state.lastCompletedStepPresent ||
+      (!progress.progress_state.hasActionableNextAction && !progress.progress_state.nextActionExplicitNone)
+    ) {
+      progressStepStatus = 'blocked';
+      progressStepSummary = 'progress.md missing actionable execution state';
+    } else if (progressExecutionState === 'planning_only') {
+      progressStepStatus = 'blocked';
+      progressStepSummary = 'progress.md still looks like planning state';
+    } else {
+      progressStepStatus = 'complete';
+      progressStepSummary = `progress.md current_phase=${sessionState.currentPhase || 'unknown'}`;
+    }
+  }
+  chain.push(makeLifecycleStep('progress', progressStepStatus, progressStepSummary, 'progress.md'));
+
+  const implementationStatus = verification ? 'complete' : (progressStepStatus === 'complete' ? 'active' : 'pending');
+  const implementationSummary = verification
+    ? 'implementation has verification evidence'
+    : (progressStepStatus === 'complete' ? 'execute approved plan in small TDD batches' : 'wait for executable progress state');
+  chain.push(makeLifecycleStep('implementation', implementationStatus, implementationSummary, 'progress.md'));
+
+  let verificationStatus = 'pending';
+  let verificationSummary = 'write verification-summary.md with rerunnable command evidence';
   if (!verification) {
     blocked.push('missing verification-summary.md');
+  } else if (verification.verification_state && !verification.verification_state.complete) {
+    verificationStatus = 'blocked';
+    verificationSummary = 'verification-summary.md incomplete';
+    blocked.push(`incomplete verification-summary.md: missing ${verification.verification_state.missingSections.join(', ')}`);
+  } else {
+    verificationStatus = 'complete';
+    verificationSummary = 'verification-summary.md complete';
   }
+  chain.push(makeLifecycleStep('verification', verificationStatus, verificationSummary, 'verification-summary.md'));
 
   if (reviewRequired) {
     if (!review) {
       blocked.push('missing review-summary.md');
+      chain.push(makeLifecycleStep('review', 'pending', 'write review-summary.md', 'review-summary.md'));
     } else if (review.review_state && !review.review_state.complete) {
       blocked.push(`incomplete review-summary.md: missing ${review.review_state.missingSections.join(', ')}`);
+      chain.push(makeLifecycleStep('review', 'blocked', 'review-summary.md incomplete', 'review-summary.md'));
+    } else if (review.review_state && review.review_state.hasBlockingFindings) {
+      blocked.push('review-summary.md still has unresolved findings');
+      chain.push(makeLifecycleStep('review', 'blocked', 'review-summary.md has unresolved findings', 'review-summary.md'));
+    } else {
+      chain.push(makeLifecycleStep('review', 'complete', 'review-summary.md complete', 'review-summary.md'));
     }
+  } else {
+    chain.push(makeLifecycleStep('review', 'skipped', 'review not required by plan metadata', 'review-summary.md'));
   }
 
   if (observeRequired && !observation) {
     blocked.push('missing observation-summary.md');
+    chain.push(makeLifecycleStep('observation', 'pending', 'write observation-summary.md with runtime evidence', 'observation-summary.md'));
   } else if (observeRequired && observation && observation.observation_state && !observation.observation_state.complete) {
     const details = [];
     if (observation.observation_state.missingSections.length > 0) {
@@ -613,17 +719,40 @@ function buildLifecycleState(artifacts) {
       details.push('no concrete evidence source');
     }
     blocked.push(`incomplete observation-summary.md: ${details.join(' | ')}`);
+    chain.push(makeLifecycleStep('observation', 'blocked', `observation-summary.md incomplete: ${details.join(' | ')}`, 'observation-summary.md'));
+  } else if (observeRequired) {
+    chain.push(makeLifecycleStep('observation', 'complete', 'observation-summary.md complete', 'observation-summary.md'));
+  } else {
+    chain.push(makeLifecycleStep('observation', 'skipped', 'observation not required by plan metadata', 'observation-summary.md'));
   }
+
+  const completionStatus = blocked.length > 0 ? 'pending' : 'complete';
+  chain.push(makeLifecycleStep(
+    'completion',
+    completionStatus,
+    blocked.length > 0 ? 'chain has open gates before commit' : 'artifact chain is commit-ready',
+    'progress.md'
+  ));
+
+  const currentStep = firstOpenLifecycleStep(chain);
 
   return {
     planStatus: plan ? (plan.status || 'unknown') : 'missing',
     reviewRequired,
     observeRequired,
+    worktreeRequired,
+    nonTrivial,
     hasReview: Boolean(review),
     hasVerification: Boolean(verification),
     hasObservation: Boolean(observation),
+    hasResearch: Boolean(research),
     progressPresent: Boolean(progress),
     sessionState,
+    progressExecutionState,
+    chain,
+    currentStep,
+    currentStepId: currentStep ? currentStep.id : 'complete',
+    nextRequiredAction: currentStep ? currentStep.summary : 'none',
     blocked,
   };
 }
@@ -651,8 +780,15 @@ function buildArtifactContext(repoRoot) {
   lines.push(`- review_present=${state.hasReview}`);
   lines.push(`- verification_present=${state.hasVerification}`);
   lines.push(`- observation_present=${state.hasObservation}`);
+  lines.push(`- research_present=${state.hasResearch}`);
   lines.push(`- progress_present=${state.progressPresent}`);
+  lines.push(`- current_step=${state.currentStepId}`);
+  lines.push(`- next_required_action=${state.nextRequiredAction}`);
   lines.push(`- blocked=${state.blocked.length > 0 ? state.blocked.join(', ') : 'none'}`);
+  lines.push('Lifecycle chain:');
+  for (const step of state.chain) {
+    lines.push(`- ${step.id}: ${step.status} | ${step.summary}`);
+  }
   if (state.progressPresent) {
     lines.push('Session state:');
     lines.push(`- current_phase=${state.sessionState.currentPhase || 'unknown'}`);
@@ -692,8 +828,15 @@ function buildArtifactSnapshot(repoRoot) {
   lines.push(`- review_present=${state.hasReview}`);
   lines.push(`- verification_present=${state.hasVerification}`);
   lines.push(`- observation_present=${state.hasObservation}`);
+  lines.push(`- research_present=${state.hasResearch}`);
   lines.push(`- progress_present=${state.progressPresent}`);
+  lines.push(`- current_step=${state.currentStepId}`);
+  lines.push(`- next_required_action=${state.nextRequiredAction}`);
   lines.push(`- blocked=${state.blocked.length > 0 ? state.blocked.join(', ') : 'none'}`);
+  lines.push('### Lifecycle Chain');
+  for (const step of state.chain) {
+    lines.push(`- ${step.id}: ${step.status} | ${step.summary}`);
+  }
   if (state.progressPresent) {
     lines.push('### Session State');
     lines.push(`- current_phase=${state.sessionState.currentPhase || 'unknown'}`);

@@ -7,6 +7,7 @@
 const assert = require('assert');
 
 const {
+  buildLifecycleState,
   parseProgressState,
   parsePlanState,
   classifyProgressExecutionState,
@@ -93,6 +94,123 @@ function runTests() {
     assert.strictEqual(plan.complete, false);
     assert.ok(plan.missingSections.includes('Behavior Spec'));
     assert.strictEqual(plan.hasTddEvidencePlan, false);
+  })) passed++; else failed++;
+
+  if (test('builds ordered lifecycle chain with current blocked step', () => {
+    const state = buildLifecycleState([
+      {
+        name: 'research.md',
+        status: '',
+      },
+      {
+        name: 'plan.md',
+        status: 'approved',
+        task_type: 'non_trivial',
+        worktree_required: 'true',
+        observe_required: 'true',
+        review_required: '',
+        plan_state: {
+          complete: true,
+        },
+      },
+      {
+        name: 'progress.md',
+        progress_state: parseProgressState([
+          '# Progress',
+          '',
+          '## Current Phase',
+          '- Phase 2: implementation',
+          '',
+          '## Last Completed Step',
+          '- Approved the plan',
+          '',
+          '## Next Action',
+          '- Run verification',
+          '',
+          '## Blockers',
+          '- none',
+          '',
+          '## Delegated Work',
+          '- none',
+        ].join('\n')),
+      },
+    ]);
+
+    assert.deepStrictEqual(state.chain.map(step => step.id), [
+      'research',
+      'plan',
+      'progress',
+      'implementation',
+      'verification',
+      'review',
+      'observation',
+      'completion',
+    ]);
+    assert.strictEqual(state.currentStepId, 'implementation');
+    assert.strictEqual(state.chain.find(step => step.id === 'verification').status, 'pending');
+    assert.ok(state.blocked.includes('missing verification-summary.md'));
+    assert.ok(state.blocked.includes('missing review-summary.md'));
+    assert.ok(state.blocked.includes('missing observation-summary.md'));
+  })) passed++; else failed++;
+
+  if (test('marks lifecycle chain complete when required artifacts are complete', () => {
+    const state = buildLifecycleState([
+      {
+        name: 'research.md',
+        status: '',
+      },
+      {
+        name: 'plan.md',
+        status: 'approved',
+        task_type: 'non_trivial',
+        worktree_required: 'true',
+        observe_required: 'false',
+        review_required: 'true',
+        plan_state: {
+          complete: true,
+        },
+      },
+      {
+        name: 'progress.md',
+        progress_state: parseProgressState([
+          '# Progress',
+          '',
+          '## Current Phase',
+          '- Ready to commit',
+          '',
+          '## Last Completed Step',
+          '- Finished verification and review',
+          '',
+          '## Next Action',
+          '- none',
+          '',
+          '## Blockers',
+          '- none',
+          '',
+          '## Delegated Work',
+          '- none',
+        ].join('\n')),
+      },
+      {
+        name: 'verification-summary.md',
+        verification_state: {
+          complete: true,
+        },
+      },
+      {
+        name: 'review-summary.md',
+        review_state: {
+          complete: true,
+          hasBlockingFindings: false,
+        },
+      },
+    ]);
+
+    assert.strictEqual(state.currentStepId, 'complete');
+    assert.strictEqual(state.nextRequiredAction, 'none');
+    assert.strictEqual(state.blocked.length, 0);
+    assert.strictEqual(state.chain.find(step => step.id === 'observation').status, 'skipped');
+    assert.strictEqual(state.chain.find(step => step.id === 'completion').status, 'complete');
   })) passed++; else failed++;
 
   if (test('classifies planning-only progress state conservatively', () => {
