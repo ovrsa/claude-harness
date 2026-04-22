@@ -16,6 +16,7 @@ const {
   getDateString,
   getTimeString,
   getSessionIdShort,
+  getRuntimeSessionId,
   ensureDir,
   readFile,
   writeFile,
@@ -145,7 +146,7 @@ async function main() {
   const today = getDateString();
   const shortId = getSessionIdShort();
   const sessionFile = path.join(sessionsDir, `${today}-${shortId}-session.tmp`);
-  const sessionId = String(process.env.CLAUDE_SESSION_ID || '').trim() || undefined;
+  const sessionId = getRuntimeSessionId() || undefined;
   const runId = getRunId(sessionId);
 
   ensureDir(sessionsDir);

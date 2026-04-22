@@ -101,6 +101,15 @@ function collectGuardrailCandidates(repo) {
     console.error('[Lifecycle Guardrail] Missing verification-summary.md. Run verify before commit.');
     process.exit(2);
   }
+  const verificationPath = path.join(repo, 'verification-summary.md');
+  const verification = parseVerificationState(fs.readFileSync(verificationPath, 'utf8'));
+  if (!verification.complete) {
+    const details = [];
+    if (verification.missingSections.length > 0) details.push(`Missing sections: ${verification.missingSections.join(', ')}`);
+    if (verification.missingValues.length > 0) details.push(`Empty sections: ${verification.missingValues.join(', ')}`);
+    console.error(`[Lifecycle Guardrail] verification-summary.md is incomplete. ${details.join(' | ')}`);
+    process.exit(2);
+  }
   if (reviewRequired) {
     const reviewPath = path.join(repo, 'review-summary.md');
     if (!fs.existsSync(reviewPath)) {

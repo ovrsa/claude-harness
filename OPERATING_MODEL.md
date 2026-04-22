@@ -4,6 +4,8 @@ This file is the fastest end-to-end summary of how the local `~/.claude` harness
 
 Use it to reload the loop quickly. Use `HARNESS.md`, `OBSERVE.md`, and `AUTONOMY_POLICY.md` for deeper policy details.
 
+When the question is about rollout order rather than lifecycle semantics, use `IMPLEMENTATION_ROADMAP.md`.
+
 ## Lifecycle Loop
 
 The steady local loop is:
@@ -16,7 +18,7 @@ The steady local loop is:
 6. `evaluate`
 7. `observe` when behavior changed
 8. `post-commit capture`
-9. `health / triage`
+9. `health / triage` on explicit improvement requests
 10. promote durable fixes into `docs`, `commands`, `hooks`, or `skills`
 
 This keeps the harness focused on repeatable execution first, then on turning recurring failures into smaller, safer durable changes.
@@ -51,6 +53,7 @@ This keeps the harness focused on repeatable execution first, then on turning re
 - `/eval`
 - `/health-status`
 - `/triage-loop`
+- `/improve-harness`
 
 ### Durable Artifacts
 
@@ -85,7 +88,7 @@ The intended path is:
 1. capture recurring failures in task artifacts
 2. store them as local guardrail candidates
 3. summarize them through `health`
-4. turn them into next-task recommendations through `triage`
+4. turn them into next-task recommendations through `triage` or one explicit `/improve-harness` pass
 5. promote only the narrowest durable fix that reliably prevents recurrence
 
 Promotion ladder:
@@ -106,7 +109,7 @@ Promotion ladder:
 ## Not Enforced Yet
 
 - automatic promotion of recurring candidates
-- mandatory periodic `health` or `triage` runs
+- automatic or scheduled improvement runs
 - repo-map freshness enforcement
 - automatic issue or task creation from triage output
 

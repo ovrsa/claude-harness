@@ -62,7 +62,7 @@ function main() {
       '# Progress',
       '',
       '## Current Phase',
-      '- Phase 2: durable session state',
+      '- Phase 2: implementation',
       '',
       '## Last Completed Step',
       '- Added the managed-session plan',
@@ -92,7 +92,7 @@ function main() {
     assert(state.observeRequired === true, 'observe should be required');
     assert(state.hasReview === false, 'review should be absent initially');
     assert(state.progressPresent === true, 'progress should be present');
-    assert(state.sessionState.currentPhase === 'Phase 2: durable session state', 'current phase should be parsed');
+    assert(state.sessionState.currentPhase === 'Phase 2: implementation', 'current phase should be parsed');
     assert(state.sessionState.nextAction === 'Expand smoke verification', 'next action should be parsed');
     assert(state.blocked.includes('missing review-summary.md'), 'review should be blocked');
     assert(state.blocked.includes('missing verification-summary.md'), 'verification should be blocked');
@@ -102,7 +102,7 @@ function main() {
     assert(context && context.includes('Active repository task artifacts'), 'artifact context should be built');
     assert(context.includes('plan_status=approved'), 'artifact context should include lifecycle state');
     assert(context.includes('review_required=true'), 'artifact context should include review requirement');
-    assert(context.includes('current_phase=Phase 2: durable session state'), 'artifact context should include session state');
+    assert(context.includes('current_phase=Phase 2: implementation'), 'artifact context should include session state');
 
     const snapshot = buildArtifactSnapshot(repoDir);
     assert(snapshot && snapshot.includes('### Lifecycle State'), 'artifact snapshot should include lifecycle state');
@@ -136,7 +136,7 @@ function main() {
       '# Progress',
       '',
       '## Current Phase',
-      '- Phase 2: durable session state',
+      '- Phase 2: implementation',
       '',
       '## Last Completed Step',
       '- Added the managed-session plan',
@@ -220,6 +220,33 @@ function main() {
     assert(commitGuardResult.stderr.includes('verification-summary.md'), 'commit guard should mention verification-summary.md');
 
     fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+    const commitGuardBadVerification = runNode(
+      path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
+      {
+        cwd: repoDir,
+        env: { HOME: homeDir, USERPROFILE: homeDir },
+        input: JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
+      }
+    );
+    assert(commitGuardBadVerification.status === 2, 'commit guard should block incomplete verification-summary.md');
+    assert(commitGuardBadVerification.stderr.includes('verification-summary.md is incomplete'), 'commit guard should mention incomplete verification summary');
+
+    fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
+      '# Verification Summary',
+      '',
+      '## Scope',
+      '- lifecycle smoke verification',
+      '',
+      '## Commands Run',
+      '- node scripts/ci/smoke-harness-lifecycle.js',
+      '',
+      '## Verification Outcome',
+      '- pass',
+      '',
+      '## Assessment',
+      '- commit guard exercised expected lifecycle blocks',
+      ''
+    ].join('\n'));
     const commitGuardMissingReview = runNode(
       path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
       {

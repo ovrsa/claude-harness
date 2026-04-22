@@ -2,16 +2,14 @@
 'use strict';
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const REPO_ROOT = os.homedir();
-const CLAUDE_ROOT = path.join(REPO_ROOT, '.claude');
+const CLAUDE_ROOT = path.resolve(__dirname, '..', '..');
 const HOOKS_FILE = path.join(CLAUDE_ROOT, 'hooks', 'hooks.json');
 
-function toRepoRelative(absPath) {
-  return path.relative(REPO_ROOT, absPath).replace(/\\/g, '/');
+function toHarnessRelative(absPath) {
+  return path.relative(CLAUDE_ROOT, absPath).replace(/\\/g, '/');
 }
 
 function readJson(filePath) {
@@ -20,7 +18,7 @@ function readJson(filePath) {
 
 function getTrackedFiles() {
   try {
-    const output = execFileSync('git', ['-C', REPO_ROOT, 'ls-files', '.claude'], {
+    const output = execFileSync('git', ['-C', CLAUDE_ROOT, 'ls-files'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -40,7 +38,7 @@ function extractHookEntryFiles(command) {
   const refs = new Set();
   const value = String(command || '');
   for (const match of value.matchAll(/(scripts\/hooks\/[A-Za-z0-9._-]+|skills\/continuous-learning-v2\/hooks\/observe\.sh)/g)) {
-    refs.add(`.claude/${match[1]}`);
+    refs.add(match[1]);
   }
   return refs;
 }
@@ -56,7 +54,7 @@ function normalizeLocalJsDependency(filePath, rawRef) {
 function extractLocalDependencies(filePath) {
   const deps = new Set();
   const content = fs.readFileSync(filePath, 'utf8');
-  const repoRelative = toRepoRelative(filePath);
+  const repoRelative = toHarnessRelative(filePath);
 
   if (filePath.endsWith('.js')) {
     for (const match of content.matchAll(/require\(['"](\.\.?\/[^'"]+)['"]\)/g)) {
@@ -93,7 +91,7 @@ function collectRuntimeSurface() {
     for (const matcher of matcherGroup || []) {
       for (const hook of matcher.hooks || []) {
         for (const ref of extractHookEntryFiles(hook.command)) {
-          queue.push(path.join(REPO_ROOT, ref));
+          queue.push(path.join(CLAUDE_ROOT, ref));
         }
       }
     }
@@ -101,7 +99,7 @@ function collectRuntimeSurface() {
 
   while (queue.length > 0) {
     const current = queue.shift();
-    const repoRelative = toRepoRelative(current);
+    const repoRelative = toHarnessRelative(current);
     if (seen.has(repoRelative)) continue;
     seen.add(repoRelative);
 
@@ -110,7 +108,7 @@ function collectRuntimeSurface() {
     }
 
     for (const dep of extractLocalDependencies(current)) {
-      const depRelative = toRepoRelative(dep);
+      const depRelative = toHarnessRelative(dep);
       if (!seen.has(depRelative)) {
         queue.push(dep);
       }
@@ -127,7 +125,7 @@ function validateRuntimeSurface() {
   const untracked = [];
 
   for (const relativePath of runtimeFiles) {
-    const absPath = path.join(REPO_ROOT, relativePath);
+    const absPath = path.join(CLAUDE_ROOT, relativePath);
     if (!fs.existsSync(absPath)) {
       missing.push(relativePath);
       continue;

@@ -4,6 +4,21 @@
 
 - 
 
+## Plan Compliance
+
+-
+
+## Code Quality
+
+-
+
+## Test Adequacy
+
+- RED/GREEN evidence:
+- BDD scenarios:
+- integration/E2E evidence:
+- observe evidence:
+
 ## Findings
 
 - none

@@ -64,7 +64,11 @@
   },
   "scripts": {
     "postinstall": "echo '\\n  ecc-universal installed!\\n  Run: npx ecc-install typescript\\n  Docs: https://github.com/affaan-m/everything-claude-code\\n'",
-    "lint": "eslint . && markdownlint '**/*.md' --ignore node_modules",
+    "lint": "eslint .",
+    "lint:markdown": "markdownlint '**/*.md' --ignore node_modules",
+    "lint:unused": "knip --config knip.json --no-exit-code --reporter compact",
+    "lint:architecture": "depcruise --config .dependency-cruiser.js --include-only '^(hooks|scripts)' hooks scripts",
+    "lint:repo": "npm run lint && npm run lint:unused && npm run lint:architecture",
     "claw": "node scripts/claw.js",
     "test:core": "node scripts/ci/validate-runtime-surface.js && node scripts/ci/validate-hooks.js && node scripts/ci/validate-commands.js && node scripts/ci/validate-rules.js && node scripts/ci/validate-no-personal-paths.js && node scripts/ci/audit-harness-contract.js && node scripts/ci/smoke-harness-lifecycle.js && node tests/run-all.js",
     "test:optional": "node scripts/ci/validate-agents.js && node scripts/ci/validate-skills.js",
@@ -72,9 +76,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "dependency-cruiser": "^17.3.10",
     "eslint": "^9.39.2",
     "globals": "^17.1.0",
-    "markdownlint-cli": "^0.47.0"
+    "knip": "^6.4.1",
+    "markdownlint-cli": "^0.48.0"
   },
   "engines": {
     "node": ">=18"

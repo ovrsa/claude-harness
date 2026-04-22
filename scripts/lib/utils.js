@@ -108,11 +108,46 @@ function getProjectName() {
 }
 
 /**
- * Get short session ID from CLAUDE_SESSION_ID environment variable
+ * Get current runtime kind from available session/thread environment variables.
+ * Priority: Claude Code -> Codex -> unknown.
+ */
+function getRuntimeKind() {
+  const claudeSessionId = String(process.env.CLAUDE_SESSION_ID || '').trim();
+  if (claudeSessionId) return 'claude';
+
+  const codexSessionId = String(process.env.CODEX_SESSION_ID || '').trim();
+  if (codexSessionId) return 'codex';
+
+  const codexThreadId = String(process.env.CODEX_THREAD_ID || '').trim();
+  if (codexThreadId) return 'codex';
+
+  return 'unknown';
+}
+
+/**
+ * Get runtime session ID from available environment variables.
+ * Priority: Claude Code -> Codex session -> Codex thread.
+ * Codex identifiers are prefixed to avoid collisions in shared stores.
+ */
+function getRuntimeSessionId(fallback = '') {
+  const claudeSessionId = String(process.env.CLAUDE_SESSION_ID || '').trim();
+  if (claudeSessionId) return claudeSessionId;
+
+  const codexSessionId = String(process.env.CODEX_SESSION_ID || '').trim();
+  if (codexSessionId) return `codex-session-${codexSessionId}`;
+
+  const codexThreadId = String(process.env.CODEX_THREAD_ID || '').trim();
+  if (codexThreadId) return `codex-thread-${codexThreadId}`;
+
+  return fallback;
+}
+
+/**
+ * Get short session ID from runtime environment variables.
  * Returns last 8 characters, falls back to project name then 'default'
  */
 function getSessionIdShort(fallback = 'default') {
-  const sessionId = process.env.CLAUDE_SESSION_ID;
+  const sessionId = getRuntimeSessionId();
   if (sessionId && sessionId.length > 0) {
     return sessionId.slice(-8);
   }
@@ -517,6 +552,8 @@ module.exports = {
   getDateTimeString,
 
   // Session/Project
+  getRuntimeKind,
+  getRuntimeSessionId,
   getSessionIdShort,
   getGitRepoName,
   getProjectName,

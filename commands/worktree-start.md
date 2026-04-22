@@ -21,16 +21,33 @@ Plan 承認後、実装専用の worktree + feature branch を作成する。
 
 ## Steps
 
-1. ベースブランチ更新
+1. worktree 作成先ディレクトリ決定
+
+優先順:
+
+1. 既存の `.worktrees/`
+2. 既存の `worktrees/`
+3. `CLAUDE.md` / `AGENTS.md` に明記された worktree directory
+4. どれもなければユーザーに確認
+
+project-local の `.worktrees/` または `worktrees/` を使う場合は、作成前に ignore 済みであることを確認する。
+
+```bash
+git check-ignore -q .worktrees 2>/dev/null || git check-ignore -q worktrees 2>/dev/null
+```
+
+ignore されていない場合は、worktree 作成を止めて `.gitignore` 対応を先に行う。
+
+2. ベースブランチ更新
 
 ```bash
 git fetch origin
 ```
 
-2. worktree 作成先ディレクトリ決定
+3. branch / target 決定
 
 ```bash
-WT_ROOT="../GenbaFlow__worktrees"
+WT_ROOT="<selected-worktree-root>"
 SLUG="<slug>"
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 if [ -n "${2}" ]; then
@@ -45,20 +62,47 @@ TARGET="${WT_ROOT}/${SLUG}"
 mkdir -p "${WT_ROOT}"
 ```
 
-3. 既存衝突チェック
+4. 既存衝突チェック
 
 ```bash
 git worktree list
 git branch --list "${BRANCH}"
 ```
 
-4. 新規 branch + worktree 作成
+5. 新規 branch + worktree 作成
 
 ```bash
 git worktree add -b "${BRANCH}" "${TARGET}" "origin/${BASE}"
 ```
 
-5. 実装開始先を表示
+6. setup command 自動検出
+
+worktree に移動して、該当するものだけ実行する。
+
+```bash
+cd "${TARGET}"
+if [ -f package.json ]; then npm install; fi
+if [ -f pyproject.toml ] && command -v uv >/dev/null 2>&1; then uv sync; fi
+if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
+if [ -f go.mod ]; then go mod download; fi
+if [ -f Cargo.toml ]; then cargo build; fi
+```
+
+7. baseline verification
+
+project の標準 test command が分かる場合は、実装前に baseline を確認する。
+
+```bash
+# examples; choose the project-appropriate command
+npm test
+uv run pytest
+go test ./...
+cargo test
+```
+
+baseline が失敗した場合は、失敗内容を報告して、既知の失敗として進めるか先に調査するか確認する。
+
+8. 実装開始先を表示
 
 ```bash
 echo "cd ${TARGET}"
@@ -72,10 +116,11 @@ echo "claude --dangerous"
 3. `--dangerous` は承認済み plan を実装する時のみ使用する
 4. 大きな変更を一気に入れず、小さな reviewable batch に分ける
 5. 各 batch ごとに verify し、必要なら observe まで行う
+6. baseline test の失敗を新規実装の失敗と混同しない
 
 ## Recommended Flow
 
-`/research` → `/plan` → user approve → `/worktree-start` → `/tdd` → `/code-review` → `/verify` → commit
+`/research` → `/plan` → user approve → `/worktree-start` → `/implement-task` → `/review-task` → `/verify` → `/eval` → observe if required → commit
 
 ## Cleanup (After Merge)
 
@@ -92,3 +137,9 @@ git branch -d "${BRANCH}"
 ## Important
 
 - PR の作成は自動で行わない。必要な場合のみユーザーの明示指示で実行する。
+
+## Next Handoff
+
+- If worktree setup and baseline verification pass, run `/implement-task` in the new worktree.
+- If baseline verification fails, decide whether to investigate with `/build-fix` or proceed with a documented known baseline.
+- Keep parent session focused on plan/review coordination.

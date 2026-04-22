@@ -81,7 +81,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/hooks/lifecycle-progress-complete.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/lifecycle-progress-complete.js\""
           }
         ],
         "description": "Lifecycle guardrail: block premature task completion when required verify/review/observe artifacts are missing"
@@ -91,7 +91,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/hooks/lifecycle-pre-edit.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/lifecycle-pre-edit.js\""
           }
         ],
         "description": "Lifecycle guardrail: block code edits without approved plan"
@@ -101,7 +101,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/hooks/lifecycle-pre-commit.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/lifecycle-pre-commit.js\""
           }
         ],
         "description": "Lifecycle guardrail: block git commit without required review, verify, and observe artifacts"
@@ -137,7 +137,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/permission-request.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/permission-request.js\""
           }
         ],
         "description": "Personal harness boundary for permission prompts: deny destructive bash and auto-allow narrow read-only inspection commands"
@@ -239,7 +239,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/subagent-stop.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/subagent-stop.js\"",
             "async": true,
             "timeout": 10
           }

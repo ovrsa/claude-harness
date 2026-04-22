@@ -22,9 +22,18 @@ tasks/
 telemetry/
 todos/
 
+# Local lifecycle task artifacts
+observation-summary.md
+plan.md
+progress.md
+research.md
+review-summary.md
+verification-summary.md
+
 # Sample / generated debris
 **/.DS_Store
 examples/sessions/*.tmp
+node_modules/
 
 # Quarantined optional packs and helper tails
 agents/**

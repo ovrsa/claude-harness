@@ -29,6 +29,7 @@ These pairs separate conversational guidance from repository artifacts:
 Primary lifecycle surface for implementation and bug-fix work.
 
 - `/review-task`
+- `/receive-review`
 - `/verify`
 - `/eval`
 
@@ -62,6 +63,7 @@ Secondary surface. Use when a pattern is worth extracting or promoting beyond th
 - `/trace-status`
 - `/health-status`
 - `/triage-loop`
+- `/improve-harness`
 
 ### Advanced Orchestration And Loops
 

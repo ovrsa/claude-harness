@@ -217,6 +217,23 @@ When tests run, the following artifacts are captured:
 - Network logs
 - Console logs
 
+## Observation Evidence
+
+For UI, runtime, or integration behavior changes, E2E output should feed
+`observation-summary.md`.
+
+Record the concrete evidence source rather than generic prose:
+
+- `browser`: route or journey checked
+- `screenshot`: path to screenshot artifact
+- `trace`: path to Playwright trace
+- `logs`: relevant server or browser console logs
+- `network logs`: relevant request/response evidence
+- `playwright report`: report path or command to inspect it
+
+If E2E fails, keep the failure artifacts and record the remaining uncertainty in
+`observation-summary.md` instead of claiming the behavior is proven.
+
 ## Viewing Artifacts
 
 ```bash
@@ -333,6 +350,7 @@ For PMX, prioritize these E2E tests:
 - Use `/plan` to identify critical journeys to test
 - Use `/tdd` for unit tests (faster, more granular)
 - Use `/e2e` for integration and user journey tests
+- Use `observation-summary.md` to preserve screenshots, traces, logs, and browser evidence for behavior-changing work
 - Use `/code-review` to verify test quality
 
 ## Related Agents

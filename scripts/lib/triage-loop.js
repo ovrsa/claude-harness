@@ -48,6 +48,7 @@ function toTriageItem(group) {
     count: Number(group.count) || 0,
     last_seen: String(group.last_seen || '').trim(),
     recommended_layer: String(group.recommended_layer || '').trim() || 'unknown',
+    provenance: String(group.provenance || '').trim() || 'unknown',
     failure_pattern: String(group.failure_pattern || '').trim() || 'unknown',
     source_artifact: String(group.source_artifact || '').trim() || 'unknown',
     priority: getPriority(group),
@@ -136,25 +137,25 @@ function formatTriageStatus(summary = summarizeCurrentTriage(), options = {}) {
     lines,
     'Candidate Groups Reviewed',
     summary.candidateGroupsReviewed.slice(0, limit),
-    item => `- ${item.candidate_key} | state=${item.state} | count=${item.count} | layer=${item.recommended_layer} | pattern=${item.failure_pattern}`
+    item => `- ${item.candidate_key} | state=${item.state} | count=${item.count} | layer=${item.recommended_layer} | provenance=${item.provenance} | pattern=${item.failure_pattern}`
   );
   formatSection(
     lines,
     'Recommended Next Tasks',
     summary.recommendedNextTasks.slice(0, limit),
-    item => `- [${item.priority}] ${item.recommended_layer} :: ${item.failure_pattern} :: ${item.suggested_task} (state=${item.state} count=${item.count} last_seen=${item.last_seen || 'n/a'})`
+    item => `- [${item.priority}] ${item.recommended_layer} :: ${item.failure_pattern} :: ${item.suggested_task} (provenance=${item.provenance} state=${item.state} count=${item.count} last_seen=${item.last_seen || 'n/a'})`
   );
   formatSection(
     lines,
     'Monitor Only',
     summary.monitorOnly.slice(0, limit),
-    item => `- ${item.recommended_layer} :: ${item.failure_pattern} :: monitor recurrence (state=${item.state} count=${item.count} last_seen=${item.last_seen || 'n/a'})`
+    item => `- ${item.recommended_layer} :: ${item.failure_pattern} :: monitor recurrence (provenance=${item.provenance} state=${item.state} count=${item.count} last_seen=${item.last_seen || 'n/a'})`
   );
   formatSection(
     lines,
     'Resolved Or Stale',
     summary.resolvedOrStale.slice(0, limit),
-    item => `- ${item.recommended_layer} :: ${item.failure_pattern} :: ${item.state} (count=${item.count} last_seen=${item.last_seen || 'n/a'})`
+    item => `- ${item.recommended_layer} :: ${item.failure_pattern} :: ${item.state} (provenance=${item.provenance} count=${item.count} last_seen=${item.last_seen || 'n/a'})`
   );
 
   return lines.join('\n');

@@ -15,6 +15,7 @@ const {
   findFiles,
   ensureDir,
   readFile,
+  getRuntimeSessionId,
   log,
   output
 } = require('../lib/utils');
@@ -35,7 +36,7 @@ async function main() {
   const learnedDir = getLearnedSkillsDir();
   const repoRoot = getRepoRoot(process.cwd());
   const artifactContext = buildArtifactContext(repoRoot);
-  const sessionId = String(process.env.CLAUDE_SESSION_ID || '').trim() || undefined;
+  const sessionId = getRuntimeSessionId() || undefined;
   const runId = getRunId(sessionId);
   const persistedState = repoRoot
     ? (getLatestRunState({ repoRoot }) || getLatestRunState())

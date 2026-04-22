@@ -8,7 +8,8 @@ Run analysis tools based on project type:
 
 | Tool | What It Finds | Command |
 |------|--------------|---------|
-| knip | Unused exports, files, dependencies | `npx knip` |
+| knip | Unused exports, files, dependencies | `npm run lint:unused` |
+| dependency-cruiser | Cycles and architecture drift in scripts/hooks | `npm run lint:architecture` |
 | depcheck | Unused npm dependencies | `npx depcheck` |
 | ts-prune | Unused TypeScript exports | `npx ts-prune` |
 | vulture | Unused Python code | `vulture src/` |
@@ -29,6 +30,12 @@ Sort findings into safety tiers:
 | **SAFE** | Unused utilities, test helpers, internal functions | Delete with confidence |
 | **CAUTION** | Components, API routes, middleware | Verify no dynamic imports or external consumers |
 | **DANGER** | Config files, entry points, type definitions | Investigate before touching |
+
+Treat the harness analyzers as advisory first:
+
+- `npm run lint:unused` should guide cleanup, not trigger blind deletions
+- `npm run lint:architecture` should stay small and obvious until false positives are low
+- if a file is executed by hooks, scheduler, or a manual operator workflow, mark it as an entry before trusting an "unused file" report
 
 ## Step 3: Safe Deletion Loop
 

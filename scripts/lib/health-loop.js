@@ -29,6 +29,11 @@ function getCandidateKey(candidate) {
   return '';
 }
 
+function getCandidateProvenance(candidate) {
+  const source = String(candidate && candidate.source || '').trim().toLowerCase();
+  return source.startsWith('telemetry:') ? 'telemetry' : 'artifact';
+}
+
 function loadHealthCandidates(registryPath, options = {}) {
   const registryCandidates = loadGuardrailCandidates(registryPath);
   if (!options || options.includeTelemetry !== true) {
@@ -63,11 +68,17 @@ function groupHealthCandidates(candidates = []) {
       recommended_layer: String(candidate.recommended_layer || '').trim().toLowerCase(),
       failure_pattern: String(candidate.failure_pattern || '').trim(),
       source_artifact: String(candidate.source_artifact || candidate.source || '').trim(),
+      provenance_counts: {
+        telemetry: 0,
+        artifact: 0,
+      },
       entries: [],
     };
 
     existing.count += 1;
     existing.entries.push(candidate);
+    const provenance = getCandidateProvenance(candidate);
+    existing.provenance_counts[provenance] = (existing.provenance_counts[provenance] || 0) + 1;
 
     if (!existing.first_seen_ts || (capturedTimestamp && capturedTimestamp < existing.first_seen_ts)) {
       existing.first_seen_ts = capturedTimestamp;
@@ -92,6 +103,11 @@ function groupHealthCandidates(candidates = []) {
     recommended_layer: group.recommended_layer,
     failure_pattern: group.failure_pattern,
     source_artifact: group.source_artifact,
+    provenance: (
+      group.provenance_counts.telemetry > 0 && group.provenance_counts.artifact > 0
+        ? 'mixed'
+        : (group.provenance_counts.telemetry > 0 ? 'telemetry' : 'artifact')
+    ),
     entries: group.entries,
   }));
 }
@@ -181,7 +197,7 @@ function formatHealthStatus(summary = summarizeCurrentHealth(), options = {}) {
     lines.push('Top groups:');
     const limit = Math.max(1, Number(options.limit) || 5);
     for (const group of groups.slice(0, limit)) {
-      lines.push(`- ${group.candidate_key} | state=${group.state} | count=${group.count} | layer=${group.recommended_layer || 'unknown'} | pattern=${group.failure_pattern || 'unknown'} | last_seen=${group.last_seen || 'n/a'}`);
+      lines.push(`- ${group.candidate_key} | state=${group.state} | count=${group.count} | layer=${group.recommended_layer || 'unknown'} | provenance=${group.provenance || 'unknown'} | pattern=${group.failure_pattern || 'unknown'} | last_seen=${group.last_seen || 'n/a'}`);
     }
   }
 

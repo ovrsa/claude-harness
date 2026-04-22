@@ -6,6 +6,8 @@ Use this file as the authoritative map for how the personal harness is organized
 
 For the fastest end-to-end summary of the current loop, start with `OPERATING_MODEL.md`, then use `commands/COMMANDS.md` for the grouped command surface, and return here for the deeper ownership and gate semantics.
 
+For the current rollout sequence that turns the existing model into concrete implementation phases, use `IMPLEMENTATION_ROADMAP.md`.
+
 ## Core Model
 
 The harness is split into five layers:
@@ -156,7 +158,9 @@ Health and triage sit on top of guardrail capture.
 
 - `health` summarizes the current grouped failure landscape from recent harness signals
 - `triage` decides which grouped patterns should become the next follow-up tasks
+- `/improve-harness` is the preferred request-driven entrypoint when the operator wants one concise recommendation pass
 - both remain local and human-directed in this phase
+- neither is scheduler-owned in the current model
 - grouped patterns should distinguish `new`, `recurring`, `promotion-ready`, `stale`, and `resolved`
 - the output should generate next-task candidates rather than just describing symptoms
 

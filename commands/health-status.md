@@ -8,6 +8,8 @@ command: true
 
 Use this command to summarize current local harness health from the local guardrail candidate registry and telemetry-derived health candidates when available.
 
+This is a status-first helper. When the operator wants one concise self-improvement pass, prefer `/improve-harness`.
+
 ## Required behavior
 
 1. Read `~/.claude/.state/guardrail-candidates.jsonl` if it exists.
@@ -16,7 +18,7 @@ Use this command to summarize current local harness health from the local guardr
 4. Summarize the current local harness health by count, recency, and grouped state.
 5. Distinguish `new`, `recurring`, `promotion-ready`, `stale`, and `resolved` groups.
 6. If useful for continuity, write `health-summary.md` using `~/.claude/templates/health-summary-template.md`.
-6. Avoid making promotion decisions; this command is status-first.
+7. Avoid making promotion decisions; this command is status-first.
 
 ## Hard guardrails
 

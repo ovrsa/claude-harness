@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
+const { getRuntimeSessionId } = require('../lib/utils');
 const { getRepoRoot } = require('../lib/task-artifacts');
 const { recordSessionEvent, recordLifecycleSnapshot, getRunId } = require('../lib/session-trace');
 
@@ -14,7 +15,7 @@ process.stdin.on('data', chunk => {
   }
 });
 process.stdin.on('end', () => {
-  const sessionId = String(process.env.CLAUDE_SESSION_ID || '').trim() || undefined;
+  const sessionId = getRuntimeSessionId() || undefined;
   const runId = getRunId(sessionId);
   const repoRoot = getRepoRoot(process.cwd()) || '';
 

@@ -11,10 +11,13 @@ Use this command for the `Review` phase before commit.
 1. Review the current diff and surrounding code.
 2. Write or update `review-summary.md`.
 3. Check:
+   - plan/spec compliance
    - security
    - correctness
    - regressions
    - test gaps
+   - TDD RED/GREEN evidence
+   - BDD scenario coverage
    - plan drift
    - stale `progress.md`
    - missing `review-summary.md`
@@ -22,6 +25,9 @@ Use this command for the `Review` phase before commit.
    - missing `observation-summary.md` when required
 4. Record findings first using the canonical sections:
    - `Review Scope`
+   - `Plan Compliance`
+   - `Code Quality`
+   - `Test Adequacy`
    - `Findings`
    - `Residual Risks`
    - `Next Action`
@@ -36,7 +42,11 @@ Use this command for the `Review` phase before commit.
 7. Treat review as approval-ready only when `Findings` is `none`.
 8. If verification has not run yet, leave `Next Action` pointing to verification instead of treating the task as approval-ready.
 9. Treat review as the primary input to `/eval`, not as a substitute for `/verify`.
-10. When the same class of failure looks promotion-worthy, record it in `Guardrail Candidates` with:
+10. Separate review dimensions:
+    - `Plan Compliance`: approved scope, interface expectations, and acceptance criteria
+    - `Code Quality`: correctness, maintainability, security, regressions
+    - `Test Adequacy`: RED/GREEN evidence, BDD scenarios, integration/E2E coverage, observation evidence when required
+11. When the same class of failure looks promotion-worthy, record it in `Guardrail Candidates` with:
     - `failure_pattern`
     - `source`
     - `recommended_layer`
@@ -58,4 +68,11 @@ Use this command for the `Review` phase before commit.
 - Do not approve non-trivial implementation work with stale blockers in `progress.md`.
 - Do not leave unresolved findings in `Findings` and still mark review as approval-ready.
 - Do not write findings without severity prefixes.
+- Do not collapse plan compliance, code quality, and test adequacy into vague generic approval.
 - Prefer high-confidence findings only.
+
+## Next Handoff
+
+- If `Findings` contains unresolved issues, handle them with `/receive-review` or return to `/implement-task`.
+- If `Findings` is `none` but verification is missing, run `/verify`.
+- If verification is present and findings are clear, run `/eval`.

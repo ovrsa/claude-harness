@@ -125,6 +125,25 @@ function cleanupTestDir(testDir) {
   fs.rmSync(testDir, { recursive: true, force: true });
 }
 
+function writeCompleteVerification(repoDir, scope = 'lifecycle guard behavior') {
+  fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
+    '# Verification Summary',
+    '',
+    '## Scope',
+    `- ${scope}`,
+    '',
+    '## Commands Run',
+    '- node hooks/lifecycle-pre-commit.js',
+    '',
+    '## Verification Outcome',
+    '- pass',
+    '',
+    '## Assessment',
+    '- hook fixture reached the targeted guardrail branch',
+    ''
+  ].join('\n'));
+}
+
 // Test suite
 async function runTests() {
   console.log('\n=== Testing Hook Scripts ===\n');
@@ -3536,9 +3555,12 @@ async function runTests() {
       // The real string message should appear
       assert.ok(content.includes('Real user message'),
         'Should include the string content user message');
-      // Numeric/boolean/object content should NOT appear as text
-      assert.ok(!content.includes('42'),
-        'Numeric content should be skipped (else branch → empty string → filtered)');
+      // Numeric/boolean/object content should NOT appear as task bullets.
+      // Avoid matching timestamps or dates elsewhere in the session template.
+      assert.ok(!/\n- 42(?:\n|$)/.test(content),
+        'Numeric content should be skipped from the task summary');
+      assert.ok(!/\n- true(?:\n|$)/.test(content),
+        'Boolean content should be skipped from the task summary');
     } finally {
       fs.rmSync(isoHome, { recursive: true, force: true });
     }
@@ -4745,7 +4767,7 @@ Some random content without the expected ### Context to Load section
         '## Delegated Work',
         '- none'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+      writeCompleteVerification(repoDir, 'review-required commit guard behavior');
 
       const result = await runScriptInDir(
         path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
@@ -4809,7 +4831,7 @@ Some random content without the expected ### Context to Load section
         '## Next Action',
         '- Run verification and commit'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+      writeCompleteVerification(repoDir, 'next-action warning commit guard behavior');
       fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
         '# Observation Summary',
         '',
@@ -4888,7 +4910,7 @@ Some random content without the expected ### Context to Load section
         '## Next Action',
         '- Run verification and commit'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+      writeCompleteVerification(repoDir, 'observation evidence commit guard behavior');
       fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
         '# Observation Summary',
         '',
@@ -4967,7 +4989,7 @@ Some random content without the expected ### Context to Load section
         '## Next Action',
         '- Resolve findings and rerun review'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+      writeCompleteVerification(repoDir, 'unresolved review findings commit guard behavior');
       fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
         '# Observation Summary',
         '',
@@ -5047,7 +5069,7 @@ Some random content without the expected ### Context to Load section
         '## Next Action',
         '- Normalize review findings'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+      writeCompleteVerification(repoDir, 'review finding format commit guard behavior');
       fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
         '# Observation Summary',
         '',
@@ -5123,7 +5145,7 @@ Some random content without the expected ### Context to Load section
         '## Latest Delegated Handoff',
         '- none'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+      writeCompleteVerification(repoDir, 'explicit none commit guard behavior');
       fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
         '# Review Summary',
         '',
@@ -5354,7 +5376,7 @@ Some random content without the expected ### Context to Load section
         '## Delegated Work',
         '- none'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
+      writeCompleteVerification(repoDir, 'blocker commit guard behavior');
 
       const result = await runScriptInDir(
         path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),

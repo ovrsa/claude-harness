@@ -162,7 +162,6 @@ function summarizeGuardrailCandidates(candidates) {
 }
 
 module.exports = {
-  VALID_LAYERS,
   parseGuardrailCandidates,
   normalizeGuardrailCandidate,
   appendGuardrailCandidates,

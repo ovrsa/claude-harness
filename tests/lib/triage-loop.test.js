@@ -14,7 +14,7 @@ const {
   summarizeCurrentTriage,
   formatTriageStatus,
 } = require('../../scripts/lib/triage-loop');
-const { recordSessionEvent } = require('../../scripts/lib/session-trace');
+const { createDatabase, recordSessionEvent } = require('../../scripts/lib/session-trace');
 
 function test(name, fn) {
   try {
@@ -60,6 +60,7 @@ function runTests() {
           count: 3,
           last_seen: '2026-04-17T10:00:00.000Z',
           recommended_layer: 'hook',
+          provenance: 'artifact',
           failure_pattern: 'plan_missing_or_skipped',
           source_artifact: 'plan.md',
           entries: [{ promotion_hint: 'enforce approved plan before execution' }],
@@ -70,6 +71,7 @@ function runTests() {
           count: 2,
           last_seen: '2026-04-17T09:00:00.000Z',
           recommended_layer: 'docs',
+          provenance: 'artifact',
           failure_pattern: 'high_human_intervention_run',
           source_artifact: 'progress.md',
           entries: [{ promotion_hint: 'clarify task and recovery guidance before execution' }],
@@ -80,6 +82,7 @@ function runTests() {
           count: 1,
           last_seen: '2026-04-17T08:00:00.000Z',
           recommended_layer: 'hook',
+          provenance: 'telemetry',
           failure_pattern: 'resume_failed',
           source_artifact: 'progress.md',
           entries: [],
@@ -90,6 +93,7 @@ function runTests() {
           count: 2,
           last_seen: '2026-03-01T00:00:00.000Z',
           recommended_layer: 'hook',
+          provenance: 'telemetry',
           failure_pattern: 'verification_missing_before_completion',
           source_artifact: 'verification-summary.md',
           entries: [],
@@ -142,6 +146,29 @@ function runTests() {
         metadata: { resume_success: false },
       }, { dbPath });
 
+      recordSessionEvent({
+        sessionId: 'session-manual-bridge',
+        runId: 'run-manual-bridge',
+        occurredAt: '2026-04-17T02:00:00.000Z',
+        eventType: 'session_started',
+        status: 'started',
+        repoRoot: '/tmp/repo',
+        cwd: '/tmp/repo',
+        metadata: {
+          bridge_mode: 'manual',
+          runtime: 'codex',
+          resume_success: true,
+        },
+      }, { dbPath });
+
+      const db = createDatabase(dbPath);
+      db.prepare(`
+        UPDATE session_runs
+        SET plan_present = 1, verify_present = 1, review_present = 1, final_status = 'completed_clean'
+        WHERE run_id = 'run-manual-bridge'
+      `).run();
+      db.close();
+
       const summary = summarizeCurrentTriage({
         registryPath,
         dbPath,
@@ -150,7 +177,7 @@ function runTests() {
       });
 
       assert.strictEqual(summary.recommendedNextTasks.length, 1);
-      assert.strictEqual(summary.monitorOnly.length, 2);
+      assert.strictEqual(summary.monitorOnly.length, 3);
 
       const formatted = formatTriageStatus(summary, { limit: 5 });
       assert.ok(formatted.includes('Triage Loop'));
@@ -158,6 +185,8 @@ function runTests() {
       assert.ok(formatted.includes('Monitor Only:'));
       assert.ok(formatted.includes('plan_missing_or_skipped'));
       assert.ok(formatted.includes('resume_failed'));
+      assert.ok(formatted.includes('manual_bridge_session_level_only'));
+      assert.ok(formatted.includes('provenance=telemetry'));
     } finally {
       cleanup(dir);
     }

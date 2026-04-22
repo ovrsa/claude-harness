@@ -56,9 +56,23 @@ See:
 - `AUTONOMY_POLICY.md`
 - `OBSERVE.md`
 - `SESSION.md`
+- `docs/local-operations-baseline.md`
 
-`OPERATING_MODEL.md` is the shortest current summary of the full local loop, including `review -> verify -> evaluate -> observe`, guardrail capture, and later `health / triage`.
+`OPERATING_MODEL.md` is the shortest current summary of the full local loop, including `review -> verify -> evaluate -> observe`, guardrail capture, and later explicit improvement review.
 `commands/COMMANDS.md` is the grouped command taxonomy, including the preferred lifecycle path, intentional command pairs, and secondary surfaces.
+`docs/health-triage-operations.md` is the shortest runbook for request-driven harness improvement.
+
+### Local Operations Baseline
+
+The local hooks are the primary control plane. This harness now treats remote CI
+providers as optional adapters, not as the source of truth.
+
+Use `docs/local-operations-baseline.md` for the recommended local-first setup:
+
+- `~/.claude` hooks and lifecycle artifacts as the authority
+- CLI analyzers such as `eslint`, `knip`, `dependency-cruiser`, and optional `semgrep`
+- explicit improvement commands such as `/health-status`, `/triage-loop`, and `/improve-harness`
+- repo-host adapters only when they add value for a specific repository
 
 ### Feedback-to-Guardrail Loop
 
@@ -102,12 +116,10 @@ Use these live signals when presenting ECC to sponsors, platforms, or ecosystem 
 - **Main package installs:** [`ecc-universal` on npm](https://www.npmjs.com/package/ecc-universal)
 - **Security companion installs:** [`ecc-agentshield` on npm](https://www.npmjs.com/package/ecc-agentshield)
 - **GitHub App distribution:** [ECC Tools marketplace listing](https://github.com/marketplace/ecc-tools)
-- **Automated monthly metrics issue:** powered by `.github/workflows/monthly-metrics.yml`
+- **Monthly metrics snapshot:** assemble locally from npm stats, marketplace install counts, and repo traffic
 - **Repo adoption signal:** stars/forks/contributors badges at the top of this README
 
 Download counts for Claude Code plugin installs are not currently exposed as a public API. For partner reporting, combine npm metrics with GitHub App installs and repository traffic/fork growth.
-
-For a sponsor-call metrics checklist and command snippets, see [`docs/business/metrics-and-sponsorship.md`](docs/business/metrics-and-sponsorship.md).
 
 [**Sponsor ECC**](https://github.com/sponsors/affaan-m) | [Sponsor Tiers](SPONSORS.md) | [Sponsorship Program](SPONSORING.md)
 
@@ -1015,7 +1027,16 @@ Skills at `.agents/skills/` are auto-loaded by Codex:
 
 ### Key Limitation
 
-Codex does **not yet provide Claude-style hook execution parity**. ECC enforcement there is instruction-based via `AGENTS.md` and `persistent_instructions`, plus sandbox permissions.
+Codex does **not yet provide Claude-style hook execution parity**. ECC enforcement there is still instruction-based via `AGENTS.md` and `persistent_instructions`, plus sandbox permissions.
+
+This local harness now adds a shared SQLite bridge for Codex session tracing:
+
+- `node ~/.claude/scripts/hooks/runtime-session-start.js`
+- `node ~/.claude/scripts/hooks/runtime-session-end.js`
+- see `docs/codex-telemetry-bridge.md`
+- day-to-day usage: `docs/codex-operations-runbook.md`
+
+That bridge gives `session-level parity` in the shared `telemetry.db`, but not full automatic `tool-level parity`.
 
 ---
 
@@ -1079,6 +1100,7 @@ OpenCode's plugin system is MORE sophisticated than Claude Code with 20+ event t
 | `/repo-map` | Create or refresh a thin repo-local map |
 | `/health-status` | Summarize current local harness health |
 | `/triage-loop` | Turn grouped patterns into next-task recommendations |
+| `/improve-harness` | Run one explicit harness-improvement recommendation pass |
 | `/update-docs` | Update documentation |
 | `/update-codemaps` | Update codemaps |
 | `/test-coverage` | Analyze coverage |

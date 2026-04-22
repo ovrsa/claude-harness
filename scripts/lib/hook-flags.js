@@ -65,10 +65,5 @@ function isHookEnabled(hookId, options = {}) {
 }
 
 module.exports = {
-  VALID_PROFILES,
-  normalizeId,
-  getHookProfile,
-  getDisabledHookIds,
-  parseProfiles,
   isHookEnabled,
 };

@@ -123,12 +123,21 @@ function runTests() {
 
   if (test('getSessionIdShort falls back to project name', () => {
     const original = process.env.CLAUDE_SESSION_ID;
+    const originalCodexThread = process.env.CODEX_THREAD_ID;
+    const originalCodexSession = process.env.CODEX_SESSION_ID;
     delete process.env.CLAUDE_SESSION_ID;
+    delete process.env.CODEX_THREAD_ID;
+    delete process.env.CODEX_SESSION_ID;
     try {
       const shortId = utils.getSessionIdShort();
       assert.strictEqual(shortId, utils.getProjectName());
     } finally {
       if (original) process.env.CLAUDE_SESSION_ID = original;
+      else delete process.env.CLAUDE_SESSION_ID;
+      if (originalCodexThread) process.env.CODEX_THREAD_ID = originalCodexThread;
+      else delete process.env.CODEX_THREAD_ID;
+      if (originalCodexSession) process.env.CODEX_SESSION_ID = originalCodexSession;
+      else delete process.env.CODEX_SESSION_ID;
     }
   })) passed++; else failed++;
 
@@ -151,6 +160,47 @@ function runTests() {
     } finally {
       if (original) process.env.CLAUDE_SESSION_ID = original;
       else delete process.env.CLAUDE_SESSION_ID;
+    }
+  })) passed++; else failed++;
+
+  if (test('getRuntimeSessionId falls back to CODEX_THREAD_ID with prefix', () => {
+    const originalClaude = process.env.CLAUDE_SESSION_ID;
+    const originalCodexThread = process.env.CODEX_THREAD_ID;
+    const originalCodexSession = process.env.CODEX_SESSION_ID;
+    delete process.env.CLAUDE_SESSION_ID;
+    delete process.env.CODEX_SESSION_ID;
+    process.env.CODEX_THREAD_ID = '019d9f09-64e9-7f53-905c-d89dce56cef2';
+    try {
+      assert.strictEqual(utils.getRuntimeKind(), 'codex');
+      assert.strictEqual(
+        utils.getRuntimeSessionId(),
+        'codex-thread-019d9f09-64e9-7f53-905c-d89dce56cef2'
+      );
+      assert.strictEqual(utils.getSessionIdShort(), 'dce56cef2'.slice(-8));
+    } finally {
+      if (originalClaude) process.env.CLAUDE_SESSION_ID = originalClaude;
+      else delete process.env.CLAUDE_SESSION_ID;
+      if (originalCodexThread) process.env.CODEX_THREAD_ID = originalCodexThread;
+      else delete process.env.CODEX_THREAD_ID;
+      if (originalCodexSession) process.env.CODEX_SESSION_ID = originalCodexSession;
+      else delete process.env.CODEX_SESSION_ID;
+    }
+  })) passed++; else failed++;
+
+  if (test('CLAUDE_SESSION_ID takes precedence over Codex identifiers', () => {
+    const originalClaude = process.env.CLAUDE_SESSION_ID;
+    const originalCodexThread = process.env.CODEX_THREAD_ID;
+    process.env.CLAUDE_SESSION_ID = 'claude-session-xyz98765';
+    process.env.CODEX_THREAD_ID = '019d9f09-64e9-7f53-905c-d89dce56cef2';
+    try {
+      assert.strictEqual(utils.getRuntimeKind(), 'claude');
+      assert.strictEqual(utils.getRuntimeSessionId(), 'claude-session-xyz98765');
+      assert.strictEqual(utils.getSessionIdShort(), 'xyz98765');
+    } finally {
+      if (originalClaude) process.env.CLAUDE_SESSION_ID = originalClaude;
+      else delete process.env.CLAUDE_SESSION_ID;
+      if (originalCodexThread) process.env.CODEX_THREAD_ID = originalCodexThread;
+      else delete process.env.CODEX_THREAD_ID;
     }
   })) passed++; else failed++;
 
@@ -1298,7 +1348,12 @@ function runTests() {
     const result = spawnSync('node', ['-e', script], {
       encoding: 'utf8',
       cwd: '/',
-      env: { ...process.env, CLAUDE_SESSION_ID: '' },
+      env: {
+        ...process.env,
+        CLAUDE_SESSION_ID: '',
+        CODEX_THREAD_ID: '',
+        CODEX_SESSION_ID: '',
+      },
       timeout: 10000
     });
     assert.strictEqual(result.status, 0, `Should exit 0, got status ${result.status}. stderr: ${result.stderr}`);
@@ -1415,25 +1470,31 @@ function runTests() {
   // ── Round 97: getSessionIdShort with whitespace-only CLAUDE_SESSION_ID ──
   console.log('\nRound 97: getSessionIdShort (whitespace-only session ID):');
 
-  if (test('getSessionIdShort returns whitespace when CLAUDE_SESSION_ID is all spaces', () => {
-    // utils.js line 116: if (sessionId && sessionId.length > 0) — '   ' is truthy
-    // and has length > 0, so it passes the check instead of falling back.
-    const original = process.env.CLAUDE_SESSION_ID;
-    try {
-      process.env.CLAUDE_SESSION_ID = '          ';  // 10 spaces
-      const result = utils.getSessionIdShort('fallback');
-      // slice(-8) on 10 spaces returns 8 spaces — not the expected fallback
-      assert.strictEqual(result, '        ',
-        'Whitespace-only ID should return 8 trailing spaces (no trim check)');
-      assert.strictEqual(result.trim().length, 0,
-        'Result should be entirely whitespace (demonstrating the missing trim)');
-    } finally {
-      if (original !== undefined) {
-        process.env.CLAUDE_SESSION_ID = original;
-      } else {
-        delete process.env.CLAUDE_SESSION_ID;
-      }
+  if (test('getSessionIdShort trims whitespace-only CLAUDE_SESSION_ID and falls back cleanly', () => {
+    if (process.platform === 'win32') {
+      console.log('    (skipped — root CWD differs on Windows)');
+      return;
     }
+    const utilsPath = path.join(__dirname, '..', '..', 'scripts', 'lib', 'utils.js');
+    const script = `
+      const utils = require('${utilsPath.replace(/'/g, "\\'")}');
+      process.stdout.write(utils.getSessionIdShort('fallback'));
+    `;
+    const { spawnSync } = require('child_process');
+    const result = spawnSync('node', ['-e', script], {
+      encoding: 'utf8',
+      cwd: '/',
+      env: {
+        ...process.env,
+        CLAUDE_SESSION_ID: '          ',
+        CODEX_THREAD_ID: '',
+        CODEX_SESSION_ID: '',
+      },
+      timeout: 10000,
+    });
+    assert.strictEqual(result.status, 0, `Should exit 0, got status ${result.status}. stderr: ${result.stderr}`);
+    assert.strictEqual(result.stdout, 'fallback',
+      'Whitespace-only runtime IDs should not survive normalization');
   })) passed++; else failed++;
 
   // ── Round 97: countInFile with same RegExp object called twice (lastIndex reuse) ──

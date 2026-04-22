@@ -236,6 +236,43 @@ function runTests() {
     }
   })) passed++; else failed++;
 
+  if (test('uses CODEX_THREAD_ID when explicit session metadata is absent', () => {
+    const dir = createTempDir();
+    try {
+      const dbPath = path.join(dir, 'telemetry.db');
+      const result = spawnSync(process.execPath, ['-e', `
+        const { createDatabase, recordToolExecution } = require(${JSON.stringify(SESSION_TRACE_PATH)});
+        recordToolExecution({
+          repoRoot: '/tmp/repo',
+          cwd: '/tmp/repo',
+          toolName: 'Bash',
+          toolInput: { command: 'pwd' },
+          phase: 'completed',
+          status: 'completed',
+        }, { dbPath: ${JSON.stringify(dbPath)} });
+        const db = createDatabase(${JSON.stringify(dbPath)});
+        const row = db.prepare("SELECT session_id, run_id FROM tool_executions ORDER BY id DESC LIMIT 1").get();
+        db.close();
+        console.log(JSON.stringify(row));
+      `], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          CLAUDE_SESSION_ID: '',
+          CODEX_THREAD_ID: '019d9f09-64e9-7f53-905c-d89dce56cef2',
+        },
+      });
+      if (result.status !== 0) {
+        throw new Error((result.stderr || result.stdout || 'node subprocess failed').trim());
+      }
+      const row = JSON.parse(result.stdout.trim());
+      assert.strictEqual(row.session_id, 'codex-thread-019d9f09-64e9-7f53-905c-d89dce56cef2');
+      assert.strictEqual(row.run_id, 'codex-thread-019d9f09-64e9-7f53-905c-d89dce56cef2');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
   if (test('classifies completed runs conservatively', () => {
     const clean = classifyRunStatus({
       planStatus: 'approved',

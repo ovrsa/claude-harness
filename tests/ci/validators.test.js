@@ -365,7 +365,7 @@ function runTests() {
 
   if (test('fails when referenced runtime hook file is missing', () => {
     const testDir = createTestDir();
-    const hooksDir = path.join(testDir, '.claude', 'hooks');
+    const hooksDir = path.join(testDir, 'hooks');
     fs.mkdirSync(hooksDir, { recursive: true });
     const hooksFile = path.join(hooksDir, 'hooks.json');
     fs.writeFileSync(hooksFile, JSON.stringify({
@@ -381,11 +381,11 @@ function runTests() {
       }
     }, null, 2));
     execFileSync('git', ['init'], { cwd: testDir, stdio: 'ignore' });
-    execFileSync('git', ['add', '.claude/hooks/hooks.json'], { cwd: testDir, stdio: 'ignore' });
+    execFileSync('git', ['add', 'hooks/hooks.json'], { cwd: testDir, stdio: 'ignore' });
 
     const result = runValidatorWithDirs('validate-runtime-surface', {
       HOOKS_FILE: hooksFile,
-      REPO_ROOT: testDir,
+      CLAUDE_ROOT: testDir,
     });
     assert.strictEqual(result.code, 1, 'Should fail when referenced runtime file is missing');
     assert.ok(result.stderr.includes('runtime surface file is missing'), 'Should report missing runtime file');
@@ -394,8 +394,8 @@ function runTests() {
 
   if (test('fails when referenced runtime hook file exists but is untracked', () => {
     const testDir = createTestDir();
-    const hooksDir = path.join(testDir, '.claude', 'hooks');
-    const scriptsDir = path.join(testDir, '.claude', 'scripts', 'hooks');
+    const hooksDir = path.join(testDir, 'hooks');
+    const scriptsDir = path.join(testDir, 'scripts', 'hooks');
     fs.mkdirSync(hooksDir, { recursive: true });
     fs.mkdirSync(scriptsDir, { recursive: true });
     const hooksFile = path.join(hooksDir, 'hooks.json');
@@ -413,11 +413,11 @@ function runTests() {
     }, null, 2));
     fs.writeFileSync(path.join(scriptsDir, 'example.js'), 'module.exports = {};\n');
     execFileSync('git', ['init'], { cwd: testDir, stdio: 'ignore' });
-    execFileSync('git', ['add', '.claude/hooks/hooks.json'], { cwd: testDir, stdio: 'ignore' });
+    execFileSync('git', ['add', 'hooks/hooks.json'], { cwd: testDir, stdio: 'ignore' });
 
     const result = runValidatorWithDirs('validate-runtime-surface', {
       HOOKS_FILE: hooksFile,
-      REPO_ROOT: testDir,
+      CLAUDE_ROOT: testDir,
     });
     assert.strictEqual(result.code, 1, 'Should fail when runtime file is untracked');
     assert.ok(result.stderr.includes('not tracked by git'), 'Should report untracked runtime file');
@@ -426,9 +426,9 @@ function runTests() {
 
   if (test('fails when tracked runtime hook depends on an untracked local library', () => {
     const testDir = createTestDir();
-    const hooksDir = path.join(testDir, '.claude', 'hooks');
-    const scriptsHooksDir = path.join(testDir, '.claude', 'scripts', 'hooks');
-    const scriptsLibDir = path.join(testDir, '.claude', 'scripts', 'lib');
+    const hooksDir = path.join(testDir, 'hooks');
+    const scriptsHooksDir = path.join(testDir, 'scripts', 'hooks');
+    const scriptsLibDir = path.join(testDir, 'scripts', 'lib');
     fs.mkdirSync(hooksDir, { recursive: true });
     fs.mkdirSync(scriptsHooksDir, { recursive: true });
     fs.mkdirSync(scriptsLibDir, { recursive: true });
@@ -448,14 +448,14 @@ function runTests() {
     fs.writeFileSync(path.join(scriptsHooksDir, 'example.js'), "require('../lib/helper');\n");
     fs.writeFileSync(path.join(scriptsLibDir, 'helper.js'), 'module.exports = {};\n');
     execFileSync('git', ['init'], { cwd: testDir, stdio: 'ignore' });
-    execFileSync('git', ['add', '.claude/hooks/hooks.json', '.claude/scripts/hooks/example.js'], { cwd: testDir, stdio: 'ignore' });
+    execFileSync('git', ['add', 'hooks/hooks.json', 'scripts/hooks/example.js'], { cwd: testDir, stdio: 'ignore' });
 
     const result = runValidatorWithDirs('validate-runtime-surface', {
       HOOKS_FILE: hooksFile,
-      REPO_ROOT: testDir,
+      CLAUDE_ROOT: testDir,
     });
     assert.strictEqual(result.code, 1, 'Should fail when a local runtime dependency is untracked');
-    assert.ok(result.stderr.includes('.claude/scripts/lib/helper.js'), 'Should report the untracked local dependency');
+    assert.ok(result.stderr.includes('scripts/lib/helper.js'), 'Should report the untracked local dependency');
     cleanupTestDir(testDir);
   })) passed++; else failed++;
 

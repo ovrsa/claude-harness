@@ -47,8 +47,17 @@ export function getDateTimeString(): string;
 
 // --- Session/Project ---
 
+/** Get the current runtime kind from available environment variables. */
+export function getRuntimeKind(): 'claude' | 'codex' | 'unknown';
+
 /**
- * Get short session ID from CLAUDE_SESSION_ID environment variable.
+ * Get runtime session ID from available environment variables.
+ * Claude Code IDs are used as-is. Codex IDs are prefixed for store isolation.
+ */
+export function getRuntimeSessionId(fallback?: string): string;
+
+/**
+ * Get short session ID from runtime environment variables.
  * Returns last 8 characters, falls back to project name then the provided fallback.
  */
 export function getSessionIdShort(fallback?: string): string;

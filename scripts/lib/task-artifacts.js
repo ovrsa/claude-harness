@@ -135,21 +135,6 @@ function parseSectionState(lines) {
   };
 }
 
-function firstSectionValue(lines) {
-  for (const line of lines || []) {
-    const normalized = normalizeSectionLine(line);
-    if (normalized) return normalized;
-  }
-  return '';
-}
-
-function listSectionValues(lines) {
-  return (lines || [])
-    .map(normalizeSectionLine)
-    .filter(Boolean)
-    .filter(line => !/^none$/i.test(line));
-}
-
 function parseDelimitedValues(rawValue, delimiterPattern) {
   const value = String(rawValue || '').trim();
   if (!value || /^none$/i.test(value)) return [];
@@ -749,7 +734,6 @@ function writeProgressDelegatedHandoff(progressPath, handoff) {
 }
 
 module.exports = {
-  ARTIFACT_FILES,
   getRepoRoot,
   findTaskArtifacts,
   buildArtifactContext,
@@ -758,7 +742,6 @@ module.exports = {
   parseProgressState,
   classifyProgressExecutionState,
   classifyProgressCompletionState,
-  parseProgressAutomationState,
   parseReviewState,
   parseObservationState,
   parseVerificationState,

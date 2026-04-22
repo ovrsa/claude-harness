@@ -1,0 +1,34 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "commitlint.config.js",
+    "eslint.config.js",
+    "hooks/*.js",
+    "scripts/*.js",
+    "scripts/ci/*.js",
+    "scripts/hooks/*.js",
+    "tests/**/*.js",
+    "install.sh"
+  ],
+  "project": [
+    "*.js",
+    "hooks/**/*.js",
+    "scripts/**/*.js",
+    "tests/**/*.js"
+  ],
+  "ignore": [
+    ".claude-plugin/**",
+    "plugins/**",
+    "skills/**",
+    "agents/**",
+    "projects/**",
+    "file-history/**",
+    "session-env/**",
+    "sessions/**",
+    "shell-snapshots/**",
+    "cache/**",
+    "backups/**",
+    "debug/**",
+    "paste-cache/**"
+  ]
+}

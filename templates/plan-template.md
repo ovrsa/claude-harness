@@ -36,6 +36,20 @@ observe_required: true
 
 -
 
+## Behavior Spec
+
+### Scenarios
+
+- Given
+  When
+  Then
+
+### Normal / Boundary / Abnormal Cases
+
+- normal:
+- boundary:
+- abnormal:
+
 ## Phases
 
 - Phase 1:
@@ -62,6 +76,21 @@ observe_required: true
 - tests:
 - coverage:
 
+## Test Evidence Plan
+
+### TDD / Unit
+
+- RED command:
+- expected failure:
+- GREEN command:
+- refactor check:
+
+### Integration
+
+- path:
+- command:
+- expected result:
+
 ## Evaluate
 
 - review findings resolved:
@@ -70,11 +99,19 @@ observe_required: true
 
 ## Observe
 
-- runtime / UI checks:
-- logs / screenshots / metrics:
+- required: yes/no
+- critical journey:
+- command:
+- evidence artifact:
+- logs / screenshots / traces / metrics:
 
 ## Execution Todo
 
-- [ ]
+- [ ] Pick one small batch from this plan.
+- [ ] Write or update the failing test first.
+- [ ] Run the RED command and confirm the expected failure.
+- [ ] Implement the minimum code needed to pass.
+- [ ] Run the GREEN command and confirm pass.
+- [ ] Refactor while tests stay green.
 - [ ]
 - [ ]

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const { readStdinJson } = require('../lib/utils');
+const { readStdinJson, getRuntimeSessionId } = require('../lib/utils');
 const { getRepoRoot } = require('../lib/task-artifacts');
 const { recordToolExecution, getRunId } = require('../lib/session-trace');
 
@@ -30,7 +30,7 @@ function buildDetails(toolInput = {}) {
 
   const cwd = process.cwd();
   const repoRoot = getRepoRoot(cwd) || '';
-  const sessionId = String(process.env.CLAUDE_SESSION_ID || '').trim() || undefined;
+  const sessionId = getRuntimeSessionId() || undefined;
 
   recordToolExecution({
     sessionId,

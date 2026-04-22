@@ -35,3 +35,9 @@ Use this command for the `Plan` and `Confirm` phases of the coding lifecycle.
 - `/plan` is the conversational planning entrypoint.
 - `/plan-task` writes the repository artifact and should be used when the plan needs to survive beyond chat.
 - Keep both commands aligned on the same scope and acceptance criteria.
+
+## Next Handoff
+
+- If `status: draft`, stop for human approval.
+- After approval, use `/worktree-start` for non-trivial or worktree-required implementation.
+- If no worktree is required, continue with `/implement-task`.

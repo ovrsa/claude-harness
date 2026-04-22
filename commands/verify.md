@@ -89,3 +89,9 @@ $ARGUMENTS can be:
 - `full` - All checks (default)
 - `pre-commit` - Checks relevant for commits
 - `pre-pr` - Full checks plus security scan
+
+## Next Handoff
+
+- If verification fails, use `/build-fix` for mechanical failures or `/receive-review` for review-driven fixes.
+- If verification passes, run `/eval`.
+- If behavior changed and observe evidence is missing, create or update `observation-summary.md` before acceptance.

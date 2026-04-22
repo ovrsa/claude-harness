@@ -348,8 +348,13 @@ function runTests() {
     const defaultCounterFile = getCounterFilePath('default');
     try { fs.unlinkSync(defaultCounterFile); } catch (_err) { /* ignore */ }
     try {
-      // Pass empty CLAUDE_SESSION_ID — falsy, so script uses 'default'
-      const env = { ...process.env, CLAUDE_SESSION_ID: '' };
+      // Pass empty runtime IDs so the script truly falls back to "default".
+      const env = {
+        ...process.env,
+        CLAUDE_SESSION_ID: '',
+        CODEX_THREAD_ID: '',
+        CODEX_SESSION_ID: '',
+      };
       const result = spawnSync('node', [compactScript], {
         encoding: 'utf8',
         input: '{}',

@@ -19,6 +19,7 @@ const {
   formatHealthStatus,
 } = require('../../scripts/lib/health-loop');
 const {
+  createDatabase,
   recordSessionEvent,
 } = require('../../scripts/lib/session-trace');
 
@@ -126,6 +127,19 @@ function runTests() {
     assert.strictEqual(groups[0].candidate_key, 'a');
     assert.strictEqual(groups[0].first_seen, '2026-04-14T00:00:00.000Z');
     assert.strictEqual(groups[0].last_seen, '2026-04-15T00:00:00.000Z');
+    assert.strictEqual(groups[0].provenance, 'artifact');
+  })) passed++; else failed++;
+
+  if (test('marks telemetry-derived groups with telemetry provenance', () => {
+    const groups = groupHealthCandidates([
+      {
+        candidate_key: 'telemetry::a',
+        source: 'telemetry:session_started',
+        captured_at: '2026-04-15T00:00:00.000Z',
+      },
+    ]);
+    assert.strictEqual(groups.length, 1);
+    assert.strictEqual(groups[0].provenance, 'telemetry');
   })) passed++; else failed++;
 
   console.log('\nclassifyHealthGroup:');
@@ -235,6 +249,83 @@ function runTests() {
       assert.ok(formatted.includes('Health Status'));
       assert.ok(formatted.includes('total_entries=3'));
       assert.ok(formatted.includes('Top groups:'));
+      assert.ok(formatted.includes('provenance='));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('projects manual bridge observability limits into telemetry candidates', () => {
+    const dir = createTempDir();
+    try {
+      const dbPath = path.join(dir, 'telemetry.db');
+      recordSessionEvent({
+        sessionId: 'session-manual-bridge',
+        runId: 'run-manual-bridge',
+        occurredAt: '2026-04-17T02:00:00.000Z',
+        eventType: 'session_started',
+        status: 'started',
+        repoRoot: '/tmp/repo',
+        cwd: '/tmp/repo',
+        metadata: {
+          bridge_mode: 'manual',
+          runtime: 'codex',
+          resume_success: true,
+        },
+      }, { dbPath });
+
+      const db = createDatabase(dbPath);
+      db.prepare(`
+        UPDATE session_runs
+        SET plan_present = 1, verify_present = 1, review_present = 1, final_status = 'completed_clean'
+        WHERE run_id = 'run-manual-bridge'
+      `).run();
+      db.close();
+
+      const summary = summarizeCurrentHealth({
+        registryPath: path.join(dir, 'guardrail-candidates.jsonl'),
+        dbPath,
+      });
+      assert.ok(summary.groups.some(group => group.failure_pattern === 'manual_bridge_session_level_only'));
+
+      const formatted = formatHealthStatus(summary, { limit: 5 });
+      assert.ok(formatted.includes('manual_bridge_session_level_only'));
+      assert.ok(formatted.includes('provenance=telemetry'));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('projects session-level observability gaps when clean runs have no tool telemetry', () => {
+    const dir = createTempDir();
+    try {
+      const dbPath = path.join(dir, 'telemetry.db');
+      recordSessionEvent({
+        sessionId: 'session-clean-no-tools',
+        runId: 'run-clean-no-tools',
+        occurredAt: '2026-04-17T03:00:00.000Z',
+        eventType: 'session_started',
+        status: 'resumed',
+        repoRoot: '/tmp/repo',
+        cwd: '/tmp/repo',
+        metadata: {
+          resume_success: true,
+        },
+      }, { dbPath });
+
+      const db = createDatabase(dbPath);
+      db.prepare(`
+        UPDATE session_runs
+        SET plan_present = 1, verify_present = 1, review_present = 1, final_status = 'completed_clean'
+        WHERE run_id = 'run-clean-no-tools'
+      `).run();
+      db.close();
+
+      const summary = summarizeCurrentHealth({
+        registryPath: path.join(dir, 'guardrail-candidates.jsonl'),
+        dbPath,
+      });
+      assert.ok(summary.groups.some(group => group.failure_pattern === 'session_level_observability_only'));
     } finally {
       cleanup(dir);
     }

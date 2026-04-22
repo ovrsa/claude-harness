@@ -88,3 +88,10 @@ Next Action:
 - The older feature-eval workflow should move to a different command name if retained later.
 - In this harness, `/eval` is reserved for the acceptance gate of implementation and bug-fix work.
 - `/review-task` feeds `/eval`; `/verify` feeds `/eval`; neither replaces `/eval`.
+
+## Next Handoff
+
+- If `NEEDS WORK`, return to `/receive-review`, `/implement-task`, or `/build-fix` based on the blocker.
+- If `BLOCKED`, return to `/plan-task` or ask for the missing decision.
+- If `ACCEPT` and observe is required, ensure `observation-summary.md` is complete before commit.
+- If `ACCEPT` and observe is not required, proceed to the commit or branch-finishing path requested by the operator.

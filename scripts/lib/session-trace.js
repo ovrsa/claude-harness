@@ -32,7 +32,7 @@ function hasSqliteCli() {
   return sqliteCliAvailable;
 }
 
-const { ensureDir, getClaudeDir, getSessionIdShort } = require('./utils');
+const { ensureDir, getClaudeDir, getSessionIdShort, getRuntimeSessionId } = require('./utils');
 const {
   findTaskArtifacts,
   buildLifecycleState,
@@ -60,7 +60,7 @@ function normalizeString(value, fallback = '') {
 }
 
 function getSessionId() {
-  return normalizeString(process.env.CLAUDE_SESSION_ID, `session-${getSessionIdShort()}`);
+  return normalizeString(getRuntimeSessionId(), `session-${getSessionIdShort()}`);
 }
 
 function getRunId(sessionId = getSessionId()) {
@@ -1351,8 +1351,6 @@ function formatTraceStatus(summary = summarizeTraceStatus()) {
 }
 
 module.exports = {
-  SCHEMA_VERSION,
-  getTelemetryDir,
   getTelemetryDbPath,
   getRunId,
   getLatestRunState,
@@ -1362,8 +1360,6 @@ module.exports = {
   recordSessionEvent,
   recordLifecycleSnapshot,
   recordToolExecution,
-  summarizeTraceStatus,
   formatTraceStatus,
-  buildLifecycleSnapshot,
   classifyRunStatus,
 };
