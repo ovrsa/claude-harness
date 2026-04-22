@@ -99,13 +99,16 @@ function main() {
     assert(state.blocked.includes('missing observation-summary.md'), 'observation should be blocked');
 
     const context = buildArtifactContext(repoDir);
-    assert(context && context.includes('Active repository task artifacts'), 'artifact context should be built');
+    assert(context && context.includes('Active repository task chain'), 'compact artifact context should be built');
     assert(context.includes('plan_status=approved'), 'artifact context should include lifecycle state');
     assert(context.includes('review_required=true'), 'artifact context should include review requirement');
     assert(context.includes('current_phase=Phase 2: implementation'), 'artifact context should include session state');
+    assert(context.includes('detail=/chain-status'), 'artifact context should point to detail command');
+    assert(!context.includes('Lifecycle chain:'), 'artifact context should not include verbose lifecycle chain');
 
     const snapshot = buildArtifactSnapshot(repoDir);
     assert(snapshot && snapshot.includes('### Lifecycle State'), 'artifact snapshot should include lifecycle state');
+    assert(snapshot.includes('### Lifecycle Chain'), 'artifact snapshot should include verbose lifecycle chain');
     assert(snapshot.includes('### Session State'), 'artifact snapshot should include session state section');
 
     const permissionResult = runNode(
@@ -471,7 +474,7 @@ function main() {
       }
     );
     assert(sessionStartResult.status === 0, 'session-start should exit 0');
-    assert(sessionStartResult.stdout.includes('Active repository task artifacts'), 'session-start should surface repository artifacts');
+    assert(sessionStartResult.stdout.includes('Active repository task chain'), 'session-start should surface compact repository chain');
     assert(sessionStartResult.stdout.includes('review-summary.md'), 'session-start should surface review artifacts');
 
     console.log('PASS: harness lifecycle smoke checks');

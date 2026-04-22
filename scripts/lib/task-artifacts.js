@@ -761,50 +761,22 @@ function buildArtifactContext(repoRoot) {
   const artifacts = findTaskArtifacts(repoRoot);
   if (artifacts.length === 0) return null;
 
-  const lines = ['Active repository task artifacts:'];
-  for (const artifact of artifacts) {
-    const parts = [`- ${artifact.name}`];
-    if (artifact.title) parts.push(`title=${artifact.title}`);
-    if (artifact.status) parts.push(`status=${artifact.status}`);
-    lines.push(parts.join(' | '));
-    for (const line of artifact.preview) {
-      lines.push(`  ${line}`);
-    }
-  }
-
   const state = buildLifecycleState(artifacts);
-  lines.push('Lifecycle state:');
+  const artifactNames = artifacts.map(artifact => artifact.name).join(', ');
+  const lines = ['Active repository task chain:'];
+  lines.push(`- artifacts=${artifactNames}`);
   lines.push(`- plan_status=${state.planStatus}`);
   lines.push(`- review_required=${state.reviewRequired}`);
   lines.push(`- observe_required=${state.observeRequired}`);
-  lines.push(`- review_present=${state.hasReview}`);
-  lines.push(`- verification_present=${state.hasVerification}`);
-  lines.push(`- observation_present=${state.hasObservation}`);
-  lines.push(`- research_present=${state.hasResearch}`);
-  lines.push(`- progress_present=${state.progressPresent}`);
   lines.push(`- current_step=${state.currentStepId}`);
   lines.push(`- next_required_action=${state.nextRequiredAction}`);
   lines.push(`- blocked=${state.blocked.length > 0 ? state.blocked.join(', ') : 'none'}`);
-  lines.push('Lifecycle chain:');
-  for (const step of state.chain) {
-    lines.push(`- ${step.id}: ${step.status} | ${step.summary}`);
-  }
   if (state.progressPresent) {
-    lines.push('Session state:');
     lines.push(`- current_phase=${state.sessionState.currentPhase || 'unknown'}`);
-    lines.push(`- last_completed_step=${state.sessionState.lastCompletedStep || 'unknown'}`);
     lines.push(`- next_action=${state.sessionState.nextAction || (state.sessionState.nextActionExplicitNone ? 'none' : 'unknown')}`);
     lines.push(`- blockers=${formatListValue(state.sessionState.blockers)}`);
-    lines.push(`- delegated_work=${formatListValue(state.sessionState.delegatedWork)}`);
-    if (state.sessionState.automation.checkpoint.event) {
-      lines.push(`- checkpoint_event=${state.sessionState.automation.checkpoint.event}`);
-      lines.push(`- checkpoint_next_action=${state.sessionState.automation.checkpoint.suggestedNextAction || 'none'}`);
-    }
-    if (state.sessionState.automation.latestHandoff.agent) {
-      lines.push(`- latest_handoff_agent=${state.sessionState.automation.latestHandoff.agent}`);
-      lines.push(`- latest_handoff_next_action=${state.sessionState.automation.latestHandoff.nextAction || 'none'}`);
-    }
   }
+  lines.push('- detail=/chain-status');
 
   return lines.join('\n');
 }
