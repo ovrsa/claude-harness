@@ -18,6 +18,17 @@ const PROGRESS_SECTION_LATEST_CHECKPOINT = 'Latest Checkpoint';
 const PROGRESS_SECTION_LATEST_HANDOFF = 'Latest Delegated Handoff';
 const REVIEW_FINDING_PATTERN = /^(CRITICAL|HIGH|MEDIUM|LOW|INFO)\s*:\s+(.+)$/i;
 const OBSERVATION_EVIDENCE_SOURCE_PATTERN = /\b(browser|screenshot|log|logs|stderr|stdout|trace|traces|metric|metrics|health|process)\b/i;
+const PLAN_REQUIRED_HEADINGS = [
+  'Summary',
+  'Acceptance Criteria',
+  'Touched Files',
+  'Behavior Spec',
+  'Verify',
+  'Test Evidence Plan',
+  'Evaluate',
+  'Observe',
+  'Execution Todo',
+];
 const PROGRESS_PLANNING_PATTERNS = [
   /\bresearch\b/i,
   /\bplanning\b/i,
@@ -439,6 +450,57 @@ function parseVerificationState(content) {
   };
 }
 
+function parsePlanState(content) {
+  const sections = parseMarkdownSections(content);
+  const status = summarizeSectionStatus(sections, PLAN_REQUIRED_HEADINGS);
+  const missingValues = [];
+  const requiredSectionStates = {};
+
+  for (const heading of PLAN_REQUIRED_HEADINGS) {
+    const sectionState = parseSectionState(sections[heading]);
+    requiredSectionStates[heading] = sectionState;
+    if (!sectionState.hasEntries) missingValues.push(heading);
+  }
+
+  const behaviorSpec = sections['Behavior Spec'] || [];
+  const testEvidencePlan = sections['Test Evidence Plan'] || [];
+  const executionTodo = sections['Execution Todo'] || [];
+  const raw = String(content || '');
+  const hasGivenWhenThen =
+    /\bGiven\b/i.test(behaviorSpec.join('\n')) &&
+    /\bWhen\b/i.test(behaviorSpec.join('\n')) &&
+    /\bThen\b/i.test(behaviorSpec.join('\n'));
+  const hasCaseCoverage =
+    /\bnormal\b/i.test(behaviorSpec.join('\n')) &&
+    /\bboundary\b/i.test(behaviorSpec.join('\n')) &&
+    /\babnormal\b/i.test(behaviorSpec.join('\n'));
+  const hasTddEvidencePlan =
+    /\bRED command\b/i.test(testEvidencePlan.join('\n')) &&
+    /\bexpected failure\b/i.test(testEvidencePlan.join('\n')) &&
+    /\bGREEN command\b/i.test(testEvidencePlan.join('\n'));
+  const hasExecutionCheckboxes = executionTodo.some(line => /- \[[ xX]\]/.test(line));
+  const hasApproval = parseFrontmatter(raw).status === 'approved';
+  const complete =
+    status.complete &&
+    missingValues.length === 0 &&
+    hasGivenWhenThen &&
+    hasCaseCoverage &&
+    hasTddEvidencePlan &&
+    hasExecutionCheckboxes;
+
+  return {
+    missingValues,
+    requiredSectionStates,
+    hasGivenWhenThen,
+    hasCaseCoverage,
+    hasTddEvidencePlan,
+    hasExecutionCheckboxes,
+    hasApproval,
+    ...status,
+    complete,
+  };
+}
+
 function defaultSessionState() {
   return {
     currentPhase: '',
@@ -745,6 +807,7 @@ module.exports = {
   parseReviewState,
   parseObservationState,
   parseVerificationState,
+  parsePlanState,
   writeProgressCheckpoint,
   writeProgressDelegatedHandoff,
 };

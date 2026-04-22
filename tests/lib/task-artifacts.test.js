@@ -8,6 +8,7 @@ const assert = require('assert');
 
 const {
   parseProgressState,
+  parsePlanState,
   classifyProgressExecutionState,
   classifyProgressCompletionState,
 } = require('../../scripts/lib/task-artifacts');
@@ -29,6 +30,70 @@ function runTests() {
 
   let passed = 0;
   let failed = 0;
+
+  if (test('parses implementation-ready plan evidence fields', () => {
+    const plan = parsePlanState([
+      '---',
+      'status: approved',
+      '---',
+      '',
+      '# Plan',
+      '',
+      '## Summary',
+      '- implement the change',
+      '',
+      '## Acceptance Criteria',
+      '- behavior works',
+      '',
+      '## Touched Files',
+      '- src/example.js',
+      '',
+      '## Behavior Spec',
+      '- Given state',
+      '- When action',
+      '- Then result',
+      '- normal: standard case',
+      '- boundary: edge case',
+      '- abnormal: error case',
+      '',
+      '## Verify',
+      '- npm test',
+      '',
+      '## Test Evidence Plan',
+      '- RED command: npm test -- failing',
+      '- expected failure: assertion fails',
+      '- GREEN command: npm test',
+      '',
+      '## Evaluate',
+      '- review findings resolved',
+      '',
+      '## Observe',
+      '- required: no',
+      '',
+      '## Execution Todo',
+      '- [ ] write failing test',
+    ].join('\n'));
+
+    assert.strictEqual(plan.complete, true);
+    assert.strictEqual(plan.hasGivenWhenThen, true);
+    assert.strictEqual(plan.hasTddEvidencePlan, true);
+  })) passed++; else failed++;
+
+  if (test('detects incomplete plan evidence fields', () => {
+    const plan = parsePlanState([
+      '# Plan',
+      '',
+      '## Summary',
+      '- implement the change',
+      '',
+      '## Acceptance Criteria',
+      '- behavior works',
+    ].join('\n'));
+
+    assert.strictEqual(plan.complete, false);
+    assert.ok(plan.missingSections.includes('Behavior Spec'));
+    assert.strictEqual(plan.hasTddEvidencePlan, false);
+  })) passed++; else failed++;
 
   if (test('classifies planning-only progress state conservatively', () => {
     const progress = parseProgressState([

@@ -2271,6 +2271,15 @@ function runTests() {
     cleanupTestDir(testDir);
   })) passed++; else failed++;
 
+  console.log('\nvalidate-artifact-templates.js:');
+
+  if (test('passes on real artifact templates', () => {
+    const result = runValidator('validate-artifact-templates');
+    assert.strictEqual(result.code, 0, `Should pass, got stderr: ${result.stderr}`);
+    assert.ok(result.stdout.includes('Validated 4 artifact templates'),
+      `Should report artifact template validation, got: ${result.stdout}`);
+  })) passed++; else failed++;
+
   // Summary
   console.log(`\nResults: Passed: ${passed}, Failed: ${failed}`);
   process.exit(failed > 0 ? 1 : 0);

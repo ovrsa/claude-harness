@@ -70,7 +70,7 @@
     "lint:architecture": "depcruise --config .dependency-cruiser.js --include-only '^(hooks|scripts)' hooks scripts",
     "lint:repo": "npm run lint && npm run lint:unused && npm run lint:architecture",
     "claw": "node scripts/claw.js",
-    "test:core": "node scripts/ci/validate-runtime-surface.js && node scripts/ci/validate-hooks.js && node scripts/ci/validate-commands.js && node scripts/ci/validate-rules.js && node scripts/ci/validate-no-personal-paths.js && node scripts/ci/audit-harness-contract.js && node scripts/ci/smoke-harness-lifecycle.js && node tests/run-all.js",
+    "test:core": "node scripts/ci/validate-runtime-surface.js && node scripts/ci/validate-hooks.js && node scripts/ci/validate-commands.js && node scripts/ci/validate-rules.js && node scripts/ci/validate-artifact-templates.js && node scripts/ci/validate-no-personal-paths.js && node scripts/ci/audit-harness-contract.js && node scripts/ci/smoke-harness-lifecycle.js && node tests/run-all.js",
     "test:optional": "node scripts/ci/validate-agents.js && node scripts/ci/validate-skills.js",
     "test": "npm run test:core"
   },

@@ -117,6 +117,14 @@ echo "claude --dangerous"
 4. 大きな変更を一気に入れず、小さな reviewable batch に分ける
 5. 各 batch ごとに verify し、必要なら observe まで行う
 6. baseline test の失敗を新規実装の失敗と混同しない
+7. `worktree_required: true` の plan では、main worktree で implementation file を編集しない
+8. baseline verification の結果を `progress.md` または `verification-summary.md` に記録する
+
+## Enforcement Notes
+
+- `lifecycle-pre-edit` blocks implementation-code edits for `worktree_required: true` plans unless the current repository is a linked worktree.
+- If that block fires, run `/worktree-start` and continue in the printed `TARGET`.
+- Documentation-only edits in the parent session should keep the plan/review coordination role clear.
 
 ## Recommended Flow
 

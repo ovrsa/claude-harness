@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const {
+  parsePlanState,
   parseProgressState,
   classifyProgressExecutionState,
 } = require('../scripts/lib/task-artifacts');
@@ -39,6 +40,16 @@ function parseFrontmatter(md) {
   return out;
 }
 
+function isLinkedWorktree(repo) {
+  try {
+    const gitDir = execFileSync('git', ['-C', repo, 'rev-parse', '--git-dir'], { encoding: 'utf8' }).trim();
+    const commonDir = execFileSync('git', ['-C', repo, 'rev-parse', '--git-common-dir'], { encoding: 'utf8' }).trim();
+    return path.resolve(repo, gitDir) !== path.resolve(repo, commonDir);
+  } catch {
+    return false;
+  }
+}
+
 (async () => {
   const input = await readStdin();
   const fp = input.tool_input && input.tool_input.file_path;
@@ -60,6 +71,26 @@ function parseFrontmatter(md) {
     process.exit(2);
   }
   if ((meta.task_type === 'non_trivial' || meta.worktree_required === 'true')) {
+    if (meta.worktree_required === 'true') {
+      const planState = parsePlanState(plan);
+      if (!planState.complete) {
+        const details = [];
+        if (planState.missingSections.length > 0) details.push(`Missing sections: ${planState.missingSections.join(', ')}`);
+        if (planState.missingValues.length > 0) details.push(`Empty sections: ${planState.missingValues.join(', ')}`);
+        if (!planState.hasGivenWhenThen) details.push('Behavior Spec needs Given / When / Then');
+        if (!planState.hasCaseCoverage) details.push('Behavior Spec needs normal / boundary / abnormal cases');
+        if (!planState.hasTddEvidencePlan) details.push('Test Evidence Plan needs RED command, expected failure, and GREEN command');
+        if (!planState.hasExecutionCheckboxes) details.push('Execution Todo needs checkbox tasks');
+        console.error(`[Lifecycle Guardrail] plan.md is not implementation-ready. ${details.join(' | ')}`);
+        process.exit(2);
+      }
+
+      if (!isLinkedWorktree(repo)) {
+        console.error('[Lifecycle Guardrail] plan.md requires an isolated worktree. Run /worktree-start and edit implementation files from the linked worktree.');
+        process.exit(2);
+      }
+    }
+
     const hasResearch = fs.existsSync(path.join(repo, 'research.md')) || fs.readdirSync(repo).some(name => /_research\.md$/.test(name));
     if (!hasResearch) {
       console.error('[Lifecycle Guardrail] Missing research artifact for non-trivial task. Create research.md first.');

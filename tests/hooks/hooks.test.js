@@ -4211,6 +4211,145 @@ Some random content without the expected ### Context to Load section
     }
   })) passed++; else failed++;
 
+  if (await asyncTest('lifecycle-pre-edit blocks worktree-required edits when plan evidence is incomplete', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Edit guard implementation-ready test',
+        'status: approved',
+        'task_type: non_trivial',
+        'worktree_required: true',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Edit guard implementation-ready test',
+        '',
+        '## Summary',
+        '- edit the code'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 2: implementation',
+        '',
+        '## Last Completed Step',
+        '- Approved the plan',
+        '',
+        '## Next Action',
+        '- Edit lifecycle guardrails',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
+      );
+      assert.strictEqual(result.code, 2, `Expected exit 2, got ${result.code}`);
+      assert.ok(result.stderr.includes('not implementation-ready'), `Expected implementation-ready guidance, got: ${result.stderr}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
+  if (await asyncTest('lifecycle-pre-edit blocks worktree-required edits in the main worktree', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Edit guard worktree enforcement test',
+        'status: approved',
+        'task_type: non_trivial',
+        'worktree_required: true',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Edit guard worktree enforcement test',
+        '',
+        '## Summary',
+        '- edit the code',
+        '',
+        '## Acceptance Criteria',
+        '- the guard blocks main worktree implementation edits',
+        '',
+        '## Touched Files',
+        '- example.js',
+        '',
+        '## Behavior Spec',
+        '- Given an approved worktree-required plan',
+        '- When an implementation file is edited in the main worktree',
+        '- Then the edit is blocked',
+        '- normal: linked worktree edits continue',
+        '- boundary: documentation-only edits bypass this code-file hook',
+        '- abnormal: main worktree implementation edits fail',
+        '',
+        '## Verify',
+        '- node tests/hooks/hooks.test.js --allow-known-baseline',
+        '',
+        '## Test Evidence Plan',
+        '- RED command: node tests/hooks/hooks.test.js --allow-known-baseline',
+        '- expected failure: main worktree edit is not blocked',
+        '- GREEN command: node tests/hooks/hooks.test.js --allow-known-baseline',
+        '',
+        '## Evaluate',
+        '- review hook enforcement',
+        '',
+        '## Observe',
+        '- required: no',
+        '',
+        '## Execution Todo',
+        '- [ ] add worktree enforcement'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 2: implementation',
+        '',
+        '## Last Completed Step',
+        '- Approved the plan',
+        '',
+        '## Next Action',
+        '- Edit lifecycle guardrails',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
+      );
+      assert.strictEqual(result.code, 2, `Expected exit 2, got ${result.code}`);
+      assert.ok(result.stderr.includes('requires an isolated worktree'), `Expected worktree guidance, got: ${result.stderr}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
   if (await asyncTest('lifecycle-pre-edit accepts hook-managed fallback state when operator next action is blank', async () => {
     const testDir = createTestDir();
     const repoDir = path.join(testDir, 'repo');

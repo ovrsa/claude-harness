@@ -2,11 +2,11 @@
 
 ## Scope
 
-- 
+- approved task verification
 
 ## Commands Run
 
-- 
+- pending: replace with rerunnable command evidence before completion
 
 ## Verification Outcome
 

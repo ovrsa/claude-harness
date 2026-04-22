@@ -2,7 +2,7 @@
 
 ## Review Scope
 
-- 
+- plan/spec compliance, code quality, and test adequacy for the approved task
 
 ## Plan Compliance
 

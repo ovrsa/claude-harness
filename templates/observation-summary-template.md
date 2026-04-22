@@ -2,7 +2,7 @@
 
 ## Behavior Checked
 
-- 
+- pending: replace with the concrete behavior observed before completion
 
 ## Method
 

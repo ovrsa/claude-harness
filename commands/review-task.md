@@ -46,7 +46,10 @@ Use this command for the `Review` phase before commit.
     - `Plan Compliance`: approved scope, interface expectations, and acceptance criteria
     - `Code Quality`: correctness, maintainability, security, regressions
     - `Test Adequacy`: RED/GREEN evidence, BDD scenarios, integration/E2E coverage, observation evidence when required
-11. When the same class of failure looks promotion-worthy, record it in `Guardrail Candidates` with:
+11. Run review in two passes for non-trivial implementation:
+    - pass 1: plan/spec compliance and missing acceptance evidence
+    - pass 2: code quality, maintainability, security, regressions, and test adequacy
+12. When the same class of failure looks promotion-worthy, record it in `Guardrail Candidates` with:
     - `failure_pattern`
     - `source`
     - `recommended_layer`

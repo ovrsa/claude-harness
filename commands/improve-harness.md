@@ -22,6 +22,12 @@ Use this command when the operator explicitly wants the harness to improve itsel
 6. If useful for continuity, write or update `health-summary.md` and `triage-summary.md` before presenting the recommendation.
 7. Keep the output focused on actionable next improvements rather than exhaustive candidate review.
 8. Distinguish artifact-derived candidates from telemetry-derived candidates when that provenance materially affects the recommendation.
+9. For the top recommendation, draft the next implementation task shape:
+   - target files
+   - recommended promotion layer
+   - expected validator or test
+   - rollback condition
+10. Prefer exactly one implementation-ready next task when one candidate is clearly highest leverage.
 
 ## Hard guardrails
 
@@ -29,3 +35,4 @@ Use this command when the operator explicitly wants the harness to improve itsel
 - do not directly edit hooks, skills, or core policy files unless the operator explicitly asks for implementation after reviewing the recommendation
 - prefer `docs` or `command` when confidence is not yet high
 - skip one-off or stale items unless the severity clearly justifies immediate action
+- do not recommend more than one hook or skill promotion in the same improvement pass
