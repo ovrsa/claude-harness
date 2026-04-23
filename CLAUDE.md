@@ -4,8 +4,8 @@ This file is the thin operating entrypoint for my personal agent harness.
 
 ## Core Rule
 
-`~/.claude` is the source of truth for lifecycle behavior.
-Future improvements should be implemented into `~/.claude` directly instead of introducing a second canonical source.
+`~/.claude` is the source of truth for the local control layer.
+Future improvements to telemetry, permissions, adapters, and guardrails should land here directly instead of introducing a second local authority.
 
 - hooks live in `~/.claude/hooks/` and `~/.claude/scripts/hooks/`
 - reusable commands live in `~/.claude/commands/`
@@ -13,9 +13,9 @@ Future improvements should be implemented into `~/.claude` directly instead of i
 - templates live in `~/.claude/templates/`
 
 `~/.codex` is a runtime bridge, not a second harness.
-External frameworks, plugin packs, and upstream repos may inform local improvements, but they are never the canonical source of lifecycle behavior.
+External frameworks, plugin packs, and upstream repos may inform local improvements, but they must remain observable through the local control layer.
 
-Superpowers, when installed, is treated as an implementation discipline plugin only. It may guide TDD, small-batch execution, and review habits inside `/implement-task`, but it must not replace the local artifact chain, approval gates, worktree gates, review, verify, observe, commit gates, or SQLite tracing. See `~/.claude/docs/superpowers-adoption.md`.
+Superpowers, when installed, is the default development engine for planning, execution, worktrees, TDD, review workflow, verification-before-completion, and branch finishing. `~/.claude` remains the thin governance, telemetry, permission, session-continuity, and improvement layer around it. See `~/.claude/docs/superpowers-adoption.md`.
 
 Active repositories should expose a thin repo-local map, preferably root `AGENTS.md`, that points to the real truth sources without duplicating the lifecycle.
 
@@ -33,15 +33,22 @@ Completion model:
 - `verify` proves rerunnable checks passed
 - `evaluate` proves the work is acceptable to accept
 - `observe` proves runtime behavior when changed behavior needs concrete evidence
+- the weight of these gates is selected by task track: `trivial`, `standard`, or `heavy-risky`
 - recurring failures should be recorded as `guardrail candidates` and later promoted into the narrowest durable layer that can prevent them
 - health and triage should summarize recurring candidates into explicit next-task recommendations before broader automation is added
 
-## Required Artifact Chain
+## Track-Based Artifact Chain
 
-For any non-trivial task, keep task state in repository files instead of chat only.
+Use the lightest artifact chain that preserves correctness.
+
+- `trivial`: context check plus verification of the changed surface
+- `standard`: Superpowers planning/execution plus verification evidence and a lightweight acceptance summary
+- `heavy-risky`: explicit approval, worktree isolation, review, verification, residual-risk acceptance, and observation when behavior changed
+
+Local artifacts remain available when needed:
 
 - `research.md` for prior art, options, and risks
-- `plan.md` for approved execution intent
+- `plan.md` for approved execution intent when explicit approval is required
 - `review-summary.md` for acceptance findings and residual risks
 - `verification-summary.md` for rerunnable verification evidence
 - `observation-summary.md` when runtime or UI behavior changed
@@ -59,7 +66,8 @@ Repository artifacts remain the human-readable control surface and approval surf
 
 ## Execution Rules
 
-- do not implement before an approved `plan.md`
+- use Superpowers as the default engine for standard and heavy-risky development work when it is available
+- do not implement heavy-risky work before explicit approval
 - do not skip review or evaluate for implementation and bug-fix work
 - do not commit before `verification-summary.md`
 - do not treat verification as a substitute for evaluation
@@ -81,9 +89,9 @@ Repository artifacts remain the human-readable control surface and approval surf
 
 ## Preferred Commands
 
-- `/research` before non-trivial implementation
-- `/plan` to decide the approach and get human confirmation
-- `/plan-task` when a repository `plan.md` artifact is required by lifecycle hooks
+- `/execute-plan` as the local wrapper around Superpowers plan execution
+- `/research` and `/plan` for conversational scoping when requirements are unclear
+- `/plan-task` only when a local `plan.md` artifact is required or Superpowers is unavailable
 - `/review-task` to record findings and residual risks before acceptance
 - `/eval` to decide whether implementation or bug-fix work is acceptable to accept
 - `/verify` before completion or commit

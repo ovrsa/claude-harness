@@ -1,10 +1,12 @@
 ---
-description: Review current changes before commit. Feed the acceptance gate with findings, residual risks, and missing verify/observe evidence.
+description: Local durable review fallback for recording findings, residual risks, and missing verify/observe evidence.
 ---
 
 # Review Task
 
-Use this command for the `Review` phase before commit.
+Use this command when local durable review evidence is needed.
+
+Superpowers review workflow is the default for standard and heavy-risky work when installed. `/review-task` remains the local fallback or audit surface when unresolved findings, residual risks, or local commit gates need a repository artifact.
 
 ## Required behavior
 
@@ -57,7 +59,8 @@ Use this command for the `Review` phase before commit.
 
 ## Relationship To Other Commands
 
-- `/review-task` is the primary review phase for implementation and bug-fix work.
+- Superpowers review is the preferred review workflow when available.
+- `/review-task` is the local durable review fallback for implementation and bug-fix work.
 - `/verify` is the mechanical gate that comes before acceptance.
 - `/eval` is the acceptance decision that consumes `review-summary.md` and `verification-summary.md`.
 - `review-summary.md` should make the acceptance question easier to answer, not duplicate verification output.

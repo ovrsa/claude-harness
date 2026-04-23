@@ -723,6 +723,70 @@ async function runTests() {
     cleanupTestDir(testDir);
   })) passed++; else failed++;
 
+  console.log('\ncost-tracker.js:');
+
+  if (await asyncTest('records runtime token usage to JSONL and SQLite', async () => {
+    const testDir = createTestDir();
+    const stdinJson = JSON.stringify({
+      model: 'claude-sonnet-4-5',
+      usage: {
+        input_tokens: 120,
+        output_tokens: 30
+      }
+    });
+    const result = await runScript(path.join(scriptsDir, 'cost-tracker.js'), stdinJson, {
+      HOME: testDir,
+      CLAUDE_SESSION_ID: 'cost-session-1'
+    });
+
+    assert.strictEqual(result.code, 0);
+    assert.strictEqual(result.stdout, stdinJson);
+
+    const costsPath = path.join(testDir, '.claude', 'metrics', 'costs.jsonl');
+    const row = JSON.parse(fs.readFileSync(costsPath, 'utf8').trim());
+    assert.strictEqual(row.input_tokens, 120);
+    assert.strictEqual(row.output_tokens, 30);
+
+    const trace = require('../../scripts/lib/session-trace');
+    const dbPath = path.join(testDir, '.claude', 'telemetry', 'telemetry.db');
+    const db = trace.createDatabase(dbPath);
+    const event = db.prepare("SELECT status, metadata_json FROM session_events WHERE event_type = 'token_usage_observed'").get();
+    db.close();
+    const metadata = JSON.parse(event.metadata_json);
+    assert.strictEqual(event.status, 'observed');
+    assert.strictEqual(metadata.token_source, 'runtime_payload');
+    assert.strictEqual(metadata.input_tokens, 120);
+    assert.strictEqual(metadata.output_tokens, 30);
+
+    cleanupTestDir(testDir);
+  })) passed++; else failed++;
+
+  if (await asyncTest('records missing token usage without reporting zero tokens', async () => {
+    const testDir = createTestDir();
+    const stdinJson = JSON.stringify({ model: 'unknown' });
+    const result = await runScript(path.join(scriptsDir, 'cost-tracker.js'), stdinJson, {
+      HOME: testDir,
+      CLAUDE_SESSION_ID: 'cost-session-2'
+    });
+
+    assert.strictEqual(result.code, 0);
+    assert.strictEqual(result.stdout, stdinJson);
+
+    const trace = require('../../scripts/lib/session-trace');
+    const dbPath = path.join(testDir, '.claude', 'telemetry', 'telemetry.db');
+    const db = trace.createDatabase(dbPath);
+    const event = db.prepare("SELECT status, metadata_json FROM session_events WHERE event_type = 'token_usage_observed'").get();
+    db.close();
+    const metadata = JSON.parse(event.metadata_json);
+    assert.strictEqual(event.status, 'missing');
+    assert.strictEqual(metadata.token_source, 'missing');
+    assert.strictEqual(metadata.input_tokens, null);
+    assert.strictEqual(metadata.output_tokens, null);
+    assert.strictEqual(metadata.estimated_cost_usd, null);
+
+    cleanupTestDir(testDir);
+  })) passed++; else failed++;
+
   // evaluate-session.js: whitespace tolerance regression test
   if (await asyncTest('counts user messages with whitespace in JSON (regression)', async () => {
     const testDir = createTestDir();

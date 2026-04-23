@@ -1,36 +1,123 @@
-# Superpowers Adoption Boundary
+# Superpowers Primary Engine Boundary
 
-`~/.claude` is the parent harness. Superpowers may be installed as an external implementation plugin, but it is not the canonical lifecycle.
+`~/.claude` uses Superpowers as the default development engine when it is installed.
+
+Superpowers owns the mechanics of planning, worktree setup, implementation, TDD, review workflow, verification-before-completion, and branch finishing.
+
+`~/.claude` owns the thin control layer around that engine: runtime bridging, permissions, telemetry, session continuity, guardrail candidates, and periodic improvement.
 
 ## Division Of Responsibility
 
-- `~/.claude` owns business lifecycle, approval, artifact chain, worktree gates, review, verify, observe, commit gates, Linear integration, and SQLite tracing.
-- Superpowers owns implementation discipline during approved execution: small tasks, RED/GREEN/REFACTOR, plan execution, checkpoints, and review habits.
+### Superpowers Owns
 
-## Recommended Flow
+- brainstorming when requirements are unclear
+- writing implementation plans
+- executing plans
+- subagent-driven development when available
+- git worktree setup
+- TDD / RED-GREEN-REFACTOR discipline
+- code review request and review feedback handling
+- verification before completion
+- finishing a development branch
 
-1. Use local `/research-task` and `/plan-task` to produce repository artifacts.
-2. Get human approval in `plan.md`.
-3. Use local `/worktree-start` for non-trivial work.
-4. During `/implement-task`, apply `superpowers-implementation-discipline`.
-5. Return to local `/review-task`, `/verify`, `/eval`, and observation gates before commit.
+### `~/.claude` Owns
+
+- Claude Code / Codex / Cursor adapter rules
+- session start/end tracing
+- SQLite runtime state and resume hints
+- permission and destructive-action boundaries
+- repo-local `AGENTS.md` routing
+- track selection rules
+- guardrail candidate capture
+- health / triage / improve-harness loops
+- pipeline metrics definition
+
+## Default Track Model
+
+Use the lightest track that preserves correctness.
+
+- `trivial`
+  - small docs, comments, typo, or behavior-neutral edits
+  - Superpowers optional
+  - no heavy research or planning artifact unless hooks require it
+  - verify the changed surface
+
+- `standard`
+  - normal feature, bug fix, or multi-file change
+  - use Superpowers planning and execution by default
+  - capture telemetry and verification evidence
+  - write a lightweight acceptance summary
+  - observe only when behavior changed
+
+- `heavy-risky`
+  - auth, payment, permissions, data model, broad refactor, UI/backend combined, or rollout-sensitive work
+  - require explicit approval before execution
+  - use worktree isolation
+  - use Superpowers subagent-driven development when useful
+  - require review, verification, residual-risk acceptance, and observation when behavior changed
+
+## Verification Scope Policy
+
+Verification scope is selected by track and recorded as evidence; SQLite telemetry is a measurement surface, not a correctness gate.
+
+- `trivial`: verify the changed surface only. Prefer targeted searches, doc validators, or a directly related unit check over a full suite when later planned work is intentionally red.
+- `standard`: run the checks named in the plan plus related tests for the touched surface. Add smoke coverage when the change crosses module or runtime boundaries.
+- `heavy-risky`: run the relevant full suite, review/eval evidence, and observation evidence when runtime, UI, integration, permission, data, or rollout behavior changed.
+
+If a verification scope is narrower than the full suite, state why it is track-appropriate in the final report or `verification-summary.md`.
+
+## Default Flow
+
+```text
+Human / Trigger
+  -> task, issue, spec, annotation, product input
+
+Thin .claude Preflight
+  -> session start tracing
+  -> repo-local AGENTS.md routing
+  -> permission class
+  -> track selection
+
+Superpowers Engine
+  -> brainstorming when unclear
+  -> writing-plans for standard/heavy work
+  -> using-git-worktrees when needed
+  -> executing-plans or subagent-driven-development
+  -> test-driven-development
+  -> requesting/receiving-code-review
+  -> verification-before-completion
+  -> finishing-a-development-branch
+
+Thin .claude Postflight
+  -> session end tracing
+  -> metrics capture
+  -> guardrail candidates when warranted
+  -> health / triage / improve-harness on explicit request
+```
+
+## Local Command Relationship
+
+- `/execute-plan` is the local wrapper around Superpowers plan execution.
+- `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are compatibility or fallback surfaces when Superpowers is unavailable or the operator explicitly wants manual local control.
+- `/verify`, `/eval`, and `observation-summary.md` remain available as local evidence surfaces, but their weight depends on the selected track.
 
 ## Installation Preference
 
-Install Superpowers as a plugin. Do not clone or copy the Superpowers repository into `~/.claude`.
+Install Superpowers as a plugin or skill on each device.
 
-Keep any local clone outside the harness, for example:
+Do not vendor-copy the Superpowers repository into `~/.claude`.
+
+If a local clone is useful for reading or comparison, keep it outside the harness, for example:
 
 ```text
 /Users/kyo/development/references/superpowers
 ```
 
-Use local clones only for reading, comparison, and selective adaptation.
-
 ## Guardrails
 
-- Do not duplicate lifecycle rules from Superpowers into `CLAUDE.md`.
-- Do not allow Superpowers to bypass `plan.md` approval.
-- Do not allow Superpowers to bypass `worktree_required: true`.
-- Do not replace local review, verification, observation, or SQLite trace gates.
-- Promote borrowed patterns only when they are stable and useful in local work.
+- Do not let Superpowers bypass local permission policy.
+- Do not let Superpowers auto-commit, push, create PRs, deploy, or run destructive commands without explicit authorization.
+- Do not use local `.claude` commands as a parallel default planning/execution engine when Superpowers is available.
+- Do not require heavyweight local artifacts for trivial tasks.
+- Do not use SQLite telemetry as a substitute for immediate correctness checks.
+- Record recurring failures as guardrail candidates and review them through health/triage instead of promoting them automatically.

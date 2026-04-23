@@ -1,8 +1,8 @@
 # Harness Architecture
 
-`~/.claude` is the canonical harness implementation.
+`~/.claude` is the canonical local control layer.
 
-Use this file as the authoritative map for how the personal harness is organized.
+Use this file as the authoritative map for how the personal control layer is organized.
 
 For the fastest end-to-end summary of the current loop, start with `OPERATING_MODEL.md`, then use `commands/COMMANDS.md` for the grouped command surface, and return here for the deeper ownership and gate semantics.
 
@@ -14,22 +14,18 @@ The harness is split into five layers:
 
 1. **Invariant entry layer**
    - short always-loaded instructions
-   - required artifact chain
+   - track selection
    - high-level done criteria
 
 2. **Lifecycle enforcement layer**
    - hook-owned hard boundaries
-   - edit/commit ordering
+   - edit/commit ordering when local gates are active
    - permission and escalation policy
+   - Superpowers wrapper boundaries
 
 3. **Artifact and session continuity layer**
    - SQLite runtime state in `telemetry/telemetry.db`
-   - `research.md`
-   - `plan.md`
-   - `review-summary.md`
-   - `verification-summary.md`
-   - `observation-summary.md`
-   - `progress.md`
+   - local task artifacts when the selected track requires them
    - `SESSION.md`
 
 4. **Repo-local map layer**
@@ -41,12 +37,13 @@ The harness is split into five layers:
 - `.codex`, Cursor, and other runtimes consume `.claude`
 - adapters inherit the workflow, not redefine it
 
-External implementation plugins such as Superpowers belong in this adapter layer. They may provide implementation discipline during approved execution, but they do not own lifecycle authority.
+Superpowers belongs in the development-engine layer consumed by this control layer. It owns development mechanics; `.claude` owns observability, permissions, session continuity, and improvement.
 
 ## Design Principles
 
-- Plan-first over prompt-first
-- Artifact-first over chat-history-first
+- Superpowers-first for development mechanics
+- Track-first over one-size-fits-all gates
+- Artifact-when-useful over artifact-every-time
 - DB-first runtime state over Markdown-only checkpoints
 - Session-first over transcript-first continuity
 - Constrained autonomy over unbounded autonomy
@@ -57,7 +54,7 @@ External implementation plugins such as Superpowers belong in this adapter layer
 ## Ownership
 
 - `~/.claude/`
-  Owns the canonical control plane plus device-local runtime state.
+  Owns the canonical local control plane plus device-local runtime state.
   Future harness changes should land here directly; mirrors, archives, plugins, and upstream repos are reference or distribution layers only.
 
 - `CLAUDE.md`
@@ -69,6 +66,7 @@ External implementation plugins such as Superpowers belong in this adapter layer
 - `commands/`
   Own workflow entrypoints.
   `commands/COMMANDS.md` is the grouped summary of that surface, not a replacement for the command docs.
+  `/execute-plan` is the local wrapper around Superpowers execution. `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility surfaces.
 - root `AGENTS.md` in active repos
   Owns thin repo-local orientation and truth-source routing only.
 - `AUTONOMY_POLICY.md`
@@ -78,12 +76,18 @@ External implementation plugins such as Superpowers belong in this adapter layer
 - `SESSION.md`
   Owns session state, checkpoint semantics, and handoff contracts.
 
-## Required Artifact Chain
+## Track-Based Artifact Chain
 
-For non-trivial work, state must live in repository artifacts:
+Use the lightest artifact chain that preserves correctness:
+
+- `trivial`: context check plus verification of the changed surface
+- `standard`: Superpowers plan/execution plus verification evidence and lightweight acceptance summary
+- `heavy-risky`: explicit approval, worktree isolation, review, verification, residual-risk acceptance, and observation when behavior changed
+
+Local artifacts remain available when useful:
 
 - `research.md` for prior art, options, constraints, and risks
-- `plan.md` for approved execution intent
+- `plan.md` for explicit local approval intent
 - `verification-summary.md` for rerunnable verification evidence
 - `review-summary.md` for acceptance findings and residual risks
 - `observation-summary.md` when runtime or user-visible behavior changed
@@ -102,7 +106,7 @@ Optional promotion-oriented sections may also exist inside the primary artifacts
 
 ## Completion Model
 
-Implementation and bug-fix work use three distinct gates:
+Implementation and bug-fix work use three distinct concepts. Their weight depends on the selected track:
 
 1. `verify`
    - answers: "did the programmed checks pass?"
@@ -119,11 +123,30 @@ Implementation and bug-fix work use three distinct gates:
    - artifact: `observation-summary.md`
    - scope: runtime, UI, or system interactions that tests alone do not fully prove
 
-Work is done only when all required gates have passed. `verify` and `evaluate` are required for implementation and bug-fix work. `observe` is additionally required when behavior changes need runtime evidence.
+Work is done only when the required checks for the selected track have passed. Verification and acceptance evaluation are always conceptually required; observation is required only when tests/build do not prove changed runtime, UI, or integration behavior.
+
+## Execution Modes
+
+Development execution has one preferred engine plus local fallbacks:
+
+1. Superpowers
+   - default for standard and heavy-risky work
+   - owns planning, worktrees, TDD, execution, review workflow, verification-before-completion, and branch finishing
+
+2. `/execute-plan`
+   - local wrapper/adapter around Superpowers `executing-plans` or `subagent-driven-development`
+   - preserves `.claude` permission, telemetry, and stop conditions
+
+3. Local fallback commands
+   - `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start`
+   - used when Superpowers is unavailable or the operator explicitly wants manual local control
+
+Humans intervene for strategy, ambiguous scope changes, residual risk, and release actions. Routine implementation sequencing is engine-owned when it remains inside approved scope and permission boundaries.
 
 ## Canonical Rules
 
-- Do not implement before an approved `plan.md`
+- Do not use local fallback commands as a competing default when Superpowers is available
+- Do not use `/execute-plan` to bypass Superpowers readiness checks, local permissions, or explicit approval for heavy-risky work
 - Do not commit before `verification-summary.md`
 - Do not treat verification as a substitute for evaluation
 - Do not treat review as complete while acceptance blockers remain unresolved
@@ -236,7 +259,7 @@ It must not:
 
 ## External Sources Policy
 
-External frameworks such as Superpowers may be mined for ideas, workflow patterns, or one-time skill harvests.
+External frameworks other than Superpowers may be mined for ideas, workflow patterns, or one-time skill harvests.
 
 - they are reference sources only
 - they must not become the live source of truth for `.claude`

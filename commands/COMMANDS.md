@@ -6,18 +6,18 @@ Use it as the fastest command map after `CLAUDE.md`. It does not replace the com
 
 ## Preferred Lifecycle Path
 
-Use these commands by default for implementation and bug-fix work:
+Use Superpowers by default for standard and heavy-risky implementation and bug-fix work.
 
-- `/research` for conversational scoping before non-trivial work
-- `/plan` to decide the approach and get approval
-- `/plan-task` when the repository needs an approved `plan.md`
-- `/review-task` to record findings and residual risks
-- `/verify` to capture rerunnable checks
-- `/eval` as the acceptance gate that decides whether the work is acceptable to accept
+- `/execute-plan` as the local wrapper around Superpowers `executing-plans` or `subagent-driven-development`
+- `/research` and `/plan` for conversational scoping when requirements are unclear
+- `/verify` to capture local rerunnable evidence when needed
+- `/eval` to record local acceptance judgment when needed
+
+Local `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility commands when Superpowers is unavailable or the operator explicitly wants manual local control.
 
 ## Core Lifecycle Pairs
 
-These pairs separate conversational guidance from repository artifacts:
+These pairs separate conversational guidance from repository artifacts. They are local fallback paths, not the standard Superpowers path.
 
 - `/research` is the conversational research entrypoint; `/research-task` creates or updates repository `research.md`
 - `/plan` is the conversational planning entrypoint; `/plan-task` creates or updates repository `plan.md`
@@ -26,7 +26,7 @@ These pairs separate conversational guidance from repository artifacts:
 
 ### Review, Verify, Evaluate
 
-Primary lifecycle surface for implementation and bug-fix work.
+Local evidence surface for implementation and bug-fix work.
 
 - `/review-task`
 - `/receive-review`
@@ -35,14 +35,17 @@ Primary lifecycle surface for implementation and bug-fix work.
 
 ### Implementation Helpers
 
-Used while moving an approved task through execution.
+Used while moving a task through execution when Superpowers is unavailable or local wrapper behavior is needed.
 
+- `/execute-plan`
 - `/implement-task`
 - `/build-fix`
 - `/test-coverage`
 - `/code-review`
 
-`/implement-task` may apply `superpowers-implementation-discipline` during approved execution. The local lifecycle remains authoritative.
+`/execute-plan` is the preferred local wrapper. It should invoke Superpowers execution semantics rather than reimplement a parallel home-grown runner.
+
+`/implement-task` remains the conservative manual fallback and should not be the default when Superpowers is installed.
 
 ### Repo Orientation And Maintenance
 
@@ -87,6 +90,6 @@ Optional surfaces for specialized operator workflows. Use only when the task cle
 
 ## Visibility Tiers
 
-- `primary`: default lifecycle commands most sessions should prefer
+- `primary`: default local wrappers and evidence surfaces most sessions should prefer
 - `secondary`: useful but not required for the normal implementation path
 - `optional`: specialized packs and utilities outside the core harness path

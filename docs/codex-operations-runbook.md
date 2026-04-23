@@ -1,17 +1,19 @@
 # Codex Operations Runbook
 
-`Codex` でこの harness を使うときの最小運用手順。
+`Codex` で thin `.claude` control layer を使うときの最小運用手順。
 
 目的は 2 つです。
 
 - `telemetry.db` に session を確実に残す
-- task artifact と `Guardrail Candidates` を改善ループに流す
+- Superpowers 実行を `.claude` の permission / telemetry / guardrail layer から観測する
+- 必要な時だけ task artifact と `Guardrail Candidates` を改善ループに流す
 
 ## Core Rule
 
-`Codex` は `~/.claude` の bridge であり、第二の lifecycle source of truth ではありません。
+`Codex` は `~/.claude` の bridge であり、第二の local control layer ではありません。
 
-- lifecycle の正本は `CLAUDE.md`, `OPERATING_MODEL.md`, `HARNESS.md`
+- local control layer の正本は `CLAUDE.md`, `OPERATING_MODEL.md`, `HARNESS.md`
+- standard/heavy work の development engine は Superpowers
 - `Codex` 側では local policy を再定義しない
 - まず `session capture` を安定させ、その後に improvement を回す
 
@@ -34,19 +36,19 @@ node ~/.claude/scripts/hooks/runtime-session-start.js
 通常の順序はこれです。
 
 1. repo-local `AGENTS.md` を読む
-2. non-trivial task なら `research.md` と `plan.md` を作る
-3. approved plan に沿って実装する
-4. `review-summary.md` と `verification-summary.md` を残す
-5. changed behavior があるなら `observation-summary.md` を残す
+2. task track を選ぶ: `trivial`, `standard`, `heavy-risky`
+3. standard/heavy work は Superpowers planning/execution を使う
+4. `.claude` は permission, telemetry, session continuity, guardrail capture を担当する
+5. 必要な時だけ `review-summary.md`, `verification-summary.md`, `observation-summary.md` を残す
 
-`Codex` でも lifecycle は Claude Code と同じです。違うのは hook parity だけです。
+`Codex` でも control layer は Claude Code と同じです。違うのは hook parity だけです。
 
 ## Guardrail Capture
 
 次のどれかがあったら、artifact に `Guardrail Candidates` を残します。
 
 - 同じ判断を何度も人間が補正した
-- plan 不足で手戻りした
+- planning / execution の境界不足で手戻りした
 - verify や observe の抜け漏れが起きた
 - recurring な docs / command / hook 不足が見えた
 
@@ -117,7 +119,7 @@ node ~/.claude/scripts/trace-status.js
 ## Short Checklist
 
 - start: `runtime-session-start.js`
-- task artifacts: `research / plan / review / verification / observation`
+- task artifacts: selected track に必要な `research / plan / review / verification / observation`
 - optional: `Guardrail Candidates`
 - end: `runtime-session-end.js`
 - improvement request がある時だけ `/improve-harness`

@@ -236,6 +236,56 @@ function runTests() {
     }
   })) passed++; else failed++;
 
+  if (test('summarizes token usage events without treating missing usage as zero', () => {
+    const dir = createTempDir();
+    try {
+      const dbPath = path.join(dir, 'telemetry.db');
+      const stdout = runNode(`
+        const { recordSessionEvent, summarizeTraceStatus, formatTraceStatus } = require(${JSON.stringify(SESSION_TRACE_PATH)});
+        recordSessionEvent({
+          sessionId: 'session-token',
+          runId: 'run-token',
+          eventType: 'token_usage_observed',
+          status: 'observed',
+          repoRoot: '/tmp/repo',
+          cwd: '/tmp/repo',
+          metadata: {
+            token_source: 'runtime_payload',
+            input_tokens: 100,
+            output_tokens: 25,
+            estimated_cost_usd: 0.001
+          }
+        }, { dbPath: ${JSON.stringify(dbPath)} });
+        recordSessionEvent({
+          sessionId: 'session-missing',
+          runId: 'run-missing',
+          eventType: 'token_usage_observed',
+          status: 'missing',
+          repoRoot: '/tmp/repo',
+          cwd: '/tmp/repo',
+          metadata: {
+            token_source: 'missing',
+            input_tokens: null,
+            output_tokens: null,
+            estimated_cost_usd: null
+          }
+        }, { dbPath: ${JSON.stringify(dbPath)} });
+        const summary = summarizeTraceStatus({ dbPath: ${JSON.stringify(dbPath)} });
+        const formatted = formatTraceStatus(summary);
+        console.log(JSON.stringify({ summary, formatted }));
+      `);
+      const payload = JSON.parse(stdout);
+      assert.strictEqual(payload.summary.kpis.token_data_coverage_rate, 50);
+      assert.strictEqual(payload.summary.kpis.total_input_tokens, 100);
+      assert.strictEqual(payload.summary.kpis.total_output_tokens, 25);
+      assert.strictEqual(payload.summary.kpis.estimated_cost_usd, 0.001);
+      assert.ok(payload.formatted.includes('token_data_coverage_rate=50'));
+      assert.ok(payload.formatted.includes('total_input_tokens=100'));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
   if (test('uses CODEX_THREAD_ID when explicit session metadata is absent', () => {
     const dir = createTempDir();
     try {

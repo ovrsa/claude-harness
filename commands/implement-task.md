@@ -1,12 +1,12 @@
 ---
-description: Execute an approved plan.md with TDD and small batches. Require plan approval and worktree usage for non-trivial tasks.
+description: Conservative local fallback for executing an approved plan.md with TDD and small batches when Superpowers execution is unavailable or manual control is requested.
 ---
 
 # Implement Task
 
-Use this command for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, `Evaluate`, and `Observe` phases.
+Use this command as the local manual fallback for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, `Evaluate`, and `Observe` phases.
 
-This command may use Superpowers-style implementation discipline, but `~/.claude` remains the lifecycle source of truth. Superpowers is an implementation method, not a replacement for local approval, worktree, review, verify, observe, or commit gates.
+Superpowers `executing-plans` or `subagent-driven-development` is the default execution engine when installed. This command is for compatibility, debugging, or cases where the operator wants smaller local checkpoints.
 
 ## Preconditions
 

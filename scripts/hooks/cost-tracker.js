@@ -14,16 +14,20 @@ const {
   getClaudeDir,
   getRuntimeSessionId,
 } = require('../lib/utils');
+const { getRepoRoot } = require('../lib/task-artifacts');
+const { recordSessionEvent, getRunId } = require('../lib/session-trace');
 
 const MAX_STDIN = 1024 * 1024;
 let raw = '';
 
-function toNumber(value) {
+function maybeTokenNumber(value) {
   const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(n) ? n : null;
 }
 
 function estimateCost(model, inputTokens, outputTokens) {
+  if (!Number.isFinite(inputTokens) || !Number.isFinite(outputTokens)) return null;
+
   // Approximate per-1M-token blended rates. Conservative defaults.
   const table = {
     'haiku': { in: 0.8, out: 4.0 },
@@ -52,11 +56,15 @@ process.stdin.on('end', () => {
   try {
     const input = raw.trim() ? JSON.parse(raw) : {};
     const usage = input.usage || input.token_usage || {};
-    const inputTokens = toNumber(usage.input_tokens || usage.prompt_tokens || 0);
-    const outputTokens = toNumber(usage.output_tokens || usage.completion_tokens || 0);
+    const inputTokens = maybeTokenNumber(usage.input_tokens ?? usage.prompt_tokens);
+    const outputTokens = maybeTokenNumber(usage.output_tokens ?? usage.completion_tokens);
+    const hasRuntimeUsage = inputTokens !== null || outputTokens !== null;
 
     const model = String(input.model || input._cursor?.model || process.env.CLAUDE_MODEL || 'unknown');
     const sessionId = getRuntimeSessionId('default');
+    const runId = getRunId(sessionId);
+    const cwd = process.cwd();
+    const repoRoot = getRepoRoot(cwd) || '';
 
     const metricsDir = path.join(getClaudeDir(), 'metrics');
     ensureDir(metricsDir);
@@ -68,9 +76,27 @@ process.stdin.on('end', () => {
       input_tokens: inputTokens,
       output_tokens: outputTokens,
       estimated_cost_usd: estimateCost(model, inputTokens, outputTokens),
+      token_source: hasRuntimeUsage ? 'runtime_payload' : 'missing',
     };
 
     appendFile(path.join(metricsDir, 'costs.jsonl'), `${JSON.stringify(row)}\n`);
+
+    recordSessionEvent({
+      sessionId,
+      runId,
+      eventType: 'token_usage_observed',
+      status: hasRuntimeUsage ? 'observed' : 'missing',
+      repoRoot,
+      cwd,
+      metadata: {
+        token_source: row.token_source,
+        model,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        estimated_cost_usd: row.estimated_cost_usd,
+      },
+      createdBy: 'cost-tracker',
+    });
   } catch {
     // Keep hook non-blocking.
   }

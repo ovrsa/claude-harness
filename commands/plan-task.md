@@ -1,12 +1,12 @@
 ---
-description: Turn research into an implementation-ready plan.md. Use a plan file with explicit approval state and stop before code changes.
+description: Local fallback for turning research into an implementation-ready plan.md when Superpowers writing-plans is unavailable or a local artifact is required.
 ---
 
 # Plan Task
 
-Use this command for the `Plan` and `Confirm` phases of the coding lifecycle.
+Use this command only when Superpowers `writing-plans` is unavailable, the operator explicitly wants local manual planning, or a repository-local `plan.md` artifact is required by hooks or audit needs.
 
-`/plan-task` is the artifact-producing planning path. It is the primary command when the repository needs a durable `plan.md`.
+Superpowers `writing-plans` is the default implementation-planning engine for standard and heavy-risky work.
 
 ## Required behavior
 
@@ -33,7 +33,8 @@ Use this command for the `Plan` and `Confirm` phases of the coding lifecycle.
 ## Relationship To `/plan`
 
 - `/plan` is the conversational planning entrypoint.
-- `/plan-task` writes the repository artifact and should be used when the plan needs to survive beyond chat.
+- Superpowers `writing-plans` is the preferred implementation-planning path when available.
+- `/plan-task` writes the repository artifact and should be used when the plan needs to survive beyond chat or Superpowers is unavailable.
 - Keep both commands aligned on the same scope and acceptance criteria.
 
 ## Next Handoff

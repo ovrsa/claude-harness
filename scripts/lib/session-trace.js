@@ -1236,6 +1236,12 @@ function summarizeTraceStatus(options = {}) {
       WHERE event_type = 'review_completed'
       ORDER BY occurred_at DESC
     `).all();
+    const tokenRows = db.prepare(`
+      SELECT run_id, status, metadata_json
+      FROM session_events
+      WHERE event_type = 'token_usage_observed'
+      ORDER BY occurred_at DESC, id DESC
+    `).all();
 
     const planByRun = new Map();
     for (const row of planRows) {
@@ -1257,6 +1263,41 @@ function summarizeTraceStatus(options = {}) {
       if (reviewFindingsByRun.has(row.run_id)) continue;
       const metadata = safeJsonParse(row.metadata_json, {});
       reviewFindingsByRun.set(row.run_id, Number(metadata.findings_count) || 0);
+    }
+
+    const tokenByRun = new Map();
+    let tokenEventCount = 0;
+    let tokenObservedCount = 0;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalEstimatedCost = 0;
+
+    for (const row of tokenRows) {
+      const metadata = safeJsonParse(row.metadata_json, {});
+      const inputTokens = Number(metadata.input_tokens);
+      const outputTokens = Number(metadata.output_tokens);
+      const estimatedCost = Number(metadata.estimated_cost_usd);
+      const hasObservedUsage = row.status === 'observed' && (
+        Number.isFinite(inputTokens) ||
+        Number.isFinite(outputTokens)
+      );
+
+      tokenEventCount += 1;
+      if (hasObservedUsage) {
+        tokenObservedCount += 1;
+        if (Number.isFinite(inputTokens)) totalInputTokens += inputTokens;
+        if (Number.isFinite(outputTokens)) totalOutputTokens += outputTokens;
+        if (Number.isFinite(estimatedCost)) totalEstimatedCost += estimatedCost;
+      }
+
+      if (!tokenByRun.has(row.run_id)) {
+        tokenByRun.set(row.run_id, {
+          status: hasObservedUsage ? 'observed' : 'missing',
+          input_tokens: Number.isFinite(inputTokens) ? inputTokens : null,
+          output_tokens: Number.isFinite(outputTokens) ? outputTokens : null,
+          estimated_cost_usd: Number.isFinite(estimatedCost) ? estimatedCost : null,
+        });
+      }
     }
 
     const startedRuns = runs.filter(run => normalizeString(run.started_at));
@@ -1287,7 +1328,7 @@ function summarizeTraceStatus(options = {}) {
     }, {});
 
     return {
-      dbPath: getTelemetryDbPath(),
+      dbPath,
       sqliteAvailable: isSqliteAvailable(),
       totalRuns: startedRuns.length,
       countsByStatus,
@@ -1299,6 +1340,10 @@ function summarizeTraceStatus(options = {}) {
         human_intervention_rate: startedRuns.length > 0
           ? Math.round((startedRuns.filter(run => Number(run.human_intervention_count) > 0).length / startedRuns.length) * 10000) / 100
           : null,
+        token_data_coverage_rate: tokenEventCount > 0 ? Math.round((tokenObservedCount / tokenEventCount) * 10000) / 100 : null,
+        total_input_tokens: tokenEventCount > 0 ? totalInputTokens : null,
+        total_output_tokens: tokenEventCount > 0 ? totalOutputTokens : null,
+        estimated_cost_usd: tokenEventCount > 0 ? Math.round(totalEstimatedCost * 1e6) / 1e6 : null,
       },
       recentRuns: startedRuns.map(run => ({
         run_id: run.run_id,
@@ -1311,6 +1356,7 @@ function summarizeTraceStatus(options = {}) {
         review_present: Number(run.review_present) === 1,
         observe_present: Number(run.observe_present) === 1,
         human_intervention_count: Number(run.human_intervention_count) || 0,
+        token_usage: tokenByRun.get(run.run_id) || { status: 'none', input_tokens: null, output_tokens: null, estimated_cost_usd: null },
       })),
     };
   }, dbPath) || {
@@ -1324,6 +1370,10 @@ function summarizeTraceStatus(options = {}) {
       time_to_verified_completion_minutes: null,
       review_findings_per_run: null,
       human_intervention_rate: null,
+      token_data_coverage_rate: null,
+      total_input_tokens: null,
+      total_output_tokens: null,
+      estimated_cost_usd: null,
     },
     recentRuns: [],
   };
@@ -1341,10 +1391,14 @@ function formatTraceStatus(summary = summarizeTraceStatus()) {
   lines.push(`- time_to_verified_completion_minutes=${summary.kpis.time_to_verified_completion_minutes ?? 'n/a'}`);
   lines.push(`- review_findings_per_run=${summary.kpis.review_findings_per_run ?? 'n/a'}`);
   lines.push(`- human_intervention_rate=${summary.kpis.human_intervention_rate ?? 'n/a'}`);
+  lines.push(`- token_data_coverage_rate=${summary.kpis.token_data_coverage_rate ?? 'n/a'}`);
+  lines.push(`- total_input_tokens=${summary.kpis.total_input_tokens ?? 'n/a'}`);
+  lines.push(`- total_output_tokens=${summary.kpis.total_output_tokens ?? 'n/a'}`);
+  lines.push(`- estimated_cost_usd=${summary.kpis.estimated_cost_usd ?? 'n/a'}`);
   if (summary.recentRuns.length > 0) {
     lines.push('Recent runs:');
     for (const run of summary.recentRuns) {
-      lines.push(`- ${truncate(run.run_id, 32)} | status=${run.final_status} | plan=${run.plan_present} | verify=${run.verify_present} | review=${run.review_present} | observe=${run.observe_present} | interventions=${run.human_intervention_count}`);
+      lines.push(`- ${truncate(run.run_id, 32)} | status=${run.final_status} | plan=${run.plan_present} | verify=${run.verify_present} | review=${run.review_present} | observe=${run.observe_present} | interventions=${run.human_intervention_count} | tokens=${run.token_usage?.status || 'none'}`);
     }
   }
   return lines.join('\n');
@@ -1360,6 +1414,7 @@ module.exports = {
   recordSessionEvent,
   recordLifecycleSnapshot,
   recordToolExecution,
+  summarizeTraceStatus,
   formatTraceStatus,
   classifyRunStatus,
 };

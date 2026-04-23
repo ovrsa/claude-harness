@@ -1,6 +1,6 @@
 # Operating Model
 
-This file is the fastest end-to-end summary of how the local `~/.claude` harness operates today.
+This file is the fastest end-to-end summary of how the local `~/.claude` control layer operates today.
 
 Use it to reload the loop quickly. Use `HARNESS.md`, `OBSERVE.md`, and `AUTONOMY_POLICY.md` for deeper policy details.
 
@@ -8,20 +8,19 @@ When the question is about rollout order rather than lifecycle semantics, use `I
 
 ## Lifecycle Loop
 
-The steady local loop is:
+The default development loop is:
 
-1. `research`
-2. `plan`
-3. `implement`
-4. `review`
-5. `verify`
-6. `evaluate`
-7. `observe` when behavior changed
-8. `post-commit capture`
-9. `health / triage` on explicit improvement requests
-10. promote durable fixes into `docs`, `commands`, `hooks`, or `skills`
+1. intake and track selection
+2. thin `.claude` preflight: session tracing, repo routing, permission class
+3. Superpowers planning/execution for standard and heavy-risky work
+4. deterministic verification
+5. lightweight acceptance evaluation
+6. observation only when behavior changed
+7. commit/PR/deploy only with explicit authorization
+8. thin `.claude` postflight: telemetry, guardrail candidates, and post-commit capture when warranted
+9. health / triage / improve-harness on explicit improvement requests
 
-This keeps the harness focused on repeatable execution first, then on turning recurring failures into smaller, safer durable changes.
+This keeps the local layer focused on observability, permission boundaries, continuity, and recurring-failure improvement while Superpowers owns development mechanics.
 
 ## Main Surfaces
 
@@ -45,6 +44,7 @@ This keeps the harness focused on repeatable execution first, then on turning re
 
 ### Workflow Commands
 
+- `/execute-plan`
 - `/research`
 - `/plan`
 - `/plan-task`
@@ -57,27 +57,50 @@ This keeps the harness focused on repeatable execution first, then on turning re
 
 ### Durable Artifacts
 
-- `research.md`
-- `plan.md`
-- `review-summary.md`
-- `verification-summary.md`
+- `research.md` when prior art or explicit options matter
+- `plan.md` when explicit local approval is required
+- `review-summary.md` when findings or residual risks need durable capture
+- `verification-summary.md` when rerunnable evidence should be preserved
 - `observation-summary.md` when behavior changed
-- `progress.md`
+- `progress.md` for interrupted or multi-session work
 
 Optional promotion-oriented sections can live inside the main artifacts as `Guardrail Candidates`.
 
-## Gate Semantics
+## Track Semantics
 
-- `review`
-  - inspect the change and record unresolved findings
-- `verify`
-  - prove rerunnable checks passed
-- `evaluate`
-  - decide whether the change is acceptable to accept
-- `observe`
-  - record concrete runtime evidence when changed behavior needs more than tests/build output
+- `trivial`
+  - use the smallest context check and verify the changed surface
+  - Superpowers is optional
+  - no heavy local artifact chain unless hooks or risk require it
 
-Implementation and bug-fix work are done only when all required gates for that task are satisfied.
+- `standard`
+  - use Superpowers planning and execution by default
+  - capture verification evidence and a lightweight acceptance summary
+  - observe only when runtime, UI, or integration behavior changed
+
+- `heavy-risky`
+  - require explicit approval before execution
+  - use worktree isolation
+  - use Superpowers subagent-driven development when useful
+  - require review, verification, residual-risk acceptance, and observation when behavior changed
+
+## Superpowers Primary Engine
+
+Superpowers is the default engine for standard and heavy-risky development work when installed.
+
+It owns:
+
+- brainstorming when requirements are unclear
+- writing implementation plans
+- executing plans
+- worktree setup
+- TDD and review workflow
+- verification-before-completion
+- branch finishing
+
+`/execute-plan` is the local wrapper around Superpowers execution. Local commands such as `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility surfaces when Superpowers is unavailable or manual local control is explicitly wanted.
+
+`.claude` still owns permission boundaries, runtime bridge behavior, SQLite session state, guardrail candidates, and the health/triage improvement loop.
 
 ## Feedback Path
 
@@ -100,10 +123,10 @@ Promotion ladder:
 
 ## Enforced Now
 
-- approved `plan.md` before implementation
-- `review-summary.md` must have no unresolved `Findings` before approval-ready state
-- `verification-summary.md` before commit
-- `observation-summary.md` when runtime or UI behavior changed
+- permission and destructive-action boundaries
+- session start/end tracing where supported by the runtime
+- `verification-summary.md` before local commit when the local commit gate is active
+- `observation-summary.md` when runtime or UI behavior changed and local gates require durable evidence
 - candidate capture at lifecycle boundaries
 
 ## Not Enforced Yet
@@ -112,6 +135,8 @@ Promotion ladder:
 - automatic or scheduled improvement runs
 - repo-map freshness enforcement
 - automatic issue or task creation from triage output
+- automatic Superpowers installation/parity checks on every device
+- SpeakerDeck-style TypeScript/Claude Agent SDK pipeline runner
 
 These stay visible as backlog items so the harness does not pretend they already exist.
 
