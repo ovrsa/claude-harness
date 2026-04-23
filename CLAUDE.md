@@ -15,6 +15,8 @@ Future improvements should be implemented into `~/.claude` directly instead of i
 `~/.codex` is a runtime bridge, not a second harness.
 External frameworks, plugin packs, and upstream repos may inform local improvements, but they are never the canonical source of lifecycle behavior.
 
+Superpowers, when installed, is treated as an implementation discipline plugin only. It may guide TDD, small-batch execution, and review habits inside `/implement-task`, but it must not replace the local artifact chain, approval gates, worktree gates, review, verify, observe, commit gates, or SQLite tracing. See `~/.claude/docs/superpowers-adoption.md`.
+
 Active repositories should expose a thin repo-local map, preferably root `AGENTS.md`, that points to the real truth sources without duplicating the lifecycle.
 
 Deeper references:

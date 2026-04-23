@@ -6,6 +6,8 @@ description: Execute an approved plan.md with TDD and small batches. Require pla
 
 Use this command for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, `Evaluate`, and `Observe` phases.
 
+This command may use Superpowers-style implementation discipline, but `~/.claude` remains the lifecycle source of truth. Superpowers is an implementation method, not a replacement for local approval, worktree, review, verify, observe, or commit gates.
+
 ## Preconditions
 
 - `plan.md` exists
@@ -28,7 +30,12 @@ Use this command for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, `Eva
    - boundary
    - abnormal
    - Given / When / Then
-7. Implement in strict small batches using RED -> GREEN -> REFACTOR:
+7. Apply `superpowers-implementation-discipline` when implementation work begins:
+   - keep plan tasks small enough to review independently
+   - do not write behavior-changing implementation code before the RED check exists
+   - use exact file paths and concrete verification commands from the plan
+   - keep local lifecycle gates authoritative
+8. Implement in strict small batches using RED -> GREEN -> REFACTOR:
    - pick exactly one approved plan checkbox or one small related batch
    - write or update the failing test first
    - run the RED command and confirm it fails for the expected reason
@@ -36,18 +43,18 @@ Use this command for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, `Eva
    - run the GREEN command and confirm pass
    - refactor only while tests stay green
    - update the plan checklist and `progress.md` before moving to the next batch
-8. Checkpoint after at most three plan tasks:
+9. Checkpoint after at most three plan tasks:
    - summarize files touched
    - record RED/GREEN commands run
    - note remaining plan checkboxes
    - ask for feedback or continue only when the next batch is still clearly inside the approved plan
-9. Record rerunnable command evidence in `verification-summary.md`; keep runtime/browser/log evidence in `observation-summary.md`.
-10. Stop and return to planning when the plan is unclear, RED does not fail as expected, GREEN repeatedly fails, implementation scope drifts, or a checkpoint exposes a spec gap.
-11. Write or update `review-summary.md` so unresolved findings and residual risks are explicit.
-12. Run the acceptance gate represented by `/eval`.
-13. If `observe_required: true`, write `observation-summary.md` with concrete evidence sources.
-14. Before commit, update `progress.md` so `Blockers` and `Next Action` are `none` unless follow-up work remains intentionally open.
-15. Keep automatic adaptation limited to low-risk tactics such as resume hints, prechecks, and verification ordering. Never auto-relax governance or approval gates.
+10. Record rerunnable command evidence in `verification-summary.md`; keep runtime/browser/log evidence in `observation-summary.md`.
+11. Stop and return to planning when the plan is unclear, RED does not fail as expected, GREEN repeatedly fails, implementation scope drifts, or a checkpoint exposes a spec gap.
+12. Write or update `review-summary.md` so unresolved findings and residual risks are explicit.
+13. Run the acceptance gate represented by `/eval`.
+14. If `observe_required: true`, write `observation-summary.md` with concrete evidence sources.
+15. Before commit, update `progress.md` so `Blockers` and `Next Action` are `none` unless follow-up work remains intentionally open.
+16. Keep automatic adaptation limited to low-risk tactics such as resume hints, prechecks, and verification ordering. Never auto-relax governance or approval gates.
 
 ## Hard guardrails
 
@@ -58,6 +65,8 @@ Use this command for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, `Eva
 - Do not execute more than three plan tasks without a checkpoint.
 - Do not implement before seeing a meaningful RED failure for behavior-changing code.
 - Do not treat a passing GREEN command as acceptance; it still feeds review, verify, eval, and observe.
+- Do not let an external plugin redefine the lifecycle source of truth.
+- Do not dispatch subagents unless the operator explicitly asks and the work is disjoint.
 
 ## Next Handoff
 

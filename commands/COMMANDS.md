@@ -42,6 +42,8 @@ Used while moving an approved task through execution.
 - `/test-coverage`
 - `/code-review`
 
+`/implement-task` may apply `superpowers-implementation-discipline` during approved execution. The local lifecycle remains authoritative.
+
 ### Repo Orientation And Maintenance
 
 Used to enter a repo cleanly and keep deeper references current.

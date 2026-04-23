@@ -38,8 +38,10 @@ The harness is split into five layers:
    - may link to codemaps or deeper docs when they are useful
 
 5. **Adapter layer**
-   - `.codex`, Cursor, and other runtimes consume `.claude`
-   - adapters inherit the workflow, not redefine it
+- `.codex`, Cursor, and other runtimes consume `.claude`
+- adapters inherit the workflow, not redefine it
+
+External implementation plugins such as Superpowers belong in this adapter layer. They may provide implementation discipline during approved execution, but they do not own lifecycle authority.
 
 ## Design Principles
 
