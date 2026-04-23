@@ -1,5 +1,5 @@
 ---
-name: superpowers-implementation-discipline
+name: superpowers-tdd
 description: "Apply Superpowers-style implementation discipline inside the local lifecycle after plan approval, while keeping ~/.claude as the lifecycle source of truth."
 ---
 

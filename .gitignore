@@ -39,8 +39,8 @@ node_modules/
 agents/**
 examples/**
 skills/**
-!skills/superpowers-implementation-discipline/
-!skills/superpowers-implementation-discipline/SKILL.md
+!skills/superpowers-tdd/
+!skills/superpowers-tdd/SKILL.md
 scripts/codemaps/**
 scripts/hooks/pre-bash-dev-server-block.js
 scripts/hooks/pre-write-doc-warn.js
