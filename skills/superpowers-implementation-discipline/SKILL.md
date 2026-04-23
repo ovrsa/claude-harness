@@ -1,6 +1,6 @@
 ---
 name: superpowers-implementation-discipline
-description: Apply Superpowers-style implementation discipline inside the local lifecycle: small approved tasks, true RED/GREEN/REFACTOR TDD, evidence-first verification, checkpointed execution, and two-pass review. Use during implementation after plan approval, while keeping ~/.claude as the lifecycle source of truth.
+description: "Apply Superpowers-style implementation discipline inside the local lifecycle after plan approval, while keeping ~/.claude as the lifecycle source of truth."
 ---
 
 # Superpowers Implementation Discipline
