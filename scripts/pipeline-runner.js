@@ -37,6 +37,8 @@ function parseArgs(argv) {
     track: '',
     runtime: '',
     taskId: '',
+    execute: false,
+    engineCommand: '',
     heavyRiskyApproved: false,
     help: false,
   };
@@ -55,6 +57,10 @@ function parseArgs(argv) {
       options.runtime = argv[++i] || '';
     } else if (arg === '--task-id') {
       options.taskId = argv[++i] || '';
+    } else if (arg === '--execute') {
+      options.execute = true;
+    } else if (arg === '--engine-command') {
+      options.engineCommand = argv[++i] || '';
     } else if (arg === '--heavy-risky-approved') {
       options.heavyRiskyApproved = true;
     }
@@ -68,9 +74,9 @@ function printHelp() {
     'Pipeline Runner v0',
     '',
     'Usage:',
-    '  node scripts/pipeline-runner.js --repo <path> --plan <path> --track <trivial|standard|heavy-risky> --runtime <claude|codex|sdk> [--task-id <id>] [--heavy-risky-approved]',
+    '  node scripts/pipeline-runner.js --repo <path> --plan <path> --track <trivial|standard|heavy-risky> --runtime <claude|codex|sdk> [--task-id <id>] [--execute --engine-command <path>] [--heavy-risky-approved]',
     '',
-    'This runner performs preflight, summary, and telemetry only. It does not implement, commit, push, create PRs, deploy, or run destructive actions.',
+    'This runner performs preflight, optional execution adapter handoff, summary, and telemetry. It does not implement directly, commit, push, create PRs, deploy, or run destructive actions.',
     '',
   ].join('\n'));
 }
@@ -96,6 +102,113 @@ function normalizeTaskId(options, planPath) {
   return 'pipeline-runner-task';
 }
 
+function recordPipelineEvent(context, eventType, status, metadata = {}) {
+  recordSessionEvent({
+    sessionId: context.sessionId,
+    runId: context.runId,
+    eventType,
+    status,
+    repoRoot: context.repoRoot,
+    cwd: context.repoRoot || process.cwd(),
+    metadata: {
+      task_id: context.taskId,
+      track: context.track,
+      runtime: context.runtime,
+      plan_path: context.planInput || context.planPath,
+      ...metadata,
+    },
+    createdBy: 'pipeline-runner',
+  });
+}
+
+function createExecutionEnv(options, result) {
+  return {
+    ...process.env,
+    PIPELINE_RUNNER_REPO: result.repoRoot,
+    PIPELINE_RUNNER_PLAN: result.planPath,
+    PIPELINE_RUNNER_TRACK: result.track,
+    PIPELINE_RUNNER_RUNTIME: result.runtime,
+    PIPELINE_RUNNER_TASK_ID: result.taskId,
+  };
+}
+
+function buildExecutionArgs(result) {
+  return [
+    '--repo', result.repoRoot,
+    '--plan', result.planPath,
+    '--track', result.track,
+    '--runtime', result.runtime,
+    '--task-id', result.taskId,
+  ];
+}
+
+function runExecutionAdapter(options, result) {
+  const engineCommand = path.resolve(options.engineCommand);
+  const execution = {
+    status: 'not-run',
+    eventType: '',
+    eventStatus: '',
+    decision: '',
+    blocker: '',
+    engineCommand,
+    exitCode: null,
+  };
+
+  if (!options.engineCommand) {
+    execution.decision = 'engine command is required for execution';
+    return execution;
+  }
+
+  if (!fs.existsSync(engineCommand)) {
+    execution.blocker = 'engine command file is missing';
+    execution.status = 'failed';
+    recordPipelineEvent(result, 'pipeline_execution_failed', 'failed', {
+      engine_command: engineCommand,
+      exit_code: null,
+    });
+    return execution;
+  }
+
+  const args = buildExecutionArgs(result);
+  recordPipelineEvent(result, 'pipeline_execution_started', 'started', {
+    engine_command: engineCommand,
+  });
+
+  const adapterResult = spawnSync(engineCommand, args, {
+    cwd: result.repoRoot,
+    encoding: 'utf8',
+    env: createExecutionEnv(options, result),
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  execution.exitCode = adapterResult.status;
+
+  if (adapterResult.status === 0) {
+    execution.status = 'complete';
+    execution.eventType = 'pipeline_execution_completed';
+    execution.eventStatus = 'completed';
+  } else if (adapterResult.status === 2) {
+    execution.status = 'blocked';
+    execution.decision = 'engine command requested a decision';
+    execution.eventType = 'pipeline_execution_blocked';
+    execution.eventStatus = 'blocked';
+  } else {
+    const exitCode = adapterResult.status === null ? 'unknown' : adapterResult.status;
+    execution.status = 'failed';
+    execution.blocker = `engine command failed with exit code ${exitCode}`;
+    execution.eventType = 'pipeline_execution_failed';
+    execution.eventStatus = 'failed';
+  }
+
+  if (execution.eventType) {
+    recordPipelineEvent(result, execution.eventType, execution.eventStatus, {
+      engine_command: engineCommand,
+      exit_code: execution.exitCode,
+    });
+  }
+
+  return execution;
+}
+
 function buildResult(options) {
   const repoInput = options.repo ? path.resolve(options.repo) : '';
   const planInput = options.plan ? path.resolve(options.plan) : '';
@@ -107,6 +220,7 @@ function buildResult(options) {
   const evidence = [];
   let planContent = '';
   let telemetryStatus = 'missing';
+  let executionStatus = 'not-run';
   let repoRoot = '';
 
   if (!repoInput) {
@@ -149,15 +263,23 @@ function buildResult(options) {
   if (sensitiveActions.length > 0) {
     decisions.push(`permission-sensitive action requires authorization: ${sensitiveActions.join(', ')}`);
   }
+  if (options.execute && !options.engineCommand && blockers.length === 0 && decisions.length === 0) {
+    decisions.push('engine command is required for execution');
+  }
 
-  const status = blockers.length > 0 ? 'BLOCKED' : (decisions.length > 0 ? 'NEEDS_DECISION' : 'READY');
+  let status = blockers.length > 0 ? 'BLOCKED' : (decisions.length > 0 ? 'NEEDS_DECISION' : 'READY');
   const preflight = status === 'READY' ? 'pass' : 'fail';
-  const nextAction = status === 'READY'
-    ? 'Use Superpowers executing-plans through the active runtime; this runner does not execute implementation.'
-    : (blockers[0] || decisions[0] || 'Resolve runner stop condition');
-
   const sessionId = getRuntimeSessionId('pipeline-runner');
   const runId = getRunId(sessionId);
+  const context = {
+    sessionId,
+    runId,
+    taskId,
+    track,
+    runtime,
+    planInput,
+    repoRoot,
+  };
   const metadata = {
     task_id: taskId,
     track,
@@ -170,31 +292,8 @@ function buildResult(options) {
   };
 
   try {
-    recordSessionEvent({
-      sessionId,
-      runId,
-      eventType: 'pipeline_started',
-      status: 'started',
-      repoRoot,
-      cwd: repoRoot || process.cwd(),
-      metadata: {
-        task_id: taskId,
-        track,
-        runtime,
-        plan_path: planInput,
-      },
-      createdBy: 'pipeline-runner',
-    });
-    recordSessionEvent({
-      sessionId,
-      runId,
-      eventType: 'pipeline_preflight_completed',
-      status: status.toLowerCase(),
-      repoRoot,
-      cwd: repoRoot || process.cwd(),
-      metadata,
-      createdBy: 'pipeline-runner',
-    });
+    recordPipelineEvent(context, 'pipeline_started', 'started');
+    recordPipelineEvent(context, 'pipeline_preflight_completed', status.toLowerCase(), metadata);
     if (repoRoot) {
       recordLifecycleSnapshot({
         sessionId,
@@ -205,6 +304,30 @@ function buildResult(options) {
         createdBy: 'pipeline-runner',
       });
     }
+
+    if (options.execute && status === 'READY') {
+      const execution = runExecutionAdapter(options, {
+        sessionId,
+        runId,
+        taskId,
+        track,
+        runtime,
+        repoRoot,
+        planPath: planInput,
+      });
+      executionStatus = execution.status;
+      if (execution.status === 'complete') {
+        status = 'DONE';
+        evidence.push(`engine_command=${execution.engineCommand}`);
+      } else if (execution.decision) {
+        status = 'NEEDS_DECISION';
+        decisions.push(execution.decision);
+      } else if (execution.blocker) {
+        status = 'BLOCKED';
+        blockers.push(execution.blocker);
+      }
+    }
+
     telemetryStatus = 'recorded';
   } catch {
     telemetryStatus = 'partial';
@@ -216,11 +339,16 @@ function buildResult(options) {
     track,
     runtime,
     preflight,
+    executionStatus,
     telemetryStatus,
     blockers,
     decisions,
     evidence,
-    nextAction,
+    repoRoot,
+    planPath: planInput,
+    nextAction: status === 'READY'
+      ? 'Run again with --execute and an approved engine adapter when ready.'
+      : (status === 'DONE' ? 'Proceed to verification and review gates; commit, push, PR, and deploy still require explicit authorization.' : (blockers[0] || decisions[0] || 'Resolve runner stop condition')),
   };
 }
 
@@ -233,7 +361,7 @@ function formatResult(result) {
   lines.push(`Runtime:     ${result.runtime || 'unknown'}`);
   lines.push('Engine:      Superpowers');
   lines.push(`Preflight:   ${result.preflight}`);
-  lines.push('Execution:   not-run');
+  lines.push(`Execution:   ${result.executionStatus}`);
   lines.push('Verify:      not-run');
   lines.push('Review:      not-run');
   lines.push('Observe:     not-required');

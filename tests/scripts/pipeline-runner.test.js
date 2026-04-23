@@ -42,6 +42,32 @@ function initRepo(repoRoot) {
   });
 }
 
+function writeAdapter(filePath, options = {}) {
+  const exitCode = options.exitCode ?? 0;
+  const markerPath = options.markerPath || '';
+  const content = [
+    '#!/usr/bin/env node',
+    "const fs = require('fs');",
+    `const markerPath = ${JSON.stringify(markerPath)};`,
+    'if (markerPath) {',
+    '  fs.writeFileSync(markerPath, JSON.stringify({',
+    '    argv: process.argv.slice(2),',
+    '    env: {',
+    '      repo: process.env.PIPELINE_RUNNER_REPO,',
+    '      plan: process.env.PIPELINE_RUNNER_PLAN,',
+    '      track: process.env.PIPELINE_RUNNER_TRACK,',
+    '      runtime: process.env.PIPELINE_RUNNER_RUNTIME,',
+    '      taskId: process.env.PIPELINE_RUNNER_TASK_ID,',
+    '    },',
+    '  }, null, 2));',
+    '}',
+    `process.exit(${exitCode});`,
+    '',
+  ].join('\n');
+  fs.writeFileSync(filePath, content);
+  fs.chmodSync(filePath, 0o755);
+}
+
 function writePlan(filePath, options = {}) {
   const status = options.status || 'approved';
   const extra = options.extra || '';
@@ -297,6 +323,221 @@ function runTests() {
       assert.strictEqual(events[0].metadata.task_id, 'telemetry-task');
       assert.strictEqual(events[1].status, 'ready');
       assert.strictEqual(events[1].metadata.track, 'standard');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('executes adapter when execute flag and preflight is ready', () => {
+    const dir = createTempDir();
+    try {
+      const repo = path.join(dir, 'repo');
+      const home = path.join(dir, 'home');
+      const adapter = path.join(dir, 'adapter.js');
+      const marker = path.join(dir, 'adapter-marker.json');
+      initRepo(repo);
+      writePlan(path.join(repo, 'plan.md'));
+      writeAdapter(adapter, { markerPath: marker });
+
+      const result = run([
+        '--repo', repo,
+        '--plan', path.join(repo, 'plan.md'),
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--task-id', 'execute-success',
+        '--execute',
+        '--engine-command', adapter,
+      ], { HOME: home, CLAUDE_SESSION_ID: 'runner-execute-success' });
+
+      assert.strictEqual(result.code, 0);
+      assert.ok(result.stdout.includes('PIPELINE RUNNER: DONE'));
+      assert.ok(result.stdout.includes('Execution:   complete'));
+      const markerContent = JSON.parse(fs.readFileSync(marker, 'utf8'));
+      const expectedRepoRoot = fs.realpathSync(repo);
+      assert.deepStrictEqual(markerContent.argv, [
+        '--repo', expectedRepoRoot,
+        '--plan', path.join(repo, 'plan.md'),
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--task-id', 'execute-success',
+      ]);
+      assert.strictEqual(markerContent.env.repo, expectedRepoRoot);
+      assert.strictEqual(markerContent.env.track, 'standard');
+      assert.strictEqual(markerContent.env.taskId, 'execute-success');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('requires engine command when execute flag is set', () => {
+    const dir = createTempDir();
+    try {
+      const repo = path.join(dir, 'repo');
+      initRepo(repo);
+      writePlan(path.join(repo, 'plan.md'));
+
+      const result = run([
+        '--repo', repo,
+        '--plan', path.join(repo, 'plan.md'),
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--task-id', 'missing-engine',
+        '--execute',
+      ], { HOME: path.join(dir, 'home'), CLAUDE_SESSION_ID: 'runner-missing-engine' });
+
+      assert.strictEqual(result.code, 0);
+      assert.ok(result.stdout.includes('PIPELINE RUNNER: NEEDS_DECISION'));
+      assert.ok(result.stdout.includes('engine command is required for execution'));
+      assert.ok(result.stdout.includes('Execution:   not-run'));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('maps adapter exit 2 to needs decision', () => {
+    const dir = createTempDir();
+    try {
+      const repo = path.join(dir, 'repo');
+      const adapter = path.join(dir, 'adapter.js');
+      initRepo(repo);
+      writePlan(path.join(repo, 'plan.md'));
+      writeAdapter(adapter, { exitCode: 2 });
+
+      const result = run([
+        '--repo', repo,
+        '--plan', path.join(repo, 'plan.md'),
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--execute',
+        '--engine-command', adapter,
+      ], { HOME: path.join(dir, 'home'), CLAUDE_SESSION_ID: 'runner-adapter-blocked' });
+
+      assert.strictEqual(result.code, 0);
+      assert.ok(result.stdout.includes('PIPELINE RUNNER: NEEDS_DECISION'));
+      assert.ok(result.stdout.includes('Execution:   blocked'));
+      assert.ok(result.stdout.includes('engine command requested a decision'));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('maps adapter nonzero exit to blocked', () => {
+    const dir = createTempDir();
+    try {
+      const repo = path.join(dir, 'repo');
+      const adapter = path.join(dir, 'adapter.js');
+      initRepo(repo);
+      writePlan(path.join(repo, 'plan.md'));
+      writeAdapter(adapter, { exitCode: 1 });
+
+      const result = run([
+        '--repo', repo,
+        '--plan', path.join(repo, 'plan.md'),
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--execute',
+        '--engine-command', adapter,
+      ], { HOME: path.join(dir, 'home'), CLAUDE_SESSION_ID: 'runner-adapter-failed' });
+
+      assert.strictEqual(result.code, 1);
+      assert.ok(result.stdout.includes('PIPELINE RUNNER: BLOCKED'));
+      assert.ok(result.stdout.includes('Execution:   failed'));
+      assert.ok(result.stdout.includes('engine command failed with exit code 1'));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('does not execute adapter when preflight blocks', () => {
+    const dir = createTempDir();
+    try {
+      const repo = path.join(dir, 'repo');
+      const adapter = path.join(dir, 'adapter.js');
+      const marker = path.join(dir, 'adapter-marker.json');
+      initRepo(repo);
+      writeAdapter(adapter, { markerPath: marker });
+
+      const result = run([
+        '--repo', repo,
+        '--plan', path.join(repo, 'missing-plan.md'),
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--execute',
+        '--engine-command', adapter,
+      ], { HOME: path.join(dir, 'home'), CLAUDE_SESSION_ID: 'runner-preflight-blocked' });
+
+      assert.strictEqual(result.code, 1);
+      assert.ok(result.stdout.includes('PIPELINE RUNNER: BLOCKED'));
+      assert.ok(!fs.existsSync(marker));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('does not execute adapter when permission-sensitive plan needs decision', () => {
+    const dir = createTempDir();
+    try {
+      const repo = path.join(dir, 'repo');
+      const adapter = path.join(dir, 'adapter.js');
+      const marker = path.join(dir, 'adapter-marker.json');
+      initRepo(repo);
+      writePlan(path.join(repo, 'plan.md'), {
+        extra: [
+          '',
+          '## Release',
+          '- deploy after verification',
+        ].join('\n'),
+      });
+      writeAdapter(adapter, { markerPath: marker });
+
+      const result = run([
+        '--repo', repo,
+        '--plan', path.join(repo, 'plan.md'),
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--execute',
+        '--engine-command', adapter,
+      ], { HOME: path.join(dir, 'home'), CLAUDE_SESSION_ID: 'runner-sensitive-execute' });
+
+      assert.strictEqual(result.code, 0);
+      assert.ok(result.stdout.includes('PIPELINE RUNNER: NEEDS_DECISION'));
+      assert.ok(!fs.existsSync(marker));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('records execution telemetry events', () => {
+    const dir = createTempDir();
+    try {
+      const repo = path.join(dir, 'repo');
+      const home = path.join(dir, 'home');
+      const adapter = path.join(dir, 'adapter.js');
+      initRepo(repo);
+      writePlan(path.join(repo, 'plan.md'));
+      writeAdapter(adapter);
+
+      const result = run([
+        '--repo', repo,
+        '--plan', path.join(repo, 'plan.md'),
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--task-id', 'execution-telemetry',
+        '--execute',
+        '--engine-command', adapter,
+      ], { HOME: home, CLAUDE_SESSION_ID: 'runner-execution-telemetry' });
+
+      assert.strictEqual(result.code, 0);
+      const events = readTelemetryEvents(home);
+      assert.deepStrictEqual(events.map(event => event.event_type), [
+        'pipeline_started',
+        'pipeline_preflight_completed',
+        'pipeline_execution_started',
+        'pipeline_execution_completed',
+      ]);
+      assert.strictEqual(events[3].status, 'completed');
+      assert.strictEqual(events[3].metadata.task_id, 'execution-telemetry');
+      assert.strictEqual(events[3].metadata.engine_command, adapter);
     } finally {
       cleanup(dir);
     }

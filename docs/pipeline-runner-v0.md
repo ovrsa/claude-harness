@@ -2,7 +2,7 @@
 
 This document defines the first local runner target for the Superpowers-primary, thin `.claude` harness model.
 
-The target is inspired by the SpeakerDeck slide 15 direction: constrain behavior, verify correctness, and improve the next run through one pipeline. v0 intentionally stops at specification and orchestration boundaries; it does not replace Superpowers and does not implement a full Claude Agent SDK runner yet.
+The target is inspired by the SpeakerDeck slide 15 direction: constrain behavior, verify correctness, and improve the next run through one pipeline. v0.1 adds an execution adapter handoff while still avoiding direct implementation, PR creation, deploy, or destructive actions.
 
 ## Goal
 
@@ -44,6 +44,8 @@ The runner accepts:
 
 v0 requires an approved plan before execution. If requirements are still unclear, use Superpowers brainstorming or planning before invoking the runner.
 
+When `--execute` is supplied, v0.1 also requires `--engine-command <path>`. The engine command is invoked directly with argv/env context instead of a shell string.
+
 ## Pipeline
 
 ### 1. Preflight
@@ -57,8 +59,9 @@ v0 requires an approved plan before execution. If requirements are still unclear
 
 ### 2. Execute
 
-- call Superpowers execution semantics through the active runtime
-- use existing `/execute-plan` wrapper behavior when running inside `.claude`
+- call a Superpowers execution adapter through `--engine-command`
+- pass `--repo`, `--plan`, `--track`, `--runtime`, and `--task-id` to the adapter
+- pass matching `PIPELINE_RUNNER_*` environment variables to the adapter
 - stop when scope expands beyond the approved plan
 - stop when the implementation engine reports a blocker
 
@@ -96,6 +99,13 @@ The runner stops and returns `NEEDS_DECISION` when:
 - verification failure implies design uncertainty
 - required observation evidence cannot be captured
 - authorization is missing for destructive, external-service, commit, push, PR, or deploy actions
+- `--execute` is requested without `--engine-command`
+
+Execution adapter exit code mapping:
+
+- `0`: `DONE`
+- `2`: `NEEDS_DECISION`
+- any other code: `BLOCKED`
 
 ## Output Contract
 
@@ -127,7 +137,7 @@ Next Action:
 
 ## Future Extensions
 
-v0 does not include these as required behavior:
+v0.1 does not include these as required behavior:
 
 - Claude Agent SDK + TypeScript implementation
 - browser test and screenshot orchestration
