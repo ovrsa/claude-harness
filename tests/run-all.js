@@ -26,6 +26,7 @@ const testFiles = [
   { file: 'integration/hooks.test.js' },
   { file: 'ci/validators.test.js' },
   { file: 'scripts/claw.test.js' },
+  { file: 'scripts/pipeline-runner.test.js' },
   { file: 'scripts/setup-package-manager.test.js' },
   { file: 'scripts/skill-create-output.test.js' }
 ];

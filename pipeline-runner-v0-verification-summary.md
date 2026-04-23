@@ -1,27 +1,27 @@
-# Verification Summary: Pipeline Runner v0 specification
+# Verification Summary: Pipeline Runner v0 skeleton
 
 ## Commands Run
 
 - `git diff --check`
-- `rg -n "reimplement|replacement implementation|auto-commit|Braintrust|cross-model|screenshot|Superpowers" docs/pipeline-runner-v0.md commands docs`
+- `node tests/scripts/pipeline-runner.test.js`
 - `npm test`
 
 ## Results
 
-- Runner v0 spec documents the intended pipeline without replacing Superpowers execution semantics.
-- Stop conditions preserve explicit authorization for destructive, external-service, commit, push, PR, and deploy actions.
-- Future slide 15 features are explicitly deferred from v0.
+- Runner v0 CLI now preflights approved plans without replacing Superpowers execution semantics.
+- Stop conditions preserve explicit authorization for heavy-risky work and permission-sensitive actions such as commit, push, PR, deploy, destructive commands, and external mutations.
+- The runner records `pipeline_started` and `pipeline_preflight_completed` telemetry events.
 - `git diff --check` passed.
-- Consistency search found the new spec and existing command/docs boundaries; no competing runner implementation was introduced.
-- `npm test` passed with final result: `1070` passed, `0` failed.
+- `node tests/scripts/pipeline-runner.test.js` passed with final result: `7` passed, `0` failed.
+- `npm test` passed with final result: `1077` passed, `0` failed.
 
 ## Mechanical Checks
 
 - Build: not applicable
 - Types: not applicable
 - Lint: covered by harness validators in `npm test`
-- Tests: `npm test` passed
-- Observation: not required; specification-only change
+- Tests: focused runner tests and full harness test suite passed
+- Observation: not required; the runner skeleton adds CLI preflight behavior only
 
 ## Guardrail Candidates
 
