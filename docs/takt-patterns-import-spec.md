@@ -619,8 +619,8 @@ Still deferred:
 
 Done when:
 
-- `pipeline-runner --engine-command scripts/provider-adapters/codex.js` and
-  `pipeline-runner --engine-command scripts/provider-adapters/claude-code.js`
+- `pipeline-runner --adapter-command scripts/provider-adapters/codex.js` and
+  `pipeline-runner --adapter-command scripts/provider-adapters/claude-code.js`
   can run through the existing step-result JSON contract.
 - CI can verify adapter behavior without live provider calls.
 

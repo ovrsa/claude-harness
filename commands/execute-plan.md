@@ -1,18 +1,18 @@
 ---
-description: Local wrapper around Superpowers plan execution with .claude telemetry, permission, and stop-condition boundaries.
+description: Local pipeline entrypoint with .claude telemetry, permission, and stop-condition boundaries.
 ---
 
 # Execute Plan
 
-Use this command when a task is ready for execution and Superpowers is available.
+Use this command when a task is ready for pipeline-guided execution.
 
-`/execute-plan` is not a parallel home-grown runner. It is the local wrapper around Superpowers `executing-plans` or `subagent-driven-development`, with `.claude` preflight/postflight, permission boundaries, and telemetry around it.
+`/execute-plan` is the current local pipeline entrypoint. It coordinates `.claude` preflight/postflight, permission boundaries, telemetry, and the selected execution adapter or discipline pack.
 
 ## Preconditions
 
 - The task track is selected: `trivial`, `standard`, or `heavy-risky`.
-- Superpowers is installed and callable in the active runtime.
-- Requirements are clear enough for Superpowers planning or execution.
+- A suitable execution adapter or discipline pack is available in the active runtime.
+- Requirements are clear enough for pipeline-guided planning or execution.
 - Heavy-risky work has explicit approval before execution.
 - Destructive actions, commit, push, PR creation, deploy, and external-service mutations are explicitly authorized before they run.
 
@@ -23,7 +23,7 @@ The wrapper may:
 - start or confirm session tracing
 - read repo-local `AGENTS.md`
 - classify the task track
-- invoke Superpowers planning/execution semantics
+- invoke the selected planning/execution discipline
 - preserve local permission boundaries
 - capture verification evidence when needed
 - capture observation evidence only when behavior changed
@@ -32,9 +32,9 @@ The wrapper may:
 
 The wrapper must not:
 
-- reimplement Superpowers planning/execution as the default path
+- bypass the pipeline with a competing default execution path
 - require heavyweight local artifacts for trivial tasks
-- bypass Superpowers readiness checks
+- bypass adapter or discipline readiness checks
 - bypass local permission policy
 - auto-commit, auto-push, create PRs, deploy, or run destructive commands without explicit authorization
 - treat SQLite telemetry as immediate correctness evidence
@@ -46,10 +46,10 @@ The wrapper must not:
    - read repo-local `AGENTS.md`
    - classify the track
    - identify permission-sensitive operations
-2. For unclear requirements, use Superpowers brainstorming.
-3. For standard or heavy-risky work, use Superpowers `writing-plans`.
-4. For execution, use Superpowers `executing-plans`; use `subagent-driven-development` when the work is disjoint and the runtime supports it.
-5. Let Superpowers own worktree setup, TDD, implementation sequencing, review workflow, verification-before-completion, and branch finishing.
+2. For unclear requirements, use the selected brainstorming or planning discipline.
+3. For standard or heavy-risky work, pass through the pipeline plan gate.
+4. For execution, select an adapter or discipline pack; use `subagent-driven-development` when the work is disjoint and the runtime supports it.
+5. Let the pipeline own order, stop conditions, evidence, and handoff while adapters own execution mechanics.
 6. Use local `.claude` evidence surfaces only as needed:
    - `verification-summary.md` when rerunnable evidence should be preserved or local commit gates require it
    - `review-summary.md` when unresolved findings or residual risks need durable capture
@@ -65,7 +65,7 @@ The wrapper must not:
 
 Stop and ask for an explicit decision when:
 
-- Superpowers is unavailable
+- no suitable adapter or discipline pack is available
 - the task track cannot be classified safely
 - heavy-risky work lacks explicit approval
 - scope needs to expand beyond the accepted task
@@ -84,7 +84,7 @@ When the scope is narrower than the full suite, report the reason and the exact 
 
 ## Relationship To Local Commands
 
-- `/plan-task` is the local planning fallback when Superpowers `writing-plans` is unavailable or a local artifact is required.
+- `/plan-task` is the local planning fallback when a local artifact is required.
 - `/implement-task` is the local manual execution fallback.
 - `/review-task` is the local durable findings fallback.
 - `/verify` and `/eval` remain local evidence and acceptance surfaces.
@@ -97,7 +97,7 @@ Produce a concise execution report:
 EXECUTE PLAN: [DONE/NEEDS DECISION/BLOCKED]
 
 Track:       [trivial/standard/heavy-risky]
-Engine:      [Superpowers executing-plans/subagent-driven/fallback]
+Adapter:     [selected adapter/discipline/fallback]
 Preflight:   [pass/fail]
 Execution:   [complete/partial/blocked]
 Verify:      [pass/fail/not needed]

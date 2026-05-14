@@ -1,6 +1,6 @@
 # Pipeline Runner v0
 
-This document defines the first local runner target for the Superpowers-primary, thin `.claude` harness model.
+This document defines the first local runner target for the pipeline-primary, thin `.claude` harness model.
 
 The target is inspired by the SpeakerDeck slide 15 direction: constrain behavior, verify correctness, and improve the next run through one pipeline. v0.1 adds an execution adapter handoff while still avoiding direct implementation, PR creation, deploy, or destructive actions.
 
@@ -8,29 +8,29 @@ The target is inspired by the SpeakerDeck slide 15 direction: constrain behavior
 
 Create a small, repeatable pipeline contract for running an approved plan with the same order, evidence, and stop conditions across Claude Code, Codex, and future SDK-based execution.
 
-The v0 runner is not an implementation agent. It is a control and evidence layer around the development engine.
+The v0 runner is not an implementation agent. It is the control and evidence layer around selected execution adapters.
 
 ## Responsibility Boundary
 
-Superpowers owns:
+The pipeline owns:
 
-- implementation planning
-- plan execution
-- TDD sequencing
-- worktree mechanics
-- review workflow
-- verification-before-completion
-- branch finishing guidance
-
-The `.claude` runner owns:
-
-- preflight checks
-- permission and authorization boundaries
+- stage order
+- preflight and plan gates
+- permission and authorization stop conditions
+- adapter selection
 - track-based verification routing
-- telemetry and token coverage capture
-- evidence collection
-- guardrail candidate capture
-- PR-ready or handoff-ready summary generation
+- review, observation, evidence, and handoff placement
+
+Execution adapters own:
+
+- provider-specific command invocation
+- prompt/stdin delivery
+- stdout/stderr capture
+- provider result normalization
+- provider-specific blocked/error mapping
+
+`.claude` owns policy, telemetry, artifact compatibility, session continuity,
+guardrail candidates, and human authorization boundaries.
 
 ## Inputs
 
@@ -42,9 +42,9 @@ The runner accepts:
 - `runtime`: `claude`, `codex`, or `sdk`
 - optional `task_id`: caller-provided task identifier
 
-v0 requires an approved plan before execution. If requirements are still unclear, use Superpowers brainstorming or planning before invoking the runner.
+v0 requires an approved plan before execution. If requirements are still unclear, use the selected planning discipline before invoking the runner.
 
-When `--execute` is supplied, v0.1 also requires `--engine-command <path>`. The engine command is invoked directly with argv/env context instead of a shell string.
+When `--execute` is supplied, v0.1 also requires `--adapter-command <path>`. The adapter command is invoked directly with argv/env context instead of a shell string. `--engine-command` remains a compatibility alias during migration.
 
 ## Pipeline
 
@@ -59,11 +59,11 @@ When `--execute` is supplied, v0.1 also requires `--engine-command <path>`. The 
 
 ### 2. Execute
 
-- call a Superpowers execution adapter through `--engine-command`
+- call the selected execution adapter through `--adapter-command`
 - pass `--repo`, `--plan`, `--track`, `--runtime`, and `--task-id` to the adapter
 - pass matching `PIPELINE_RUNNER_*` environment variables to the adapter
 - stop when scope expands beyond the approved plan
-- stop when the implementation engine reports a blocker
+- stop when the selected adapter reports a blocker
 
 ### 3. Verify
 
@@ -92,14 +92,14 @@ The runner stops and returns `NEEDS_DECISION` when:
 
 - no approved plan exists
 - `track` cannot be classified safely
-- Superpowers is unavailable
+- selected execution adapter is unavailable
 - heavy-risky approval is missing
 - scope expansion is required
 - baseline failure cannot be classified
 - verification failure implies design uncertainty
 - required observation evidence cannot be captured
 - authorization is missing for destructive, external-service, commit, push, PR, or deploy actions
-- `--execute` is requested without `--engine-command`
+- `--execute` is requested without `--adapter-command`
 
 Execution adapter exit code mapping:
 
@@ -117,7 +117,7 @@ PIPELINE RUNNER: [DONE/NEEDS_DECISION/BLOCKED]
 Task:        [task_id or derived name]
 Track:       [trivial/standard/heavy-risky]
 Runtime:     [claude/codex/sdk]
-Engine:      [Superpowers/fallback]
+Adapter:     [adapter name/not-selected]
 Preflight:   [pass/fail]
 Execution:   [complete/partial/blocked/not-run]
 Verify:      [pass/fail/not-run/not-needed]

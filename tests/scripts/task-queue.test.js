@@ -189,7 +189,7 @@ function createIsolatedRun({ dir, home, repo, taskId = 'task-managed', runId = '
     '--workflow', workflowPath,
     '--track', 'standard',
     '--runtime', 'codex',
-    '--engine-command', adapterPath,
+    '--adapter-command', adapterPath,
   ], { HOME: home });
   assert.strictEqual(result.code, 0, result.stderr);
   return readJson(path.join(home, '.claude', 'runs', runId, 'meta.json'));

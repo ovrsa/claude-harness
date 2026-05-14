@@ -1,14 +1,14 @@
-# Superpowers Primary Engine Boundary
+# Superpowers Discipline Boundary
 
-`~/.claude` uses Superpowers as the default development engine when it is installed.
+`~/.claude` can use Superpowers as a selected discipline pack when it is installed.
 
-Superpowers owns the mechanics of planning, worktree setup, implementation, TDD, review workflow, verification-before-completion, and branch finishing.
+The local pipeline owns the execution spine: stage order, stop conditions, adapter selection, evidence, verification placement, observation placement, and handoff.
 
-`~/.claude` owns the thin control layer around that engine: runtime bridging, permissions, telemetry, session continuity, guardrail candidates, and periodic improvement.
+Superpowers may provide planning, TDD, review workflow, verification-before-completion, and branch finishing discipline behind that pipeline. It does not own lifecycle policy.
 
 ## Division Of Responsibility
 
-### Superpowers Owns
+### Superpowers Provides When Selected
 
 - brainstorming when requirements are unclear
 - writing implementation plans
@@ -20,9 +20,11 @@ Superpowers owns the mechanics of planning, worktree setup, implementation, TDD,
 - verification before completion
 - finishing a development branch
 
-### `~/.claude` Owns
+### `.claude` Pipeline Owns
 
 - Claude Code / Codex / Cursor adapter rules
+- stage order and stop conditions
+- adapter selection
 - session start/end tracing
 - SQLite runtime state and resume hints
 - permission and destructive-action boundaries
@@ -44,7 +46,7 @@ Use the lightest track that preserves correctness.
 
 - `standard`
   - normal feature, bug fix, or multi-file change
-  - use Superpowers planning and execution by default
+  - use pipeline-guided planning and execution by default
   - capture telemetry and verification evidence
   - write a lightweight acceptance summary
   - observe only when behavior changed
@@ -53,7 +55,7 @@ Use the lightest track that preserves correctness.
   - auth, payment, permissions, data model, broad refactor, UI/backend combined, or rollout-sensitive work
   - require explicit approval before execution
   - use worktree isolation
-  - use Superpowers subagent-driven development when useful
+  - use subagent-driven development when useful
   - require review, verification, residual-risk acceptance, and observation when behavior changed
 
 ## Verification Scope Policy
@@ -78,15 +80,15 @@ Thin .claude Preflight
   -> permission class
   -> track selection
 
-Superpowers Engine
-  -> brainstorming when unclear
-  -> writing-plans for standard/heavy work
-  -> using-git-worktrees when needed
-  -> executing-plans or subagent-driven-development
-  -> test-driven-development
-  -> requesting/receiving-code-review
-  -> verification-before-completion
-  -> finishing-a-development-branch
+Local Pipeline
+  -> selected planning discipline when unclear
+  -> plan gate for standard/heavy work
+  -> isolation when needed
+  -> selected execution adapter
+  -> review/eval placement
+  -> verification placement
+  -> observation when behavior changed
+  -> handoff summary
 
 Thin .claude Postflight
   -> session end tracing
@@ -97,8 +99,8 @@ Thin .claude Postflight
 
 ## Local Command Relationship
 
-- `/execute-plan` is the local wrapper around Superpowers plan execution.
-- `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are compatibility or fallback surfaces when Superpowers is unavailable or the operator explicitly wants manual local control.
+- `/execute-plan` is the current local pipeline entrypoint.
+- `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are compatibility or fallback surfaces when the operator explicitly wants manual local control.
 - `/verify`, `/eval`, and `observation-summary.md` remain available as local evidence surfaces, but their weight depends on the selected track.
 
 ## Installation Preference
@@ -117,7 +119,7 @@ If a local clone is useful for reading or comparison, keep it outside the harnes
 
 - Do not let Superpowers bypass local permission policy.
 - Do not let Superpowers auto-commit, push, create PRs, deploy, or run destructive commands without explicit authorization.
-- Do not use local `.claude` commands as a parallel default planning/execution engine when Superpowers is available.
+- Do not use local fallback commands as a parallel default planning/execution engine when the pipeline can handle the task.
 - Do not require heavyweight local artifacts for trivial tasks.
 - Do not use SQLite telemetry as a substitute for immediate correctness checks.
 - Record recurring failures as guardrail candidates and review them through health/triage instead of promoting them automatically.

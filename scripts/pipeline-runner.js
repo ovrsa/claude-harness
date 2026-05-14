@@ -44,7 +44,7 @@ function parseArgs(argv) {
     taskId: '',
     execute: false,
     loop: false,
-    engineCommand: '',
+    adapterCommand: '',
     workflow: '',
     step: '',
     runId: '',
@@ -70,8 +70,8 @@ function parseArgs(argv) {
       options.execute = true;
     } else if (arg === '--loop') {
       options.loop = true;
-    } else if (arg === '--engine-command') {
-      options.engineCommand = argv[++i] || '';
+    } else if (arg === '--adapter-command' || arg === '--engine-command') {
+      options.adapterCommand = argv[++i] || '';
     } else if (arg === '--workflow') {
       options.workflow = argv[++i] || '';
     } else if (arg === '--step') {
@@ -91,7 +91,7 @@ function printHelp() {
     'Pipeline Runner v0',
     '',
     'Usage:',
-    '  node scripts/pipeline-runner.js --repo <path> --plan <path> --track <trivial|standard|heavy-risky> --runtime <claude|codex|sdk> [--task-id <id>] [--run-id <id>] [--workflow <path>] [--step <name>] [--execute --engine-command <path>] [--loop] [--heavy-risky-approved]',
+    '  node scripts/pipeline-runner.js --repo <path> --plan <path> --track <trivial|standard|heavy-risky> --runtime <claude|codex|sdk> [--task-id <id>] [--run-id <id>] [--workflow <path>] [--step <name>] [--execute --adapter-command <path>] [--loop] [--heavy-risky-approved]',
     '',
     'This runner performs preflight, optional execution adapter handoff, summary, and telemetry. It does not implement directly, commit, push, create PRs, deploy, or run destructive actions.',
     '',
@@ -115,6 +115,14 @@ function normalizeTaskId(options, planPath) {
   if (options.taskId) return options.taskId;
   if (planPath) return path.basename(planPath, path.extname(planPath));
   return 'pipeline-runner-task';
+}
+
+function adapterLabel(adapterCommand) {
+  const command = String(adapterCommand || '').trim();
+  if (!command) return 'not-selected';
+  const baseName = path.basename(command);
+  const extension = path.extname(baseName);
+  return extension ? baseName.slice(0, -extension.length) : baseName;
 }
 
 function recordPipelineEvent(context, eventType, status, metadata = {}) {
@@ -325,14 +333,14 @@ function createExecutionEnv(options, result, stepContext = {}) {
   };
 }
 
-function executionFromAdapterStatus(status, stdout, engineCommand) {
+function executionFromAdapterStatus(status, stdout, adapterCommand) {
   const execution = {
     status: 'not-run',
     eventType: '',
     eventStatus: '',
     decision: '',
     blocker: '',
-    engineCommand,
+    adapterCommand,
     exitCode: status,
     stdout: stdout || '',
     result: parseAdapterResult(stdout || ''),
@@ -344,13 +352,13 @@ function executionFromAdapterStatus(status, stdout, engineCommand) {
     execution.eventStatus = 'completed';
   } else if (status === 2) {
     execution.status = 'blocked';
-    execution.decision = 'engine command requested a decision';
+    execution.decision = 'adapter command requested a decision';
     execution.eventType = 'pipeline_execution_blocked';
     execution.eventStatus = 'blocked';
   } else {
     const exitCode = status === null ? 'unknown' : status;
     execution.status = 'failed';
-    execution.blocker = `engine command failed with exit code ${exitCode}`;
+    execution.blocker = `adapter command failed with exit code ${exitCode}`;
     execution.eventType = 'pipeline_execution_failed';
     execution.eventStatus = 'failed';
   }
@@ -379,29 +387,29 @@ function buildExecutionArgs(result, stepContext = {}) {
 }
 
 function runExecutionAdapter(options, result, stepContext = {}) {
-  const engineCommand = path.resolve(options.engineCommand);
+  const adapterCommand = path.resolve(options.adapterCommand);
   const execution = {
     status: 'not-run',
     eventType: '',
     eventStatus: '',
     decision: '',
     blocker: '',
-    engineCommand,
+    adapterCommand,
     exitCode: null,
     stdout: '',
     result: null,
   };
 
-  if (!options.engineCommand) {
-    execution.decision = 'engine command is required for execution';
+  if (!options.adapterCommand) {
+    execution.decision = 'adapter command is required for execution';
     return execution;
   }
 
-  if (!fs.existsSync(engineCommand)) {
-    execution.blocker = 'engine command file is missing';
+  if (!fs.existsSync(adapterCommand)) {
+    execution.blocker = 'adapter command file is missing';
     execution.status = 'failed';
     recordPipelineEvent(result, 'pipeline_execution_failed', 'failed', {
-      engine_command: engineCommand,
+      adapter_command: adapterCommand,
       exit_code: null,
     });
     return execution;
@@ -409,23 +417,23 @@ function runExecutionAdapter(options, result, stepContext = {}) {
 
   const args = buildExecutionArgs(result, stepContext);
   recordPipelineEvent(result, 'pipeline_execution_started', 'started', {
-    engine_command: engineCommand,
+    adapter_command: adapterCommand,
     workflow: stepContext.workflowName || '',
     step: stepContext.stepName || '',
     step_index: Number.isInteger(stepContext.stepIndex) ? stepContext.stepIndex : null,
   });
 
-  const adapterResult = spawnSync(engineCommand, args, {
+  const adapterResult = spawnSync(adapterCommand, args, {
     cwd: result.repoRoot,
     encoding: 'utf8',
     env: createExecutionEnv(options, result, stepContext),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  Object.assign(execution, executionFromAdapterStatus(adapterResult.status, adapterResult.stdout || '', engineCommand));
+  Object.assign(execution, executionFromAdapterStatus(adapterResult.status, adapterResult.stdout || '', adapterCommand));
 
   if (execution.eventType) {
     recordPipelineEvent(result, execution.eventType, execution.eventStatus, {
-      engine_command: engineCommand,
+      adapter_command: adapterCommand,
       exit_code: execution.exitCode,
       workflow: stepContext.workflowName || '',
       step: stepContext.stepName || '',
@@ -437,24 +445,24 @@ function runExecutionAdapter(options, result, stepContext = {}) {
 }
 
 function runExecutionAdapterAsync(options, result, stepContext = {}) {
-  const engineCommand = path.resolve(options.engineCommand);
-  if (!options.engineCommand) {
+  const adapterCommand = path.resolve(options.adapterCommand);
+  if (!options.adapterCommand) {
     return Promise.resolve({
       status: 'not-run',
       eventType: '',
       eventStatus: '',
-      decision: 'engine command is required for execution',
+      decision: 'adapter command is required for execution',
       blocker: '',
-      engineCommand,
+      adapterCommand,
       exitCode: null,
       stdout: '',
       result: null,
     });
   }
 
-  if (!fs.existsSync(engineCommand)) {
+  if (!fs.existsSync(adapterCommand)) {
     recordPipelineEvent(result, 'pipeline_execution_failed', 'failed', {
-      engine_command: engineCommand,
+      adapter_command: adapterCommand,
       exit_code: null,
     });
     return Promise.resolve({
@@ -462,8 +470,8 @@ function runExecutionAdapterAsync(options, result, stepContext = {}) {
       eventType: '',
       eventStatus: '',
       decision: '',
-      blocker: 'engine command file is missing',
-      engineCommand,
+      blocker: 'adapter command file is missing',
+      adapterCommand,
       exitCode: null,
       stdout: '',
       result: null,
@@ -472,14 +480,14 @@ function runExecutionAdapterAsync(options, result, stepContext = {}) {
 
   const args = buildExecutionArgs(result, stepContext);
   recordPipelineEvent(result, 'pipeline_execution_started', 'started', {
-    engine_command: engineCommand,
+    adapter_command: adapterCommand,
     workflow: stepContext.workflowName || '',
     step: stepContext.stepName || '',
     step_index: Number.isInteger(stepContext.stepIndex) ? stepContext.stepIndex : null,
   });
 
   return new Promise(resolve => {
-    const child = spawn(engineCommand, args, {
+    const child = spawn(adapterCommand, args, {
       cwd: result.repoRoot,
       env: createExecutionEnv(options, result, stepContext),
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -495,13 +503,13 @@ function runExecutionAdapterAsync(options, result, stepContext = {}) {
         eventStatus: 'failed',
         decision: '',
         blocker: error.message,
-        engineCommand,
+        adapterCommand,
         exitCode: null,
         stdout,
         result: null,
       };
       recordPipelineEvent(result, execution.eventType, execution.eventStatus, {
-        engine_command: engineCommand,
+        adapter_command: adapterCommand,
         exit_code: null,
         workflow: stepContext.workflowName || '',
         step: stepContext.stepName || '',
@@ -510,10 +518,10 @@ function runExecutionAdapterAsync(options, result, stepContext = {}) {
       resolve(execution);
     });
     child.on('close', code => {
-      const execution = executionFromAdapterStatus(code, stdout, engineCommand);
+      const execution = executionFromAdapterStatus(code, stdout, adapterCommand);
       if (execution.eventType) {
         recordPipelineEvent(result, execution.eventType, execution.eventStatus, {
-          engine_command: engineCommand,
+          adapter_command: adapterCommand,
           exit_code: execution.exitCode,
           workflow: stepContext.workflowName || '',
           step: stepContext.stepName || '',
@@ -571,7 +579,7 @@ function createBlockedReviewerExecution(reviewerStep, blocker) {
     eventStatus: '',
     decision: '',
     blocker: '',
-    engineCommand: '',
+    adapterCommand: '',
     exitCode: null,
     stdout: '',
     result: {
@@ -654,7 +662,7 @@ async function runParallelReviewAdapters(options, result, step, stepContext, evi
     eventStatus: 'completed',
     decision: '',
     blocker: '',
-    engineCommand: path.resolve(options.engineCommand || ''),
+    adapterCommand: path.resolve(options.adapterCommand || ''),
     exitCode: aggregate.condition === 'blocked' ? 1 : 0,
     stdout: '',
     result: {
@@ -1133,8 +1141,8 @@ async function buildResult(options) {
   if (permissionDecision.requires_explicit_authorization && !(options.loop && workflow)) {
     decisions.push(...permissionDecision.reasons);
   }
-  if (options.execute && !options.engineCommand && blockers.length === 0 && decisions.length === 0) {
-    decisions.push('engine command is required for execution');
+  if (options.execute && !options.adapterCommand && blockers.length === 0 && decisions.length === 0) {
+    decisions.push('adapter command is required for execution');
   }
 
   let status = blockers.length > 0 ? 'BLOCKED' : (decisions.length > 0 ? 'NEEDS_DECISION' : 'READY');
@@ -1197,7 +1205,7 @@ async function buildResult(options) {
         workflowStepCount = loopResult.stepCount;
         workflowFinalTarget = loopResult.finalTarget;
         status = loopResult.status;
-        evidence.push(`engine_command=${path.resolve(options.engineCommand)}`);
+        evidence.push(`adapter_command=${path.resolve(options.adapterCommand)}`);
         if (loopResult.decision) {
           decisions.push(loopResult.decision);
         }
@@ -1267,7 +1275,7 @@ async function buildResult(options) {
             });
           }
           if (execution.status === 'complete') {
-            evidence.push(`engine_command=${execution.engineCommand}`);
+            evidence.push(`adapter_command=${execution.adapterCommand}`);
             if (workflow) {
               const aggregate = conditionFromExecution(execution, selectedWorkflowStep);
               reviewAggregation = aggregate.reviewAggregation;
@@ -1354,6 +1362,7 @@ async function buildResult(options) {
     repoRoot,
     planPath: planInput,
     runId,
+    adapter: adapterLabel(options.adapterCommand),
     workflowTransition,
     reviewAggregation,
     permissionDecision,
@@ -1389,7 +1398,7 @@ function formatResult(result) {
   if (result.workflowLoop) {
     lines.push(`Steps:       ${result.workflowStepCount}`);
   }
-  lines.push('Engine:      Superpowers');
+  lines.push(`Adapter:     ${result.adapter || 'not-selected'}`);
   lines.push(`Preflight:   ${result.preflight}`);
   lines.push(`Execution:   ${result.executionStatus}`);
   lines.push('Verify:      not-run');

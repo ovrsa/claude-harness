@@ -15,7 +15,7 @@ Future improvements to telemetry, permissions, adapters, and guardrails should l
 `~/.codex` is a runtime bridge, not a second harness.
 External frameworks, plugin packs, and upstream repos may inform local improvements, but they must remain observable through the local control layer.
 
-Superpowers, when installed, is the default development engine for planning, execution, worktrees, TDD, review workflow, verification-before-completion, and branch finishing. `~/.claude` remains the thin governance, telemetry, permission, session-continuity, and improvement layer around it. See `~/.claude/docs/superpowers-adoption.md`.
+The local pipeline is the default execution spine for non-trivial work. Superpowers, when installed, is a selectable discipline pack for planning, execution sequencing, TDD, review workflow, verification-before-completion, and branch finishing. `~/.claude` remains the governance, telemetry, permission, session-continuity, and improvement layer. See `~/.claude/docs/superpowers-adoption.md`.
 
 Active repositories should expose a thin repo-local map, preferably root `AGENTS.md`, that points to the real truth sources without duplicating the lifecycle.
 
@@ -42,7 +42,7 @@ Completion model:
 Use the lightest artifact chain that preserves correctness.
 
 - `trivial`: context check plus verification of the changed surface
-- `standard`: Superpowers planning/execution plus verification evidence and a lightweight acceptance summary
+- `standard`: pipeline-guided planning/execution plus verification evidence and a lightweight acceptance summary
 - `heavy-risky`: explicit approval, worktree isolation, review, verification, residual-risk acceptance, and observation when behavior changed
 
 Local artifacts remain available when needed:
@@ -66,7 +66,7 @@ Repository artifacts remain the human-readable control surface and approval surf
 
 ## Execution Rules
 
-- use Superpowers as the default engine for standard and heavy-risky development work when it is available
+- use the local pipeline as the default spine for standard and heavy-risky development work
 - do not implement heavy-risky work before explicit approval
 - do not skip review or evaluate for implementation and bug-fix work
 - do not commit before `verification-summary.md`
@@ -89,9 +89,9 @@ Repository artifacts remain the human-readable control surface and approval surf
 
 ## Preferred Commands
 
-- `/execute-plan` as the local wrapper around Superpowers plan execution
+- `/execute-plan` as the current local pipeline entrypoint
 - `/research` and `/plan` for conversational scoping when requirements are unclear
-- `/plan-task` only when a local `plan.md` artifact is required or Superpowers is unavailable
+- `/plan-task` only when a local `plan.md` artifact is required or manual local planning is explicitly wanted
 - `/review-task` to record findings and residual risks before acceptance
 - `/eval` to decide whether implementation or bug-fix work is acceptable to accept
 - `/verify` before completion or commit

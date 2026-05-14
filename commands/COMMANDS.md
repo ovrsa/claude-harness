@@ -6,18 +6,18 @@ Use it as the fastest command map after `CLAUDE.md`. It does not replace the com
 
 ## Preferred Lifecycle Path
 
-Use Superpowers by default for standard and heavy-risky implementation and bug-fix work.
+Use the local pipeline by default for standard and heavy-risky implementation and bug-fix work.
 
-- `/execute-plan` as the local wrapper around Superpowers `executing-plans` or `subagent-driven-development`
+- `/execute-plan` as the current local pipeline entrypoint
 - `/research` and `/plan` for conversational scoping when requirements are unclear
 - `/verify` to capture local rerunnable evidence when needed
 - `/eval` to record local acceptance judgment when needed
 
-Local `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility commands when Superpowers is unavailable or the operator explicitly wants manual local control.
+Local `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility commands when the operator explicitly wants manual local control.
 
 ## Core Lifecycle Pairs
 
-These pairs separate conversational guidance from repository artifacts. They are local fallback paths, not the standard Superpowers path.
+These pairs separate conversational guidance from repository artifacts. They are local fallback paths, not the standard pipeline path.
 
 - `/research` is the conversational research entrypoint; `/research-task` creates or updates repository `research.md`
 - `/plan` is the conversational planning entrypoint; `/plan-task` creates or updates repository `plan.md`
@@ -35,7 +35,7 @@ Local evidence surface for implementation and bug-fix work.
 
 ### Implementation Helpers
 
-Used while moving a task through execution when Superpowers is unavailable or local wrapper behavior is needed.
+Used while moving a task through execution when manual local control or local wrapper behavior is needed.
 
 - `/execute-plan`
 - `/implement-task`
@@ -43,9 +43,9 @@ Used while moving a task through execution when Superpowers is unavailable or lo
 - `/test-coverage`
 - `/code-review`
 
-`/execute-plan` is the preferred local wrapper. It should invoke Superpowers execution semantics rather than reimplement a parallel home-grown runner.
+`/execute-plan` is the preferred local pipeline entrypoint. It should preserve pipeline stop conditions rather than reimplement a parallel home-grown runner.
 
-`/implement-task` remains the conservative manual fallback and should not be the default when Superpowers is installed.
+`/implement-task` remains the conservative manual fallback and should not be the default when the pipeline can handle the task.
 
 ### Repo Orientation And Maintenance
 

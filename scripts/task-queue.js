@@ -352,6 +352,7 @@ function startTask(options, claudeDir = getClaudeDir()) {
 }
 
 function buildPipelineArgs(options, task, runId, claudeDir) {
+  const adapterCommand = options.adapterCommand || options.engineCommand || '';
   const args = [
     path.join(__dirname, 'pipeline-runner.js'),
     '--repo', String(options.executionRepo || options.repo || process.cwd()),
@@ -362,7 +363,7 @@ function buildPipelineArgs(options, task, runId, claudeDir) {
     '--run-id', runId,
     '--execute',
     '--loop',
-    '--engine-command', String(options.engineCommand || ''),
+    '--adapter-command', String(adapterCommand),
   ];
   if (options.workflow) {
     args.push('--workflow', String(options.workflow));
@@ -379,7 +380,7 @@ function buildPipelineArgs(options, task, runId, claudeDir) {
 function executeTaskRun(options, claudeDir = getClaudeDir(), isRetry = false) {
   const taskId = String(options.taskId || '').trim();
   if (!taskId) return { status: 'BLOCKED', message: 'task-id is required' };
-  if (!options.engineCommand) return { status: 'BLOCKED', message: 'engine-command is required' };
+  if (!options.adapterCommand && !options.engineCommand) return { status: 'BLOCKED', message: 'adapter-command is required' };
 
   const index = readIndex(claudeDir);
   const task = findTask(index, taskId);
@@ -901,8 +902,8 @@ function printHelp() {
     '  node scripts/task-queue.js add --title <title> --order <text> [--task-id <id>]',
     '  node scripts/task-queue.js list',
     '  node scripts/task-queue.js start --task-id <id> [--run-id <id>] [--repo <path>]',
-    '  node scripts/task-queue.js run --task-id <id> --repo <path> --plan <path> --workflow <path> --engine-command <path> [--run-id <id>]',
-    '  node scripts/task-queue.js retry --task-id <id> --repo <path> --plan <path> --workflow <path> --engine-command <path> [--from-step <name>] [--note <text>]',
+    '  node scripts/task-queue.js run --task-id <id> --repo <path> --plan <path> --workflow <path> --adapter-command <path> [--run-id <id>]',
+    '  node scripts/task-queue.js retry --task-id <id> --repo <path> --plan <path> --workflow <path> --adapter-command <path> [--from-step <name>] [--note <text>]',
     '  node scripts/task-queue.js list --format json',
     '  node scripts/task-queue.js list-clones [--format json]',
     '  node scripts/task-queue.js diff [--task-id <id> | --run-id <id>]',

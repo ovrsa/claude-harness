@@ -4,7 +4,7 @@ description: Local fallback for persistent research artifacts when durable conte
 
 # Research Task
 
-Use this command when durable local research is needed before Superpowers planning, or when Superpowers is unavailable and the repository still needs a persistent research artifact.
+Use this command when durable local research is needed before pipeline planning, or when the repository needs a persistent research artifact.
 
 `/research-task` is the local artifact-producing research path. It is not required for trivial tasks and should not be used as a competing default when Superpowers can gather enough context for planning.
 

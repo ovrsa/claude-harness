@@ -12,7 +12,7 @@ The default development loop is:
 
 1. intake and track selection
 2. thin `.claude` preflight: session tracing, repo routing, permission class
-3. Superpowers planning/execution for standard and heavy-risky work
+3. pipeline-guided planning/execution for standard and heavy-risky work
 4. deterministic verification
 5. lightweight acceptance evaluation
 6. observation only when behavior changed
@@ -20,7 +20,7 @@ The default development loop is:
 8. thin `.claude` postflight: telemetry, guardrail candidates, and post-commit capture when warranted
 9. health / triage / improve-harness on explicit improvement requests
 
-This keeps the local layer focused on observability, permission boundaries, continuity, and recurring-failure improvement while Superpowers owns development mechanics.
+This keeps the local layer focused on observability, permission boundaries, continuity, and recurring-failure improvement while selected adapters or discipline packs handle execution mechanics.
 
 ## Main Surfaces
 
@@ -74,31 +74,30 @@ Optional promotion-oriented sections can live inside the main artifacts as `Guar
   - no heavy local artifact chain unless hooks or risk require it
 
 - `standard`
-  - use Superpowers planning and execution by default
+  - use pipeline-guided planning and execution by default
   - capture verification evidence and a lightweight acceptance summary
   - observe only when runtime, UI, or integration behavior changed
 
 - `heavy-risky`
   - require explicit approval before execution
   - use worktree isolation
-  - use Superpowers subagent-driven development when useful
+  - use subagent-driven development when useful
   - require review, verification, residual-risk acceptance, and observation when behavior changed
 
-## Superpowers Primary Engine
+## Pipeline Primary Spine
 
-Superpowers is the default engine for standard and heavy-risky development work when installed.
+The local pipeline is the default spine for standard and heavy-risky development work.
 
 It owns:
 
-- brainstorming when requirements are unclear
-- writing implementation plans
-- executing plans
-- worktree setup
-- TDD and review workflow
-- verification-before-completion
-- branch finishing
+- stage order and stop conditions
+- track selection enforcement
+- preflight and plan gates
+- adapter selection
+- review/eval, verification, and observation placement
+- evidence and handoff summaries
 
-`/execute-plan` is the local wrapper around Superpowers execution. Local commands such as `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility surfaces when Superpowers is unavailable or manual local control is explicitly wanted.
+Superpowers remains available as a selectable discipline pack for brainstorming, planning, TDD, review workflow, verification-before-completion, and branch finishing. Local commands such as `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility surfaces when manual local control is explicitly wanted.
 
 `.claude` still owns permission boundaries, runtime bridge behavior, SQLite session state, guardrail candidates, and the health/triage improvement loop.
 

@@ -34,7 +34,7 @@ Superpowers `writing-plans` is the default implementation-planning engine for st
 
 - `/plan` is the conversational planning entrypoint.
 - Superpowers `writing-plans` is the preferred implementation-planning path when available.
-- `/plan-task` writes the repository artifact and should be used when the plan needs to survive beyond chat or Superpowers is unavailable.
+- `/plan-task` writes the repository artifact and should be used when the plan needs to survive beyond chat or manual local planning is explicitly wanted.
 - Keep both commands aligned on the same scope and acceptance criteria.
 
 ## Next Handoff

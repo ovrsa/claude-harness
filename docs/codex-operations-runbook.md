@@ -5,7 +5,7 @@
 目的は 2 つです。
 
 - `telemetry.db` に session を確実に残す
-- Superpowers 実行を `.claude` の permission / telemetry / guardrail layer から観測する
+- pipeline 実行を `.claude` の permission / telemetry / guardrail layer から観測する
 - 必要な時だけ task artifact と `Guardrail Candidates` を改善ループに流す
 
 ## Core Rule
@@ -13,7 +13,7 @@
 `Codex` は `~/.claude` の bridge であり、第二の local control layer ではありません。
 
 - local control layer の正本は `CLAUDE.md`, `OPERATING_MODEL.md`, `HARNESS.md`
-- standard/heavy work の development engine は Superpowers
+- standard/heavy work の execution spine は local pipeline
 - `Codex` 側では local policy を再定義しない
 - まず `session capture` を安定させ、その後に improvement を回す
 
@@ -37,9 +37,10 @@ node ~/.claude/scripts/hooks/runtime-session-start.js
 
 1. repo-local `AGENTS.md` を読む
 2. task track を選ぶ: `trivial`, `standard`, `heavy-risky`
-3. standard/heavy work は Superpowers planning/execution を使う
-4. `.claude` は permission, telemetry, session continuity, guardrail capture を担当する
-5. 必要な時だけ `review-summary.md`, `verification-summary.md`, `observation-summary.md` を残す
+3. standard/heavy work は local pipeline を通す
+4. adapters や discipline packs が execution mechanics を担当する
+5. `.claude` は permission, telemetry, session continuity, guardrail capture を担当する
+6. 必要な時だけ `review-summary.md`, `verification-summary.md`, `observation-summary.md` を残す
 
 `Codex` でも control layer は Claude Code と同じです。違うのは hook parity だけです。
 

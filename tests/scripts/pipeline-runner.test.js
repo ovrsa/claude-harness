@@ -342,7 +342,7 @@ function runTests() {
       assert.strictEqual(result.code, 0);
       assert.ok(result.stdout.includes('PIPELINE RUNNER: READY'));
       assert.ok(result.stdout.includes('Track:       standard'));
-      assert.ok(result.stdout.includes('Engine:      Superpowers'));
+      assert.ok(result.stdout.includes('Adapter:     not-selected'));
       assert.ok(result.stdout.includes('Preflight:   pass'));
       assert.ok(result.stdout.includes('Execution:   not-run'));
     } finally {
@@ -490,7 +490,7 @@ function runTests() {
         '--workflow', path.join(__dirname, '..', '..', 'workflows', 'standard-development.yaml'),
         '--step', 'implement',
         '--execute',
-        '--engine-command', adapter,
+        '--adapter-command', adapter,
       ], { HOME: path.join(dir, 'home'), CLAUDE_SESSION_ID: 'runner-permission-block' });
 
       assert.strictEqual(result.code, 0);
@@ -558,6 +558,7 @@ function runTests() {
 
       assert.strictEqual(result.code, 0);
       assert.ok(result.stdout.includes('PIPELINE RUNNER: DONE'));
+      assert.ok(result.stdout.includes('Adapter:     adapter'));
       assert.ok(result.stdout.includes('Execution:   complete'));
       const markerContent = JSON.parse(fs.readFileSync(marker, 'utf8'));
       const expectedRepoRoot = fs.realpathSync(repo);
@@ -576,7 +577,7 @@ function runTests() {
     }
   })) passed++; else failed++;
 
-  if (test('requires engine command when execute flag is set', () => {
+  if (test('requires adapter command when execute flag is set', () => {
     const dir = createTempDir();
     try {
       const repo = path.join(dir, 'repo');
@@ -594,7 +595,7 @@ function runTests() {
 
       assert.strictEqual(result.code, 0);
       assert.ok(result.stdout.includes('PIPELINE RUNNER: NEEDS_DECISION'));
-      assert.ok(result.stdout.includes('engine command is required for execution'));
+      assert.ok(result.stdout.includes('adapter command is required for execution'));
       assert.ok(result.stdout.includes('Execution:   not-run'));
     } finally {
       cleanup(dir);
@@ -622,7 +623,7 @@ function runTests() {
       assert.strictEqual(result.code, 0);
       assert.ok(result.stdout.includes('PIPELINE RUNNER: NEEDS_DECISION'));
       assert.ok(result.stdout.includes('Execution:   blocked'));
-      assert.ok(result.stdout.includes('engine command requested a decision'));
+      assert.ok(result.stdout.includes('adapter command requested a decision'));
     } finally {
       cleanup(dir);
     }
@@ -649,7 +650,7 @@ function runTests() {
       assert.strictEqual(result.code, 1);
       assert.ok(result.stdout.includes('PIPELINE RUNNER: BLOCKED'));
       assert.ok(result.stdout.includes('Execution:   failed'));
-      assert.ok(result.stdout.includes('engine command failed with exit code 1'));
+      assert.ok(result.stdout.includes('adapter command failed with exit code 1'));
     } finally {
       cleanup(dir);
     }
@@ -744,7 +745,8 @@ function runTests() {
       ]);
       assert.strictEqual(events[3].status, 'completed');
       assert.strictEqual(events[3].metadata.task_id, 'execution-telemetry');
-      assert.strictEqual(events[3].metadata.engine_command, adapter);
+      assert.strictEqual(events[3].metadata.adapter_command, adapter);
+      assert.strictEqual(events[3].metadata.engine_command, undefined);
     } finally {
       cleanup(dir);
     }
@@ -1541,7 +1543,7 @@ function runTests() {
 
       assert.strictEqual(result.code, 1);
       assert.ok(result.stdout.includes('PIPELINE RUNNER: BLOCKED'));
-      assert.ok(result.stdout.includes('engine command failed with exit code 1'));
+      assert.ok(result.stdout.includes('adapter command failed with exit code 1'));
       const events = readNdjson(path.join(home, '.claude', 'runs', 'run-loop-failed', 'logs', 'events.ndjson'));
       assert.ok(events.some(event => event.type === 'run_blocked' && event.step === 'research'));
     } finally {

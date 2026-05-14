@@ -37,11 +37,11 @@ The harness is split into five layers:
 - `.codex`, Cursor, and other runtimes consume `.claude`
 - adapters inherit the workflow, not redefine it
 
-Superpowers belongs in the development-engine layer consumed by this control layer. It owns development mechanics; `.claude` owns observability, permissions, session continuity, and improvement.
+The local pipeline is the development spine consumed by this control layer. Superpowers belongs behind that spine as a selectable discipline pack; `.claude` owns observability, permissions, session continuity, and improvement.
 
 ## Design Principles
 
-- Superpowers-first for development mechanics
+- Pipeline-first for development mechanics
 - Track-first over one-size-fits-all gates
 - Artifact-when-useful over artifact-every-time
 - DB-first runtime state over Markdown-only checkpoints
@@ -66,7 +66,7 @@ Superpowers belongs in the development-engine layer consumed by this control lay
 - `commands/`
   Own workflow entrypoints.
   `commands/COMMANDS.md` is the grouped summary of that surface, not a replacement for the command docs.
-  `/execute-plan` is the local wrapper around Superpowers execution. `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility surfaces.
+  `/execute-plan` is the current local pipeline entrypoint. `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility surfaces.
 - root `AGENTS.md` in active repos
   Owns thin repo-local orientation and truth-source routing only.
 - `AUTONOMY_POLICY.md`
@@ -81,7 +81,7 @@ Superpowers belongs in the development-engine layer consumed by this control lay
 Use the lightest artifact chain that preserves correctness:
 
 - `trivial`: context check plus verification of the changed surface
-- `standard`: Superpowers plan/execution plus verification evidence and lightweight acceptance summary
+- `standard`: pipeline-guided plan/execution plus verification evidence and lightweight acceptance summary
 - `heavy-risky`: explicit approval, worktree isolation, review, verification, residual-risk acceptance, and observation when behavior changed
 
 Local artifacts remain available when useful:
@@ -129,24 +129,24 @@ Work is done only when the required checks for the selected track have passed. V
 
 Development execution has one preferred engine plus local fallbacks:
 
-1. Superpowers
-   - default for standard and heavy-risky work
-   - owns planning, worktrees, TDD, execution, review workflow, verification-before-completion, and branch finishing
+1. Local pipeline
+   - default spine for standard and heavy-risky work
+   - owns order, stop conditions, adapter selection, evidence, and handoff
 
 2. `/execute-plan`
-   - local wrapper/adapter around Superpowers `executing-plans` or `subagent-driven-development`
+   - current local entrypoint into the pipeline
    - preserves `.claude` permission, telemetry, and stop conditions
 
 3. Local fallback commands
    - `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start`
-   - used when Superpowers is unavailable or the operator explicitly wants manual local control
+   - used when the operator explicitly wants manual local control
 
 Humans intervene for strategy, ambiguous scope changes, residual risk, and release actions. Routine implementation sequencing is engine-owned when it remains inside approved scope and permission boundaries.
 
 ## Canonical Rules
 
-- Do not use local fallback commands as a competing default when Superpowers is available
-- Do not use `/execute-plan` to bypass Superpowers readiness checks, local permissions, or explicit approval for heavy-risky work
+- Do not use local fallback commands as a competing default when the pipeline can handle the task
+- Do not use `/execute-plan` to bypass local permissions or explicit approval for heavy-risky work
 - Do not commit before `verification-summary.md`
 - Do not treat verification as a substitute for evaluation
 - Do not treat review as complete while acceptance blockers remain unresolved
