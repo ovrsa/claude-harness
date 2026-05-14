@@ -12,6 +12,11 @@ const {
   appendGuardrailCandidates,
   normalizeGuardrailCandidate,
 } = require('../scripts/lib/guardrail-candidates');
+const {
+  findLatestPipelineEvidence,
+  formatMissingPipelineEvidenceWarning,
+  isPipelineEvidenceRequired,
+} = require('../scripts/lib/pipeline-evidence');
 
 function readStdin() {
   return new Promise(resolve => {
@@ -171,6 +176,13 @@ function collectGuardrailCandidates(repo) {
 
     if (progress.hasActionableNextAction) {
       console.error(`[Lifecycle Guardrail] Warning: Next Action in progress.md is still active: ${progress.nextAction}`);
+    }
+  }
+
+  if (isPipelineEvidenceRequired(meta)) {
+    const evidence = findLatestPipelineEvidence(repo);
+    if (!evidence.found) {
+      console.error(formatMissingPipelineEvidenceWarning(evidence));
     }
   }
 

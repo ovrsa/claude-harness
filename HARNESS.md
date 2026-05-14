@@ -157,6 +157,7 @@ Humans intervene for strategy, ambiguous scope changes, residual risk, and relea
 - Do not treat `review-summary.md` as complete while `Findings` contains unresolved items
 - Do not leave accepted concerns in `Findings`; move them to `Residual Risks`
 - Do not promote a one-off failure into a durable global rule without recurrence or clear severity justification
+- Standard and heavy-risky implementation should enter through the local pipeline. The current entrance guardrail warns when no run evidence is found; it does not block yet.
 
 ## Feedback-To-Guardrail Loop
 

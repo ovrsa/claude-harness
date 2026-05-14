@@ -8,6 +8,8 @@ Use this command when a task is ready for pipeline-guided execution.
 
 `/execute-plan` is the current local pipeline entrypoint. It coordinates `.claude` preflight/postflight, permission boundaries, telemetry, and the selected execution adapter or discipline pack.
 
+For standard and heavy-risky work, this command should leave run evidence under `.claude/runs/`. Lifecycle hooks currently warn when implementation or commit activity has no recent pipeline evidence; the warning is observational during the staged rollout and does not block by itself.
+
 ## Preconditions
 
 - The task track is selected: `trivial`, `standard`, or `heavy-risky`.

@@ -13,6 +13,8 @@ Use the local pipeline by default for standard and heavy-risky implementation an
 - `/verify` to capture local rerunnable evidence when needed
 - `/eval` to record local acceptance judgment when needed
 
+Standard and heavy-risky work should leave pipeline run evidence through `/execute-plan` or task queue execution. The current guardrail warns when that evidence is missing but does not block the work.
+
 Local `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility commands when the operator explicitly wants manual local control.
 
 ## Core Lifecycle Pairs

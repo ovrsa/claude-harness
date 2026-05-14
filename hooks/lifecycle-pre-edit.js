@@ -6,6 +6,11 @@ const {
   parseProgressState,
   classifyProgressExecutionState,
 } = require('../scripts/lib/task-artifacts');
+const {
+  findLatestPipelineEvidence,
+  formatMissingPipelineEvidenceWarning,
+  isPipelineEvidenceRequired,
+} = require('../scripts/lib/pipeline-evidence');
 
 function readStdin() {
   return new Promise(resolve => {
@@ -112,6 +117,13 @@ function isLinkedWorktree(repo) {
     if (classifyProgressExecutionState(progress) === 'planning_only') {
       console.error('[Lifecycle Guardrail] plan.md is approved, but progress.md still looks like planning state. Update Current Phase / Last Completed Step to execution state before editing code. If planning is not complete, finish /plan-task first.');
       process.exit(2);
+    }
+  }
+
+  if (isPipelineEvidenceRequired(meta)) {
+    const evidence = findLatestPipelineEvidence(repo);
+    if (!evidence.found) {
+      console.error(formatMissingPipelineEvidenceWarning(evidence));
     }
   }
 })();

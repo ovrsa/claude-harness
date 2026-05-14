@@ -144,6 +144,42 @@ function writeCompleteVerification(repoDir, scope = 'lifecycle guard behavior') 
   ].join('\n'));
 }
 
+function writeCompleteReview(repoDir, scope = 'lifecycle guard behavior') {
+  fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
+    '# Review Summary',
+    '',
+    '## Review Scope',
+    `- ${scope}`,
+    '',
+    '## Findings',
+    '- none',
+    '',
+    '## Residual Risks',
+    '- none',
+    '',
+    '## Next Action',
+    '- none'
+  ].join('\n'));
+}
+
+function writeCompleteObservation(repoDir, scope = 'lifecycle guard behavior') {
+  fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
+    '# Observation Summary',
+    '',
+    '## Behavior Checked',
+    `- ${scope}`,
+    '',
+    '## Method',
+    '- stderr: targeted lifecycle hook execution',
+    '',
+    '## Evidence',
+    '- stderr: hook test fixture captured expected output',
+    '',
+    '## Remaining Uncertainty',
+    '- none'
+  ].join('\n'));
+}
+
 // Test suite
 async function runTests() {
   console.log('\n=== Testing Hook Scripts ===\n');
@@ -4275,6 +4311,59 @@ Some random content without the expected ### Context to Load section
     }
   })) passed++; else failed++;
 
+  if (await asyncTest('lifecycle-pre-edit warns when non-trivial code edit has no pipeline evidence', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    const homeDir = path.join(testDir, 'home');
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.mkdirSync(homeDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Pipeline evidence warning test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: false',
+        '---',
+        '',
+        '# Plan: Pipeline evidence warning test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- Phase 2: implementation',
+        '',
+        '## Last Completed Step',
+        '- Approved the plan',
+        '',
+        '## Next Action',
+        '- Edit lifecycle guardrails',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } }),
+        { HOME: homeDir, USERPROFILE: homeDir }
+      );
+      assert.strictEqual(result.code, 0, `Expected warning-only exit 0, got ${result.code}`);
+      assert.ok(result.stderr.includes('no recent pipeline evidence'), `Expected pipeline evidence warning, got: ${result.stderr}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
   if (await asyncTest('lifecycle-pre-edit blocks worktree-required edits when plan evidence is incomplete', async () => {
     const testDir = createTestDir();
     const repoDir = path.join(testDir, 'repo');
@@ -5063,6 +5152,60 @@ Some random content without the expected ### Context to Load section
     }
   })) passed++; else failed++;
 
+  if (await asyncTest('lifecycle-pre-commit warns when approved non-trivial work has no pipeline evidence', async () => {
+    const testDir = createTestDir();
+    const repoDir = path.join(testDir, 'repo');
+    const homeDir = path.join(testDir, 'home');
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.mkdirSync(homeDir, { recursive: true });
+
+    try {
+      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
+        '---',
+        'title: Pipeline evidence commit warning test',
+        'status: approved',
+        'task_type: non_trivial',
+        'observe_required: true',
+        '---',
+        '',
+        '# Plan: Pipeline evidence commit warning test'
+      ].join('\n'));
+      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
+        '# Progress',
+        '',
+        '## Current Phase',
+        '- verified',
+        '',
+        '## Last Completed Step',
+        '- Completed review, verification, and observation',
+        '',
+        '## Next Action',
+        '- none',
+        '',
+        '## Blockers',
+        '- none',
+        '',
+        '## Delegated Work',
+        '- none'
+      ].join('\n'));
+      writeCompleteReview(repoDir, 'pipeline evidence commit warning behavior');
+      writeCompleteVerification(repoDir, 'pipeline evidence commit warning behavior');
+      writeCompleteObservation(repoDir, 'pipeline evidence commit warning behavior');
+
+      const result = await runScriptInDir(
+        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
+        repoDir,
+        JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
+        { HOME: homeDir, USERPROFILE: homeDir }
+      );
+      assert.strictEqual(result.code, 0, `Expected warning-only exit 0, got ${result.code}`);
+      assert.ok(result.stderr.includes('no recent pipeline evidence'), `Expected pipeline evidence warning, got: ${result.stderr}`);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  })) passed++; else failed++;
+
   if (await asyncTest('lifecycle-pre-commit blocks observation summaries without concrete evidence sources', async () => {
     const testDir = createTestDir();
     const repoDir = path.join(testDir, 'repo');
@@ -5386,7 +5529,7 @@ Some random content without the expected ### Context to Load section
         JSON.stringify({ tool_input: { command: 'git commit -m "phase1"' } })
       );
       assert.strictEqual(result.code, 0, `Expected explicit none to be commit-ready, got ${result.code}`);
-      assert.strictEqual(result.stderr.trim(), '', `Did not expect warning for explicit none, got: ${result.stderr}`);
+      assert.ok(!result.stderr.includes('Next Action'), `Did not expect Next Action warning for explicit none, got: ${result.stderr}`);
     } finally {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
