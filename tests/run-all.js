@@ -18,6 +18,7 @@ const testFiles = [
   { file: 'lib/project-detect.test.js' },
   { file: 'lib/task-artifacts.test.js' },
   { file: 'lib/session-trace.test.js' },
+  { file: 'lib/permission-resolver.test.js' },
   { file: 'lib/telemetry-health.test.js' },
   { file: 'lib/triage-loop.test.js' },
   { file: 'hooks/hooks.test.js', args: ['--allow-known-baseline'] },
@@ -27,6 +28,10 @@ const testFiles = [
   { file: 'ci/validators.test.js' },
   { file: 'scripts/claw.test.js' },
   { file: 'scripts/pipeline-runner.test.js' },
+  { file: 'scripts/provider-adapters.test.js' },
+  { file: 'scripts/prompt-assemble.test.js' },
+  { file: 'scripts/task-queue.test.js' },
+  { file: 'scripts/workflow-doctor.test.js' },
   { file: 'scripts/setup-package-manager.test.js' },
   { file: 'scripts/skill-create-output.test.js' }
 ];

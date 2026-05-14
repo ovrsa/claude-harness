@@ -174,6 +174,7 @@ function runTests() {
         dbPath,
         promotionThreshold: 3,
         recurringThreshold: 2,
+        now: '2026-04-18T00:00:00.000Z',
       });
 
       assert.strictEqual(summary.recommendedNextTasks.length, 1);

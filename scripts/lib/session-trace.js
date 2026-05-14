@@ -439,6 +439,59 @@ function ensureTaskRunRow(db, runId, repoRoot, objective, occurredAt, status) {
   `).run(taskId, runId, projectId, repoRoot, objective, status, occurredAt, occurredAt);
 }
 
+function recordTaskRun({
+  taskId,
+  runId,
+  repoRoot = '',
+  objective = '',
+  status = DEFAULT_RUN_STATUS,
+  occurredAt = new Date().toISOString(),
+  dbPath = getTelemetryDbPath(),
+} = {}) {
+  const normalizedTaskId = normalizeString(taskId);
+  const normalizedRunId = normalizeString(runId);
+  if (!normalizedTaskId) {
+    throw new Error('taskId is required');
+  }
+  if (!normalizedRunId) {
+    throw new Error('runId is required');
+  }
+
+  return withDatabase(db => {
+    const projectId = getProjectId(repoRoot);
+    db.prepare(`
+      INSERT INTO task_runs (
+        task_id,
+        run_id,
+        project_id,
+        repo_root,
+        objective,
+        status,
+        started_at,
+        updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(task_id) DO UPDATE SET
+        run_id = excluded.run_id,
+        project_id = excluded.project_id,
+        repo_root = excluded.repo_root,
+        objective = CASE WHEN excluded.objective != '' THEN excluded.objective ELSE task_runs.objective END,
+        status = excluded.status,
+        updated_at = excluded.updated_at
+    `).run(
+      normalizedTaskId,
+      normalizedRunId,
+      projectId,
+      repoRoot,
+      objective,
+      status,
+      occurredAt,
+      occurredAt
+    );
+    return true;
+  }, dbPath);
+}
+
 function updateSessionRunFromEvent(db, event, parsedMetadata) {
   const existing = db.prepare(`
     SELECT *
@@ -1413,6 +1466,7 @@ module.exports = {
   createDatabase,
   recordSessionEvent,
   recordLifecycleSnapshot,
+  recordTaskRun,
   recordToolExecution,
   summarizeTraceStatus,
   formatTraceStatus,

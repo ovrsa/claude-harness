@@ -1,0 +1,133 @@
+name: standard-development
+initial_step: research
+max_steps: 12
+steps:
+  - name: research
+    mode: readonly
+    facets:
+      persona: researcher
+      instruction: research-task
+      output_contract: research-summary
+    outputs:
+      - research.md
+    rules:
+      - condition: research_complete
+        next: plan
+      - condition: blocked
+        next: ABORT
+  - name: plan
+    mode: readonly
+    requires_approval: true
+    facets:
+      persona: planner
+      instruction: plan-task
+      output_contract: plan
+    outputs:
+      - plan.md
+    rules:
+      - condition: approved
+        next: implement
+      - condition: blocked
+        next: ABORT
+  - name: implement
+    mode: edit
+    required_permission_mode: edit
+    quality_gates:
+      - targeted tests pass
+      - lifecycle artifacts are updated when behavior changes
+    facets:
+      persona: implementer
+      instruction: implement-task
+    rules:
+      - condition: implementation_complete
+        next: review
+      - condition: blocked
+        next: ABORT
+  - name: review
+    mode: readonly
+    parallel:
+      - name: architecture_review
+        mode: readonly
+        facets:
+          persona: reviewer
+          instruction: review-task
+          output_contract: review-summary
+        output_contracts:
+          report:
+            - name: architecture-review.md
+              format: review-summary
+        rules:
+          - condition: approved
+            next: COMPLETE
+          - condition: needs_fix
+            next: COMPLETE
+          - condition: blocked
+            next: ABORT
+      - name: security_review
+        mode: readonly
+        facets:
+          persona: reviewer
+          instruction: review-task
+          output_contract: review-summary
+        output_contracts:
+          report:
+            - name: security-review.md
+              format: review-summary
+        rules:
+          - condition: approved
+            next: COMPLETE
+          - condition: needs_fix
+            next: COMPLETE
+          - condition: blocked
+            next: ABORT
+      - name: harness_review
+        mode: readonly
+        facets:
+          persona: reviewer
+          instruction: review-task
+          output_contract: review-summary
+        output_contracts:
+          report:
+            - name: harness-review.md
+              format: review-summary
+        rules:
+          - condition: approved
+            next: COMPLETE
+          - condition: needs_fix
+            next: COMPLETE
+          - condition: blocked
+            next: ABORT
+    facets:
+      persona: reviewer
+      instruction: review-task
+      output_contract: review-summary
+    output_contracts:
+      report:
+        - name: review-summary.md
+          format: review-summary
+    outputs:
+      - review-summary.md
+    rules:
+      - condition: approved
+        next: verify
+      - condition: needs_fix
+        next: implement
+      - condition: blocked
+        next: ABORT
+  - name: verify
+    mode: readonly
+    facets:
+      persona: verifier
+      instruction: verify
+      output_contract: verification-summary
+    output_contracts:
+      report:
+        - name: verification-summary.md
+          format: verification-summary
+    outputs:
+      - verification-summary.md
+    rules:
+      - condition: verified
+        next: COMPLETE
+      - condition: failed_with_design_uncertainty
+        next: ABORT

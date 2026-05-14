@@ -9,38 +9,9 @@ const {
   appendFile,
   getDateTimeString,
 } = require('../lib/utils');
-
-const SAFE_READONLY_BASH = [
-  /^\s*pwd\s*$/,
-  /^\s*ls(?:\s|$)/,
-  /^\s*rg(?:\s|$)/,
-  /^\s*sed\s+-n(?:\s|$)/,
-  /^\s*cat(?:\s|$)/,
-  /^\s*find(?:\s|$)/,
-  /^\s*wc(?:\s|$)/,
-  /^\s*head(?:\s|$)/,
-  /^\s*tail(?:\s|$)/,
-  /^\s*stat(?:\s|$)/,
-  /^\s*file(?:\s|$)/,
-  /^\s*readlink(?:\s|$)/,
-  /^\s*which(?:\s|$)/,
-  /^\s*git\s+(status|diff|log|show|rev-parse|branch)\b/,
-];
-
-const DANGEROUS_BASH = [
-  /\brm\s+-rf\b/,
-  /\bgit\s+reset\s+--hard\b/,
-  /\bgit\s+clean\s+-fd\b/,
-  /\bgit\s+push\b.*--force\b/,
-  /\bchmod\s+-R\s+777\b/,
-];
-
-const AUDIT_ONLY_BASH = [
-  /^\s*ps(?:\s|$)/,
-  /^\s*whoami\s*$/,
-  /^\s*id\s*$/,
-  /^\s*date\s*$/,
-];
+const {
+  classifyBashPermission,
+} = require('../lib/permission-resolver');
 
 function logPermissionRequest(input) {
   const sessionsDir = getSessionsDir();
@@ -60,15 +31,6 @@ function emitDecision(decision) {
   }));
 }
 
-function makeDecision(policyClass, behavior, message, extra = {}) {
-  return {
-    behavior,
-    policy_class: policyClass,
-    message: `${policyClass}: ${message}`,
-    ...extra,
-  };
-}
-
 async function main() {
   const input = await readStdinJson();
   logPermissionRequest(input);
@@ -78,41 +40,9 @@ async function main() {
   }
 
   const command = String(input.tool_input?.command || '');
-
-  if (DANGEROUS_BASH.some(pattern => pattern.test(command))) {
-    emitDecision(makeDecision(
-      'hard-deny',
-      'deny',
-      'Denied by personal harness boundary. Use a safer alternative or request an explicit override.',
-      { interrupt: true }
-    ));
-    return;
-  }
-
-  if (SAFE_READONLY_BASH.some(pattern => pattern.test(command))) {
-    emitDecision(makeDecision(
-      'auto-allow',
-      'allow',
-      'Safe read-only inspection command.'
-    ));
-    return;
-  }
-
-  if (AUDIT_ONLY_BASH.some(pattern => pattern.test(command))) {
-    emitDecision(makeDecision(
-      'audit-only',
-      'allow',
-      'Low-risk metadata command allowed with logging.'
-    ));
-    return;
-  }
-
-  if (command.trim()) {
-    emitDecision(makeDecision(
-      'ask-with-justification',
-      'ask',
-      'Requires explicit human approval with a concrete justification.'
-    ));
+  const decision = classifyBashPermission(command);
+  if (decision) {
+    emitDecision(decision);
   }
 }
 
