@@ -8,6 +8,7 @@ Use it as the fastest command map after `CLAUDE.md`. It does not replace the com
 
 Use the local pipeline by default for standard and heavy-risky implementation and bug-fix work.
 
+- `/next-action` as the operator-facing status surface for the current recommended next step
 - `/execute-plan` as the current local pipeline entrypoint
 - `/research` and `/plan` for conversational scoping when requirements are unclear
 - `/verify` to capture local rerunnable evidence when needed
@@ -53,6 +54,7 @@ Used while moving a task through execution when manual local control or local wr
 
 Used to enter a repo cleanly and keep deeper references current.
 
+- `/next-action`
 - `/repo-map`
 - `/update-codemaps`
 - `/sessions`

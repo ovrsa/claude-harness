@@ -20,6 +20,7 @@ const testFiles = [
   { file: 'lib/session-trace.test.js' },
   { file: 'lib/permission-resolver.test.js' },
   { file: 'lib/pipeline-evidence.test.js' },
+  { file: 'lib/harness-status.test.js' },
   { file: 'lib/telemetry-health.test.js' },
   { file: 'lib/triage-loop.test.js' },
   { file: 'hooks/hooks.test.js', args: ['--allow-known-baseline'] },
@@ -33,6 +34,7 @@ const testFiles = [
   { file: 'scripts/prompt-assemble.test.js' },
   { file: 'scripts/task-queue.test.js' },
   { file: 'scripts/workflow-doctor.test.js' },
+  { file: 'scripts/harness-status.test.js' },
   { file: 'scripts/setup-package-manager.test.js' },
   { file: 'scripts/skill-create-output.test.js' }
 ];
