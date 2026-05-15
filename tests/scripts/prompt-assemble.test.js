@@ -179,6 +179,50 @@ steps:
     }
   })) passed++; else failed++;
 
+  if (test('assembles prompts for object-form parallel substeps', () => {
+    const dir = createTempDir();
+    try {
+      const workflowPath = path.join(dir, 'workflow.yaml');
+      const taskPath = path.join(dir, 'task.md');
+      writeFile(workflowPath, `
+name: prompt-test
+initial_step: review
+max_steps: 4
+steps:
+  - name: review
+    mode: readonly
+    parallel:
+      - name: architecture_review
+        mode: readonly
+        facets:
+          persona: reviewer
+          instruction: review-task
+        rules:
+          - condition: approved
+            next: COMPLETE
+    rules:
+      - condition: approved
+        next: COMPLETE
+`);
+      writeFile(taskPath, '# Task\nReview the workflow.');
+      writeFile(path.join(dir, 'facets', 'personas', 'reviewer.md'), 'You review carefully.');
+      writeFile(path.join(dir, 'facets', 'instructions', 'review-task.md'), 'Review for defects.');
+
+      const result = run([
+        '--root', dir,
+        '--workflow', workflowPath,
+        '--step', 'architecture_review',
+        '--task', taskPath,
+      ]);
+
+      assert.strictEqual(result.code, 0, result.stderr);
+      assert.ok(result.stdout.includes('You review carefully.'));
+      assert.ok(result.stdout.includes('Review for defects.'));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
   console.log(`\nResults: Passed: ${passed}, Failed: ${failed}`);
   process.exit(failed > 0 ? 1 : 0);
 }

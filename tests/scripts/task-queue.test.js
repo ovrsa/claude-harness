@@ -161,6 +161,25 @@ function writeAdapter(dir, condition = 'verified', exitCode = 0) {
   return adapterPath;
 }
 
+function writeEnvAdapter(dir, condition = '') {
+  const adapterPath = path.join(dir, 'env-adapter.js');
+  fs.mkdirSync(path.dirname(adapterPath), { recursive: true });
+  fs.writeFileSync(adapterPath, [
+    '#!/usr/bin/env node',
+    'const fs = require("fs");',
+    'const path = require("path");',
+    'const marker = process.env.MARKER_PATH;',
+    'if (marker) fs.writeFileSync(marker, process.cwd() + "\\n");',
+    'const step = process.env.PIPELINE_RUNNER_STEP || "";',
+    'const defaults = { research: "research_complete", plan: "approved", implement: "implementation_complete", review: "approved", verify: "verified" };',
+    `const condition = ${JSON.stringify(condition)} || defaults[step] || (step.endsWith("_review") ? "approved" : "verified");`,
+    'process.stdout.write(JSON.stringify({ condition, status: "complete", summary: "env adapter done" }) + "\\n");',
+    '',
+  ].join('\n'));
+  fs.chmodSync(adapterPath, 0o755);
+  return adapterPath;
+}
+
 function writeMutatingAdapter(dir) {
   const adapterPath = path.join(dir, 'mutating-adapter.js');
   fs.writeFileSync(adapterPath, [
@@ -352,6 +371,263 @@ function runTests() {
       const row = readTaskRun(home, 'task-done');
       assert.strictEqual(row.run_id, 'run-done');
       assert.strictEqual(row.status, 'done');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('run resolves default workflow and runtime adapter when omitted', () => {
+    const dir = createTempDir();
+    try {
+      const home = path.join(dir, 'home');
+      const repo = path.join(dir, 'repo');
+      initGitRepo(repo);
+      const planPath = writeApprovedPlan(dir);
+      const fakeCodex = writeEnvAdapter(dir);
+      run(['add', '--task-id', 'task-defaults', '--title', 'Defaults task', '--order', 'Run with defaults'], { HOME: home });
+
+      const result = run([
+        'run',
+        '--task-id', 'task-defaults',
+        '--run-id', 'run-defaults',
+        '--repo', repo,
+        '--plan', planPath,
+        '--runtime', 'codex',
+      ], {
+        HOME: home,
+        PROVIDER_ADAPTER_COMMAND: fakeCodex,
+      });
+
+      assert.strictEqual(result.code, 0, result.stderr);
+      assert.ok(result.stdout.includes('TASK QUEUE: DONE'));
+      const meta = readJson(path.join(home, '.claude', 'runs', 'run-defaults', 'meta.json'));
+      assert.strictEqual(meta.workflow, 'standard-development');
+      assert.strictEqual(meta.status, 'done');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('explicit adapter command takes precedence over runtime adapter default', () => {
+    const dir = createTempDir();
+    try {
+      const home = path.join(dir, 'home');
+      const repo = path.join(dir, 'repo');
+      initGitRepo(repo);
+      const planPath = writeApprovedPlan(dir);
+      const explicitMarker = path.join(dir, 'explicit-marker.txt');
+      const defaultMarker = path.join(dir, 'default-marker.txt');
+      const explicitAdapter = writeEnvAdapter(dir);
+      const defaultAdapter = writeEnvAdapter(path.join(dir, 'default'));
+      run(['add', '--task-id', 'task-explicit-adapter', '--title', 'Explicit adapter', '--order', 'Run with explicit adapter'], { HOME: home });
+
+      const result = run([
+        'run',
+        '--task-id', 'task-explicit-adapter',
+        '--run-id', 'run-explicit-adapter',
+        '--repo', repo,
+        '--plan', planPath,
+        '--runtime', 'codex',
+        '--adapter-command', explicitAdapter,
+      ], {
+        HOME: home,
+        PROVIDER_ADAPTER_COMMAND: defaultAdapter,
+        MARKER_PATH: explicitMarker,
+      });
+
+      assert.strictEqual(result.code, 0, result.stderr);
+      assert.ok(fs.existsSync(explicitMarker), 'explicit adapter should run');
+      assert.ok(!fs.existsSync(defaultMarker), 'default adapter should not run');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('watch resolves default workflow and runtime adapter when omitted', () => {
+    const dir = createTempDir();
+    try {
+      const home = path.join(dir, 'home');
+      const repo = path.join(dir, 'repo');
+      initGitRepo(repo);
+      const planPath = writeApprovedPlan(dir);
+      const fakeCodex = writeEnvAdapter(dir);
+      run(['add', '--task-id', 'task-watch-defaults', '--title', 'Watch defaults', '--order', 'Watch with defaults'], { HOME: home });
+
+      const result = run([
+        'watch',
+        '--repo', repo,
+        '--plan', planPath,
+        '--runtime', 'codex',
+        '--max-tasks', '1',
+      ], {
+        HOME: home,
+        PROVIDER_ADAPTER_COMMAND: fakeCodex,
+      });
+
+      assert.strictEqual(result.code, 0, result.stderr);
+      assert.ok(result.stdout.includes('TASK QUEUE WATCH'));
+      assert.ok(result.stdout.includes('executed=1'));
+      const index = readJson(path.join(home, '.claude', 'tasks', 'index.json'));
+      assert.strictEqual(index.tasks[0].status, 'done');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('missing adapter blocks unsupported runtime', () => {
+    const dir = createTempDir();
+    try {
+      const home = path.join(dir, 'home');
+      const repo = path.join(dir, 'repo');
+      initGitRepo(repo);
+      const planPath = writeApprovedPlan(dir);
+      run(['add', '--task-id', 'task-unsupported-runtime', '--title', 'Unsupported runtime', '--order', 'Run unsupported'], { HOME: home });
+
+      const result = run([
+        'run',
+        '--task-id', 'task-unsupported-runtime',
+        '--run-id', 'run-unsupported-runtime',
+        '--repo', repo,
+        '--plan', planPath,
+        '--runtime', 'sdk',
+      ], { HOME: home });
+
+      assert.strictEqual(result.code, 1);
+      assert.ok(result.stdout.includes('TASK QUEUE: BLOCKED'));
+      assert.ok(result.stdout.includes('adapter-command is required'));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('plan omission uses task order only and does not fall back to root plan', () => {
+    const dir = createTempDir();
+    try {
+      const home = path.join(dir, 'home');
+      const repo = path.join(dir, 'repo');
+      initGitRepo(repo);
+      writeApprovedPlan(repo);
+      const fakeCodex = writeEnvAdapter(dir);
+      run(['add', '--task-id', 'task-order-only', '--title', 'Order only', '--order', 'This is not an approved plan'], { HOME: home });
+
+      const result = run([
+        'run',
+        '--task-id', 'task-order-only',
+        '--run-id', 'run-order-only',
+        '--repo', repo,
+        '--runtime', 'codex',
+        '--no-isolate',
+      ], {
+        HOME: home,
+        PROVIDER_ADAPTER_COMMAND: fakeCodex,
+      });
+
+      assert.strictEqual(result.code, 1);
+      assert.ok(result.stdout.includes('TASK QUEUE: BLOCKED'));
+      const meta = readJson(path.join(home, '.claude', 'runs', 'run-order-only', 'meta.json'));
+      assert.strictEqual(meta.status, 'blocked');
+      assert.strictEqual(meta.last_condition, '');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('watch executes pending tasks through pipeline-runner', () => {
+    const dir = createTempDir();
+    try {
+      const home = path.join(dir, 'home');
+      const repo = path.join(dir, 'repo');
+      initGitRepo(repo);
+      const planPath = writeApprovedPlan(dir);
+      const workflowPath = writeWorkflow(dir);
+      const adapterPath = writeAdapter(dir);
+      run(['add', '--task-id', 'task-watch', '--title', 'Watch task', '--order', 'Run from watch'], { HOME: home });
+
+      const result = run([
+        'watch',
+        '--repo', repo,
+        '--plan', planPath,
+        '--workflow', workflowPath,
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--engine-command', adapterPath,
+        '--max-tasks', '1',
+      ], { HOME: home });
+
+      assert.strictEqual(result.code, 0, result.stderr);
+      assert.ok(result.stdout.includes('TASK QUEUE WATCH'));
+      assert.ok(result.stdout.includes('executed=1'));
+
+      const index = readJson(path.join(home, '.claude', 'tasks', 'index.json'));
+      assert.strictEqual(index.tasks[0].status, 'done');
+      assert.ok(index.tasks[0].current_run_id);
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('watch max-tasks bounds pending task execution', () => {
+    const dir = createTempDir();
+    try {
+      const home = path.join(dir, 'home');
+      const repo = path.join(dir, 'repo');
+      initGitRepo(repo);
+      const planPath = writeApprovedPlan(dir);
+      const workflowPath = writeWorkflow(dir);
+      const adapterPath = writeAdapter(dir);
+      run(['add', '--task-id', 'task-watch-one', '--title', 'Watch one', '--order', 'Run first'], { HOME: home });
+      run(['add', '--task-id', 'task-watch-two', '--title', 'Watch two', '--order', 'Run second'], { HOME: home });
+
+      const result = run([
+        'watch',
+        '--repo', repo,
+        '--plan', planPath,
+        '--workflow', workflowPath,
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--engine-command', adapterPath,
+        '--max-tasks', '1',
+      ], { HOME: home });
+
+      assert.strictEqual(result.code, 0, result.stderr);
+      const index = readJson(path.join(home, '.claude', 'tasks', 'index.json'));
+      assert.strictEqual(index.tasks.find(task => task.task_id === 'task-watch-one').status, 'done');
+      assert.strictEqual(index.tasks.find(task => task.task_id === 'task-watch-two').status, 'pending');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('watch supports json output', () => {
+    const dir = createTempDir();
+    try {
+      const home = path.join(dir, 'home');
+      const repo = path.join(dir, 'repo');
+      initGitRepo(repo);
+      const planPath = writeApprovedPlan(dir);
+      const workflowPath = writeWorkflow(dir);
+      const adapterPath = writeAdapter(dir);
+      run(['add', '--task-id', 'task-watch-json', '--title', 'Watch JSON', '--order', 'Run as json'], { HOME: home });
+
+      const result = run([
+        'watch',
+        '--repo', repo,
+        '--plan', planPath,
+        '--workflow', workflowPath,
+        '--track', 'standard',
+        '--runtime', 'codex',
+        '--engine-command', adapterPath,
+        '--max-tasks', '1',
+        '--format', 'json',
+      ], { HOME: home });
+
+      assert.strictEqual(result.code, 0, result.stderr);
+      const parsed = JSON.parse(result.stdout);
+      assert.strictEqual(parsed.status, 'WATCH');
+      assert.strictEqual(parsed.executed, 1);
+      assert.strictEqual(parsed.results.length, 1);
+      assert.strictEqual(parsed.results[0].task_id, 'task-watch-json');
+      assert.strictEqual(parsed.results[0].status, 'DONE');
     } finally {
       cleanup(dir);
     }

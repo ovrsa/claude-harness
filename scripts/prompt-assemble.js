@@ -49,7 +49,16 @@ function readWorkflow(filePath) {
 
 function findStep(workflow, stepName) {
   const steps = Array.isArray(workflow.steps) ? workflow.steps : [];
-  return steps.find(step => step.name === stepName) || null;
+  for (const step of steps) {
+    if (step.name === stepName) return step;
+    if (!Array.isArray(step.parallel)) continue;
+    for (const substep of step.parallel) {
+      if (substep && typeof substep === 'object' && !Array.isArray(substep) && substep.name === stepName) {
+        return substep;
+      }
+    }
+  }
+  return null;
 }
 
 function readFacet(root, facetType, facetName) {

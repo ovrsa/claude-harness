@@ -175,6 +175,25 @@ function shouldIsolateRun(options) {
   return ['standard', 'heavy-risky'].includes(String(options.track || 'standard'));
 }
 
+function getDefaultWorkflowPath() {
+  return path.join(__dirname, '..', 'workflows', 'standard-development.yaml');
+}
+
+function resolveAdapterCommand(options) {
+  const explicit = String(options.adapterCommand || options.engineCommand || '').trim();
+  if (explicit) return explicit;
+
+  const runtime = String(options.runtime || 'codex').trim();
+  if (runtime === 'codex') return path.join(__dirname, 'provider-adapters', 'codex.js');
+  if (runtime === 'claude') return path.join(__dirname, 'provider-adapters', 'claude-code.js');
+  return '';
+}
+
+function resolveWorkflowPath(options) {
+  const explicit = String(options.workflow || '').trim();
+  return explicit || getDefaultWorkflowPath();
+}
+
 function cloneMeta(clone) {
   if (!clone) return {};
   return {
@@ -352,7 +371,7 @@ function startTask(options, claudeDir = getClaudeDir()) {
 }
 
 function buildPipelineArgs(options, task, runId, claudeDir) {
-  const adapterCommand = options.adapterCommand || options.engineCommand || '';
+  const adapterCommand = resolveAdapterCommand(options);
   const args = [
     path.join(__dirname, 'pipeline-runner.js'),
     '--repo', String(options.executionRepo || options.repo || process.cwd()),
@@ -365,9 +384,7 @@ function buildPipelineArgs(options, task, runId, claudeDir) {
     '--loop',
     '--adapter-command', String(adapterCommand),
   ];
-  if (options.workflow) {
-    args.push('--workflow', String(options.workflow));
-  }
+  args.push('--workflow', String(resolveWorkflowPath(options)));
   if (options.step || options.fromStep) {
     args.push('--step', String(options.step || options.fromStep));
   }
@@ -380,7 +397,7 @@ function buildPipelineArgs(options, task, runId, claudeDir) {
 function executeTaskRun(options, claudeDir = getClaudeDir(), isRetry = false) {
   const taskId = String(options.taskId || '').trim();
   if (!taskId) return { status: 'BLOCKED', message: 'task-id is required' };
-  if (!options.adapterCommand && !options.engineCommand) return { status: 'BLOCKED', message: 'adapter-command is required' };
+  if (!resolveAdapterCommand(options)) return { status: 'BLOCKED', message: 'adapter-command is required' };
 
   const index = readIndex(claudeDir);
   const task = findTask(index, taskId);
@@ -597,6 +614,82 @@ function reconcileRuns(claudeDir = getClaudeDir()) {
     status: 'RECONCILED',
     tasks: index.tasks,
     message: `reconciled=${reconciled}`,
+  };
+}
+
+function sleepSync(milliseconds) {
+  const duration = Math.max(0, Number(milliseconds) || 0);
+  if (duration <= 0) return;
+  const blocker = new Int32Array(new SharedArrayBuffer(4));
+  Atomics.wait(blocker, 0, 0, duration);
+}
+
+function getPendingTasks(claudeDir, taskId = '') {
+  const index = readIndex(claudeDir);
+  return index.tasks.filter(task => {
+    if (task.status !== 'pending') return false;
+    if (taskId && task.task_id !== taskId) return false;
+    return true;
+  });
+}
+
+function watchTasks(options, claudeDir = getClaudeDir()) {
+  if (!resolveAdapterCommand(options)) return { status: 'BLOCKED', message: 'adapter-command is required' };
+
+  const maxTasks = Number.isFinite(Number(options.maxTasks))
+    ? Math.max(0, Number(options.maxTasks))
+    : Infinity;
+  const pollIntervalMs = Number.isFinite(Number(options.pollIntervalMs))
+    ? Math.max(0, Number(options.pollIntervalMs))
+    : 500;
+  const resident = Boolean(options.resident || options.forever);
+  const taskId = String(options.taskId || '').trim();
+  const results = [];
+
+  recoverRunningTasks(claudeDir);
+  reconcileRuns(claudeDir);
+
+  let scans = 0;
+  while (results.length < maxTasks) {
+    scans += 1;
+    const pending = getPendingTasks(claudeDir, taskId);
+    if (pending.length === 0) {
+      if (!resident) break;
+      sleepSync(pollIntervalMs);
+      recoverRunningTasks(claudeDir);
+      reconcileRuns(claudeDir);
+      continue;
+    }
+
+    for (const task of pending) {
+      if (results.length >= maxTasks) break;
+      const runOptions = {
+        ...options,
+        taskId: task.task_id,
+      };
+      if (!options.runId || maxTasks !== 1) {
+        delete runOptions.runId;
+      }
+      const result = executeTaskRun(runOptions, claudeDir);
+      results.push({
+        task_id: task.task_id,
+        run_id: result.run && result.run.run_id ? result.run.run_id : '',
+        status: result.status,
+        message: result.message,
+      });
+    }
+
+    if (!resident) break;
+    if (results.length < maxTasks) sleepSync(pollIntervalMs);
+  }
+
+  reconcileRuns(claudeDir);
+  return {
+    status: 'WATCH',
+    executed: results.length,
+    scans,
+    results,
+    message: `executed=${results.length}`,
   };
 }
 
@@ -847,6 +940,15 @@ function formatResult(result) {
     }
     return lines.join('\n');
   }
+  if (result.status === 'WATCH') {
+    const lines = ['TASK QUEUE WATCH'];
+    lines.push(`- executed=${result.executed}`);
+    lines.push(`- scans=${result.scans}`);
+    for (const item of result.results) {
+      lines.push(`- ${item.task_id} | status=${item.status} | run=${item.run_id || 'none'}`);
+    }
+    return lines.join('\n');
+  }
   if (result.status === 'DIFF') {
     return [
       'TASK CLONE DIFF',
@@ -902,8 +1004,9 @@ function printHelp() {
     '  node scripts/task-queue.js add --title <title> --order <text> [--task-id <id>]',
     '  node scripts/task-queue.js list',
     '  node scripts/task-queue.js start --task-id <id> [--run-id <id>] [--repo <path>]',
-    '  node scripts/task-queue.js run --task-id <id> --repo <path> --plan <path> --workflow <path> --adapter-command <path> [--run-id <id>]',
-    '  node scripts/task-queue.js retry --task-id <id> --repo <path> --plan <path> --workflow <path> --adapter-command <path> [--from-step <name>] [--note <text>]',
+    '  node scripts/task-queue.js run --task-id <id> --repo <path> [--plan <path>] [--workflow <path>] [--adapter-command <path>] [--run-id <id>]',
+    '  node scripts/task-queue.js retry --task-id <id> --repo <path> [--plan <path>] [--workflow <path>] [--adapter-command <path>] [--from-step <name>] [--note <text>]',
+    '  node scripts/task-queue.js watch --repo <path> [--plan <path>] [--workflow <path>] [--adapter-command <path>] [--max-tasks <n>] [--resident]',
     '  node scripts/task-queue.js list --format json',
     '  node scripts/task-queue.js list-clones [--format json]',
     '  node scripts/task-queue.js diff [--task-id <id> | --run-id <id>]',
@@ -934,6 +1037,9 @@ function main(argv = process.argv.slice(2)) {
     result = executeTaskRun(options);
   } else if (options.command === 'retry') {
     result = executeTaskRun(options, getClaudeDir(), true);
+  } else if (options.command === 'watch') {
+    result = watchTasks(options);
+    if (options.format === 'json') result = { format: 'json', payload: result };
   } else if (options.command === 'list-clones') {
     result = listClones();
     if (options.format === 'json') result = { format: 'json', payload: result };
@@ -979,6 +1085,9 @@ module.exports = {
   executeTaskRun,
   diffClone,
   instructTask,
+  resolveAdapterCommand,
+  resolveWorkflowPath,
   startTask,
   tryMergeClone,
+  watchTasks,
 };

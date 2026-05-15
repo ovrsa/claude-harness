@@ -313,16 +313,12 @@ Required behavior:
 - `add` creates metadata and `order.md`.
 - `list` shows task status.
 - `start` creates a run and marks the task `running`.
+- `run` / `retry` / `watch` resolve default workflow and runtime adapter when omitted.
 - task records are mirrored into SQLite where useful.
 
 TAKT parity still missing:
 
-- `run`
-- `retry`
-- `instruct`
 - `delete`
-- `recover-running`
-- `watch`
 - issue import through `gh`
 - branch/worktree metadata
 - task status finalization after runner completion
@@ -521,14 +517,14 @@ Local parity still missing:
 | YAML workflow | partial | expand schema and parser beyond local subset |
 | workflow doctor | partial | validate facets, outputs, provider options |
 | faceted prompting | partial | inheritance, multi-ref, prompt snapshots |
-| task queue | partial | run/retry/instruct/delete/recover |
+| task queue | partial | delete and issue import |
 | run evidence | partial | final sync and richer provider event capture |
 | permission modes | partial | provider profiles and network/sandbox options |
 | review/fix loop | partial | real parallel reviewer execution |
 | provider adapters | partial | provider profiles, dry-run fixture, live smoke coverage |
-| isolated execution | missing | shared-clone lifecycle |
-| list/merge/retry UI | missing | non-interactive first, interactive later |
-| watch mode | missing | defer until queue semantics are stable |
+| isolated execution | partial | push/PR integration remains explicit future work |
+| list/merge/retry UI | partial | interactive layer later |
+| watch mode | partial | concurrency and long-running operator UX later |
 | issue/PR integration | missing | gh-based import and explicit PR creation |
 
 ## Implementation Order
@@ -609,6 +605,8 @@ Deliverables:
 - prompt stdin delivery to provider commands
 - raw prompt/stdout/stderr context evidence under `runs/{run_id}/context`
 - conservative blocked JSON when provider output is malformed
+- prompt assembly for object-form parallel reviewer substeps
+- queue default adapter resolution for `codex` and `claude` runtimes
 
 Still deferred:
 
@@ -723,8 +721,8 @@ Done when:
 - Do not make TAKT a required runtime dependency.
 - Do not auto-merge, auto-push, auto-PR, auto-delete, or auto-deploy.
 - Do not replace SQLite telemetry with file logs.
-- Do not create a resident watch daemon before queue/retry semantics are
-  stable.
+- Do not create an unbounded resident watch daemon before queue/retry semantics
+  are stable; bounded `watch --max-tasks` operation is allowed.
 - Do not make multiple execution paths compete silently; one execution path
   must be selected per task.
 
