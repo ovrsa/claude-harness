@@ -22,13 +22,16 @@ tasks/
 telemetry/
 todos/
 
-# Local lifecycle task artifacts
+# Local lifecycle task artifacts.
+# Task-scoped artifacts should live under plan/<task-name>/ and may be tracked.
 observation-summary.md
 plan.md
 progress.md
 research.md
 review-summary.md
 verification-summary.md
+!/plan/
+!/plan/**
 
 # Sample / generated debris
 **/.DS_Store

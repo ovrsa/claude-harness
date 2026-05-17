@@ -4,6 +4,8 @@
 
 目的は `全部コピーする` ことではなく、`再利用すべき control plane` と `持ち運ばない runtime state` を分けること。
 
+private GitHub repo で同期する場合は、追加で `docs/github-sync.md` を使う。
+
 ## 結論
 
 通常は次の3分類で考えるのが安全です。
