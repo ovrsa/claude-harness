@@ -26,13 +26,12 @@ private GitHub repo で同期する場合は、追加で `docs/github-sync.md` �
 - `scripts/`
 - `templates/`
 - `rules/`
-- `skills/`
-- `agents/`
 - `schemas/`
 - `contexts/`
 - `docs/`
 - `mcp-configs/`
 - `.claude-plugin/`
+- tracked `skills/continuous-learning*` hook dependencies
 - `package.json`
 - `package-lock.json`
 - `eslint.config.js`
@@ -54,6 +53,10 @@ private GitHub repo で同期する場合は、追加で `docs/github-sync.md` �
   - 学習済み skill を引き継ぎたい場合
 - `plugins/`
   - ローカル plugin の状態も持ち込みたい場合
+- `agents/`
+  - ローカル agent pack を引き継ぎたい場合のみ
+- optional `skills/`
+  - GitHub 管理外の skill pack を引き継ぎたい場合のみ
 
 ### 3. 通常はコピーしない
 
@@ -78,6 +81,7 @@ runtime state、ログ、キャッシュ、作業途中データ。新しいデ�
 - `todos/`
 - `policy-limits.json`
 - `.codex-global-write-test`
+- optional skill packs under `skills/`
 
 ## おすすめの持ち運び方
 
@@ -91,13 +95,12 @@ runtime state、ログ、キャッシュ、作業途中データ。新しいデ�
 - `scripts/`
 - `templates/`
 - `rules/`
-- `skills/`
-- `agents/`
 - `schemas/`
 - `contexts/`
 - `mcp-configs/`
 - `package.json`
 - `package-lock.json`
+- tracked `skills/continuous-learning*` hook dependencies
 
 ### 実用セット
 
@@ -174,4 +177,6 @@ rsync -av \
 
 持ち運ぶべきなのは `harness の設計と command surface` であって、`古い session や telemetry` ではない。
 
-この repo なら、まずは `core files + commands/hooks/scripts/templates/rules/skills/agents` を持っていけば十分です。
+この repo なら、まずは `core files + commands/hooks/scripts/templates/rules` と tracked hook dependencies を持っていけば十分です。
+
+private GitHub sync では、`skills/` と `agents/` は原則 optional/local pack として扱い、tracked されている最小 hook dependency だけを持っていく方針です。

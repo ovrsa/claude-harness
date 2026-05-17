@@ -112,7 +112,7 @@ Do not vendor-copy the Superpowers repository into `~/.claude`.
 If a local clone is useful for reading or comparison, keep it outside the harness, for example:
 
 ```text
-/Users/kyo/development/references/superpowers
+~/development/references/superpowers
 ```
 
 ## Guardrails

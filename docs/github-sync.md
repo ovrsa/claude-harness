@@ -23,6 +23,8 @@ Commit these categories:
 - guidance: `docs/`, `rules/`, `templates/`
 - package metadata: `package.json`, `package-lock.json`, `eslint.config.js`, `knip.json`
 - private sync config after review: `settings.json`, `mcp-configs/`
+- local harness manifest: `.claude-plugin/`
+- minimal tracked hook dependencies under `skills/continuous-learning*`
 - task-scoped planning artifacts when intentionally useful: `plan/<task-name>/`
 
 ## Do Not Track
@@ -39,6 +41,7 @@ These must remain local:
 - `cache/`
 - `backups/`
 - `plugins/`
+- optional skill packs under `skills/`, except the minimal tracked hook dependencies
 - `policy-limits.json`
 - `session-aliases.json`
 - `stats-cache.json`
@@ -53,6 +56,7 @@ Before committing, review:
   - ok for private macOS-to-macOS sync
   - contains macOS-specific `afplay` hooks
   - contains high-autonomy settings that should be intentional on every device
+  - resolves hooks from this local harness and should not depend on the upstream Everything Claude Code plugin
 - `mcp-configs/mcp-servers.json`
   - safe only while API keys remain placeholders
   - do not replace placeholders with live credentials in tracked files

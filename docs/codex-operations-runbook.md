@@ -42,6 +42,8 @@ node ~/.claude/scripts/hooks/runtime-session-start.js
 5. `.claude` は permission, telemetry, session continuity, guardrail capture を担当する
 6. 必要な時だけ `review-summary.md`, `verification-summary.md`, `observation-summary.md` を残す
 
+この harness repo 自体で task artifact を残す場合は、root 直下ではなく `plan/<task-name>/` に置きます。
+
 `Codex` でも control layer は Claude Code と同じです。違うのは hook parity だけです。
 
 ## Guardrail Capture

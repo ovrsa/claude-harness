@@ -32,6 +32,8 @@ Canonical operating references:
 - `settings.json` for private macOS-to-macOS Claude Code behavior
 - `mcp-configs/` with placeholders only
 - `package.json` and `package-lock.json` for local verification tooling
+- `.claude-plugin/` as the local `claude-harness` manifest
+- minimal tracked `continuous-learning` hook dependencies referenced by `settings.json`
 
 Task-specific planning artifacts should live under:
 
@@ -55,6 +57,7 @@ Runtime state stays local to each device:
 - `cache/`
 - `backups/`
 - `plugins/`
+- optional skill packs under `skills/`, except the minimal tracked hook dependencies
 - `policy-limits.json`
 - `session-aliases.json`
 - `stats-cache.json`
@@ -94,6 +97,8 @@ The `git ls-files | rg ...` command should print nothing.
 
 - `settings.json` is intended for private macOS-to-macOS sync.
 - `settings.json` includes macOS sound hooks and high-autonomy settings; review them before using the harness on a new device.
+- `settings.json` resolves hooks from this local harness, not from the upstream Everything Claude Code plugin.
+- `continuous-learning-v2` remains a tracked hook dependency for now; do not delete it without first removing the observe hooks and related commands.
 - `mcp-configs/mcp-servers.json` is a placeholder catalog. Keep actual keys in local environment-specific configuration.
 
 ## Repo-Local Maps
