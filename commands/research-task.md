@@ -18,7 +18,8 @@ Use this command when durable local research is needed before pipeline planning,
    - `research.md`, or
    - `{task}_research.md`
 6. Follow the structure in `~/.claude/templates/research-template.md`.
-7. Stop after research. Do not implement code.
+7. Write artifact body text in Japanese by default while preserving canonical template headings and exact technical identifiers.
+8. Stop after research. Do not implement code.
 
 ## Hard guardrails
 

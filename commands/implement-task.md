@@ -25,6 +25,7 @@ Superpowers `executing-plans` or `subagent-driven-development` is the default ex
 3. Stop before editing if the plan has contradictions, missing evidence paths, unclear files, or unreviewed scope expansion.
 4. If `task_type: non_trivial` or `worktree_required: true`, use an isolated worktree.
 5. Initialize or update `progress.md` from `~/.claude/templates/progress-template.md`, but treat the SQLite memory plane as the runtime source of truth.
+   - write human-authored artifact body text in Japanese by default while preserving canonical headings, key names, and exact command output
 6. Refine the behavior spec before editing implementation code:
    - normal
    - boundary
@@ -48,7 +49,7 @@ Superpowers `executing-plans` or `subagent-driven-development` is the default ex
    - record RED/GREEN commands run
    - note remaining plan checkboxes
    - ask for feedback or continue only when the next batch is still clearly inside the approved plan
-10. Record rerunnable command evidence in `verification-summary.md`; keep runtime/browser/log evidence in `observation-summary.md`.
+10. Record rerunnable command evidence in `verification-summary.md`; keep runtime/browser/log evidence in `observation-summary.md`. Write human-authored evidence notes in Japanese by default.
 11. Stop and return to planning when the plan is unclear, RED does not fail as expected, GREEN repeatedly fails, implementation scope drifts, or a checkpoint exposes a spec gap.
 12. Write or update `review-summary.md` so unresolved findings and residual risks are explicit.
 13. Run the acceptance gate represented by `/eval`.

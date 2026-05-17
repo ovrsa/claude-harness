@@ -11,6 +11,12 @@ Use that file for the full operating model, artifact chain, and lifecycle rules.
 - `Codex` is a runtime bridge, not a second lifecycle definition
 - do not redefine the lifecycle locally when this directory is the active workspace
 
+## Artifact Language
+
+- create task artifacts in Japanese by default
+- keep canonical section headings when existing templates or hooks require them
+- use English only for commands, file paths, code identifiers, exact output, and required parser tokens
+
 ## Codex Start / End
 
 When running in `Codex`, execute these commands every session:

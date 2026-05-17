@@ -12,7 +12,8 @@ Superpowers review workflow is the default for standard and heavy-risky work whe
 
 1. Review the current diff and surrounding code.
 2. Write or update `review-summary.md`.
-3. Check:
+3. Write artifact body text in Japanese by default while preserving canonical section headings and required severity prefixes.
+4. Check:
    - plan/spec compliance
    - security
    - correctness
@@ -25,7 +26,7 @@ Superpowers review workflow is the default for standard and heavy-risky work whe
    - missing `review-summary.md`
    - missing `verification-summary.md`
    - missing `observation-summary.md` when required
-4. Record findings first using the canonical sections:
+5. Record findings first using the canonical sections:
    - `Review Scope`
    - `Plan Compliance`
    - `Code Quality`
@@ -34,24 +35,24 @@ Superpowers review workflow is the default for standard and heavy-risky work whe
    - `Residual Risks`
    - `Next Action`
    - optional `Guardrail Candidates`
-5. Use `Findings` only for unresolved issues. Prefix every finding with one of:
+6. Use `Findings` only for unresolved issues. Prefix every finding with one of:
    - `CRITICAL:`
    - `HIGH:`
    - `MEDIUM:`
    - `LOW:`
    - `INFO:`
-6. Move accepted or non-blocking concerns to `Residual Risks`.
-7. Treat review as approval-ready only when `Findings` is `none`.
-8. If verification has not run yet, leave `Next Action` pointing to verification instead of treating the task as approval-ready.
-9. Treat review as the primary input to `/eval`, not as a substitute for `/verify`.
-10. Separate review dimensions:
+7. Move accepted or non-blocking concerns to `Residual Risks`.
+8. Treat review as approval-ready only when `Findings` is `none`.
+9. If verification has not run yet, leave `Next Action` pointing to verification instead of treating the task as approval-ready.
+10. Treat review as the primary input to `/eval`, not as a substitute for `/verify`.
+11. Separate review dimensions:
     - `Plan Compliance`: approved scope, interface expectations, and acceptance criteria
     - `Code Quality`: correctness, maintainability, security, regressions
     - `Test Adequacy`: RED/GREEN evidence, BDD scenarios, integration/E2E coverage, observation evidence when required
-11. Run review in two passes for non-trivial implementation:
+12. Run review in two passes for non-trivial implementation:
     - pass 1: plan/spec compliance and missing acceptance evidence
     - pass 2: code quality, maintainability, security, regressions, and test adequacy
-12. When the same class of failure looks promotion-worthy, record it in `Guardrail Candidates` with:
+13. When the same class of failure looks promotion-worthy, record it in `Guardrail Candidates` with:
     - `failure_pattern`
     - `source`
     - `recommended_layer`

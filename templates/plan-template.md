@@ -8,6 +8,12 @@ observe_required: true
 
 # Plan: [task]
 
+<!--
+本文は日本語で書く。
+見出し名は hooks / validators が読むため、このテンプレートの英語見出しを維持する。
+コマンド、ファイルパス、コード識別子、Given/When/Then、normal/boundary/abnormal、RED/GREEN command などの parser token は必要に応じて英語のままにする。
+-->
+
 ## Summary
 
 -

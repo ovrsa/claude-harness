@@ -1,5 +1,11 @@
 # Observation Summary
 
+<!--
+本文は日本語で書く。
+見出し名は hooks / validators が読むため、このテンプレートの英語見出しを維持する。
+logs/browser/stderr/stdout/trace/runtime health などの concrete evidence source token は必要に応じて英語のままにする。
+-->
+
 ## Behavior Checked
 
 - pending: replace with the concrete behavior observed before completion

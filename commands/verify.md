@@ -8,6 +8,8 @@ Run rerunnable mechanical verification on current codebase state.
 
 Execute verification in this exact order:
 
+When writing or updating `verification-summary.md`, write artifact body text in Japanese by default while preserving canonical section headings and exact command output where useful.
+
 1. **Build Check**
    - Run the build command for this project
    - If it fails, report errors and STOP

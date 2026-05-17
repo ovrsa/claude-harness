@@ -1,5 +1,11 @@
 # Review Summary
 
+<!--
+本文は日本語で書く。
+見出し名は hooks / validators が読むため、このテンプレートの英語見出しを維持する。
+Findings の severity prefix（CRITICAL/HIGH/MEDIUM/LOW/INFO）と `none` は必要に応じて英語のままにする。
+-->
+
 ## Review Scope
 
 - plan/spec compliance, code quality, and test adequacy for the approved task

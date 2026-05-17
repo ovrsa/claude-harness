@@ -64,6 +64,14 @@ The local SQLite memory plane under `~/.claude/telemetry/telemetry.db` is the ru
 
 Repository artifacts remain the human-readable control surface and approval surface.
 
+## Artifact Language
+
+Task artifacts should be written in Japanese by default.
+
+- Keep canonical machine-readable section headings when templates require them.
+- Write the body text, bullets, decisions, risks, evidence notes, and handoff notes in Japanese.
+- Use English only for exact command names, file paths, API names, code identifiers, quoted output, or required parser tokens.
+
 ## Execution Rules
 
 - use the local pipeline as the default spine for standard and heavy-risky development work
