@@ -9,6 +9,8 @@ Use it as the fastest command map after `CLAUDE.md`. It does not replace the com
 Use the local pipeline by default for standard and heavy-risky implementation and bug-fix work.
 
 - `/next-action` as the operator-facing status surface for the current recommended next step
+- `/shape-task` as the explicit task-shaping surface for rough intent before planning, routing, or execution
+- `/route-task` as the explicit readonly routing surface for shaped tasks before execution or delegation
 - `/execute-plan` as the current local pipeline entrypoint
 - `/research` and `/plan` for conversational scoping when requirements are unclear
 - `/verify` to capture local rerunnable evidence when needed
@@ -22,6 +24,8 @@ Local `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are
 
 These pairs separate conversational guidance from repository artifacts. They are local fallback paths, not the standard pipeline path.
 
+- `/shape-task` turns rough intent into an approval-ready task brief without mutating the repository
+- `/route-task` classifies a shaped task into main context, sidecar, queue, isolated clone, or human decision
 - `/research` is the conversational research entrypoint; `/research-task` creates or updates repository `research.md`
 - `/plan` is the conversational planning entrypoint; `/plan-task` creates or updates repository `plan.md`
 

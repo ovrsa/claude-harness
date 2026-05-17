@@ -39,6 +39,23 @@ For non-trivial work:
 4. record `review-summary.md` and `verification-summary.md`
 5. record `observation-summary.md` when behavior changed
 
+## Sensemaking Flow
+
+For reading, learning, conceptual discussion, strategy shaping, or applying an
+external document as judgment material, do not immediately create or update
+`research.md` / `plan.md`.
+
+First:
+
+1. identify the source claims
+2. restate them in the user's terms
+3. critique them
+4. map them to the current harness
+5. decide adopt / hold / reject
+
+Only create or update implementation artifacts after the user chooses an
+actionable improvement.
+
 ## Improvement Rule
 
 - if a recurring failure appears, record it under `Guardrail Candidates`

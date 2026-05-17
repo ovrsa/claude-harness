@@ -20,6 +20,8 @@ const testFiles = [
   { file: 'lib/session-trace.test.js' },
   { file: 'lib/permission-resolver.test.js' },
   { file: 'lib/pipeline-evidence.test.js' },
+  { file: 'lib/task-shaper.test.js' },
+  { file: 'lib/task-router.test.js' },
   { file: 'lib/harness-status.test.js' },
   { file: 'lib/telemetry-health.test.js' },
   { file: 'lib/triage-loop.test.js' },
