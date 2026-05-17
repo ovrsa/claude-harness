@@ -1,7 +1,8 @@
 {
-  "name": "ecc-universal",
-  "version": "1.8.0",
-  "description": "Complete collection of battle-tested Claude Code configs — agents, skills, hooks, commands, and rules evolved over 10+ months of intensive daily use by an Anthropic hackathon winner",
+  "name": "claude-harness",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private Claude Code harness for syncing the local ~/.claude control plane across devices",
   "keywords": [
     "claude-code",
     "ai",
@@ -24,18 +25,11 @@
     "presentations",
     "slides"
   ],
-  "author": {
-    "name": "Affaan Mustafa",
-    "url": "https://x.com/affaanmustafa"
-  },
+  "author": "ovrsa",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/affaan-m/everything-claude-code.git"
-  },
-  "homepage": "https://github.com/affaan-m/everything-claude-code#readme",
-  "bugs": {
-    "url": "https://github.com/affaan-m/everything-claude-code/issues"
+    "url": "git+https://github.com/ovrsa/claude-harness.git"
   },
   "files": [
     "commands/",
@@ -54,16 +48,11 @@
     "skills/continuous-learning-v2/hooks/observe.sh",
     "skills/continuous-learning-v2/scripts/detect-project.sh",
     "install.sh",
-    "llms.txt",
     "settings.json",
     "README.md",
     "LICENSE"
   ],
-  "bin": {
-    "ecc-install": "install.sh"
-  },
   "scripts": {
-    "postinstall": "echo '\\n  ecc-universal installed!\\n  Run: npx ecc-install typescript\\n  Docs: https://github.com/affaan-m/everything-claude-code\\n'",
     "lint": "eslint .",
     "lint:markdown": "markdownlint '**/*.md' --ignore node_modules",
     "lint:unused": "knip --config knip.json --no-exit-code --reporter compact",
