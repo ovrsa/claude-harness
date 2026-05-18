@@ -1,14 +1,12 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "entry": [
-    "commitlint.config.js",
     "eslint.config.js",
     "hooks/*.js",
     "scripts/*.js",
     "scripts/ci/*.js",
     "scripts/hooks/*.js",
-    "tests/**/*.js",
-    "install.sh"
+    "tests/**/*.js"
   ],
   "project": [
     "*.js",

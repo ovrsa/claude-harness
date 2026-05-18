@@ -4,8 +4,6 @@ This file is the fastest end-to-end summary of how the local `~/.claude` control
 
 Use it to reload the loop quickly. Use `HARNESS.md`, `OBSERVE.md`, and `AUTONOMY_POLICY.md` for deeper policy details.
 
-When the question is about rollout order rather than lifecycle semantics, use `IMPLEMENTATION_ROADMAP.md`.
-
 ## Lifecycle Loop
 
 The default development loop is:

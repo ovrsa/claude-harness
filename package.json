@@ -47,7 +47,6 @@
     "scripts/skill-create-output.js",
     "skills/continuous-learning-v2/hooks/observe.sh",
     "skills/continuous-learning-v2/scripts/detect-project.sh",
-    "install.sh",
     "settings.json",
     "README.md",
     "LICENSE"

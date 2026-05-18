@@ -25,20 +25,7 @@ rules/
 
 ## Installation
 
-### Option 1: Install Script (Recommended)
-
-```bash
-# Install common + one or more language-specific rule sets
-./install.sh typescript
-./install.sh python
-./install.sh golang
-./install.sh swift
-
-# Install multiple languages at once
-./install.sh typescript python
-```
-
-### Option 2: Manual Installation
+### Manual Installation
 
 > **Important:** Copy entire directories — do NOT flatten with `/*`.
 > Common and language-specific directories contain files with the same names.
@@ -56,7 +43,7 @@ cp -r rules/python ~/.claude/rules/python
 cp -r rules/golang ~/.claude/rules/golang
 cp -r rules/swift ~/.claude/rules/swift
 
-# Attention ! ! ! Configure according to your actual project requirements; the configuration here is for reference only.
+# Configure according to your actual project requirements; the configuration here is for reference only.
 ```
 
 ## Rules vs Skills

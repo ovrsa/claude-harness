@@ -17,7 +17,6 @@ private GitHub repo で同期する場合は、追加で `docs/github-sync.md` �
 - `CLAUDE.md`
 - `AUTONOMY_POLICY.md`
 - `HARNESS.md`
-- `IMPLEMENTATION_ROADMAP.md`
 - `OBSERVE.md`
 - `OPERATING_MODEL.md`
 - `SESSION.md`
@@ -37,7 +36,6 @@ private GitHub repo で同期する場合は、追加で `docs/github-sync.md` �
 - `eslint.config.js`
 - `knip.json`
 - `.dependency-cruiser.js`
-- `install.sh`
 
 ### 2. 状況次第でコピー
 

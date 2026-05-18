@@ -6,8 +6,6 @@ Use this file as the authoritative map for how the personal control layer is org
 
 For the fastest end-to-end summary of the current loop, start with `OPERATING_MODEL.md`, then use `commands/COMMANDS.md` for the grouped command surface, and return here for the deeper ownership and gate semantics.
 
-For the current rollout sequence that turns the existing model into concrete implementation phases, use `IMPLEMENTATION_ROADMAP.md`.
-
 ## Core Model
 
 The harness is split into five layers:
