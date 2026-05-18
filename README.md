@@ -85,16 +85,30 @@ Then review local credentials and MCP configuration outside tracked files.
 
 ## Verification
 
-Before committing or pushing harness changes:
+For normal harness changes, run the lightweight required check:
 
 ```bash
 git status --short --branch
 git ls-files | rg '(^|/)(telemetry|sessions|session-env|tasks|todos|projects|file-history|cache|backups|plugins)(/|$)|policy-limits\.json|session-aliases\.json|stats-cache\.json|history\.jsonl|\.env|\.pem|\.key|\.db$'
-node scripts/ci/validate-no-personal-paths.js
 npm test
 ```
 
 The `git ls-files | rg ...` command should print nothing.
+
+Use the narrower suites when touching a specific subsystem:
+
+```bash
+npm run test:hooks
+npm run test:pipeline
+npm run test:regression
+```
+
+Use the full regression suite before broad cleanup, release-like sync work, or
+changes to shared test infrastructure:
+
+```bash
+npm run test:full
+```
 
 ## Config Notes
 

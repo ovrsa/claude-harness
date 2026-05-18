@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Run all tests
+ * Run harness test suites.
  *
- * Usage: node tests/run-all.js
+ * Usage:
+ *   node tests/run-all.js [--suite core|full|hooks|pipeline|regression]
  */
 
 const { spawnSync } = require('child_process');
@@ -10,7 +11,50 @@ const path = require('path');
 const fs = require('fs');
 
 const testsDir = __dirname;
-const testFiles = [
+const suites = {
+  core: [
+    { file: 'lib/task-artifacts.test.js' },
+    { file: 'lib/session-trace.test.js' },
+    { file: 'lib/permission-resolver.test.js' },
+    { file: 'lib/pipeline-evidence.test.js' },
+    { file: 'lib/task-shaper.test.js' },
+    { file: 'lib/task-router.test.js' },
+    { file: 'integration/hooks.test.js' },
+  ],
+  hooks: [
+    { file: 'hooks/hooks.test.js', args: ['--allow-known-baseline'] },
+    { file: 'hooks/evaluate-session.test.js' },
+    { file: 'hooks/suggest-compact.test.js' },
+    { file: 'integration/hooks.test.js' },
+  ],
+  pipeline: [
+    { file: 'lib/permission-resolver.test.js' },
+    { file: 'lib/pipeline-evidence.test.js' },
+    { file: 'lib/task-router.test.js' },
+    { file: 'scripts/pipeline-runner.test.js' },
+    { file: 'scripts/provider-adapters.test.js' },
+    { file: 'scripts/prompt-assemble.test.js' },
+    { file: 'scripts/task-queue.test.js' },
+    { file: 'scripts/workflow-doctor.test.js' },
+  ],
+  regression: [
+    { file: 'lib/utils.test.js' },
+    { file: 'lib/package-manager.test.js' },
+    { file: 'lib/session-manager.test.js' },
+    { file: 'lib/session-aliases.test.js' },
+    { file: 'lib/project-detect.test.js' },
+    { file: 'lib/harness-status.test.js' },
+    { file: 'lib/telemetry-health.test.js' },
+    { file: 'lib/triage-loop.test.js' },
+    { file: 'ci/validators.test.js' },
+    { file: 'scripts/claw.test.js' },
+    { file: 'scripts/harness-status.test.js' },
+    { file: 'scripts/setup-package-manager.test.js' },
+    { file: 'scripts/skill-create-output.test.js' },
+  ],
+};
+
+suites.full = [
   { file: 'lib/utils.test.js' },
   { file: 'lib/package-manager.test.js' },
   { file: 'lib/session-manager.test.js' },
@@ -38,14 +82,33 @@ const testFiles = [
   { file: 'scripts/workflow-doctor.test.js' },
   { file: 'scripts/harness-status.test.js' },
   { file: 'scripts/setup-package-manager.test.js' },
-  { file: 'scripts/skill-create-output.test.js' }
+  { file: 'scripts/skill-create-output.test.js' },
 ];
+
+function parseSuiteName(argv) {
+  const suiteFlag = argv.find((arg) => arg.startsWith('--suite='));
+  if (suiteFlag) return suiteFlag.slice('--suite='.length);
+
+  const suiteIndex = argv.indexOf('--suite');
+  if (suiteIndex !== -1 && argv[suiteIndex + 1]) return argv[suiteIndex + 1];
+
+  return 'full';
+}
+
+const suiteName = parseSuiteName(process.argv.slice(2));
+const testFiles = suites[suiteName];
+
+if (!testFiles) {
+  console.error(`Unknown test suite: ${suiteName}`);
+  console.error(`Available suites: ${Object.keys(suites).sort().join(', ')}`);
+  process.exit(1);
+}
 
 const BOX_W = 58; // inner width between ║ delimiters
 const boxLine = (s) => `║${s.padEnd(BOX_W)}║`;
 
 console.log('╔' + '═'.repeat(BOX_W) + '╗');
-console.log(boxLine('           Everything Claude Code - Test Suite'));
+console.log(boxLine(`           Claude Harness Test Suite: ${suiteName}`));
 console.log('╚' + '═'.repeat(BOX_W) + '╝');
 console.log();
 
