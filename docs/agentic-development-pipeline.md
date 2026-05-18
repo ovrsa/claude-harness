@@ -1,8 +1,8 @@
 # Agentic Development Pipeline
 
-この文書は、Agentic Engineering の読解を通じて `.claude` ハーネスに採用する開発パイプラインをまとめる。
+この文書は、`.claude` ハーネスで使う agentic development pipeline の純粋な作業フローをまとめる。
 
-元記事の転載ではない。読解・批判・適用検討を経て、`.claude` の運用原則として採用する内容だけを整理する。
+外部記事や一時的な読解メモではなく、開発タスクを intake し、形にし、実行し、検証し、受け入れるまでの標準的な流れを定義する。
 
 ## 目的
 
@@ -88,25 +88,27 @@ Git は、エージェントが読める作業基盤として扱う。
 
 ## パイプライン
 
-### 1. Sensemaking
+### 1. Intake
 
-読解、学習、戦略整理、外部ドキュメントを判断材料として適用する場面で使う。
+ユーザーの依頼を、作業として扱える入力にする。
 
 やること:
 
-- source claims を特定する
-- ユーザーの言葉で言い換える
-- 批判的に見る
-- 現在のハーネスに対応づける
-- adopt / hold / reject を決める
+- 依頼の目的を確認する
+- 現在の repository / harness state を読む
+- 既存の制約、権限、dirty state、関連ファイルを確認する
+- 何を変える作業か、何を変えない作業かを分ける
+- 不明点が作業判断に影響する場合だけ質問する
 
 すぐに `research.md` / `plan.md` を作成・更新しない。
 
 出力:
 
-- 共通理解
-- 採用原則
-- 明示された open questions
+- interpreted purpose
+- current state summary
+- likely task boundary
+- open questions
+- next step candidate
 
 ### 2. Shape
 
@@ -290,5 +292,5 @@ Evaluation が答える問い:
 - すべての task に full spec を強制しない
 - shaping 中に subagent を自動実行しない
 - AI review を evidence quality なしに十分とみなさない
-- 外部記事を always-loaded instructions に丸ごと追記しない
+- 一時的な読解メモを always-loaded instructions に丸ごと追記しない
 - human acceptance を automation で置き換えない
