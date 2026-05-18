@@ -1,4 +1,4 @@
-# Session Model
+# Session Resume State
 
 Use this file as the canonical definition of session state for the personal harness.
 

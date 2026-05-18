@@ -1,10 +1,10 @@
-# Harness Architecture
+# Harness Structure And Ownership
 
 `~/.claude` is the canonical local control layer.
 
 Use this file as the authoritative map for how the personal control layer is organized.
 
-For the fastest end-to-end summary of the current loop, start with `OPERATING_MODEL.md`, then use `commands/COMMANDS.md` for the grouped command surface, and return here for the deeper ownership and gate semantics.
+For the fastest end-to-end summary of the current loop, start with `docs/harness-operating-loop.md`, then use `commands/COMMANDS.md` for the grouped command surface, and return here for the deeper ownership and gate semantics.
 
 ## Core Model
 
@@ -24,7 +24,7 @@ The harness is split into five layers:
 3. **Artifact and session continuity layer**
    - SQLite runtime state in `telemetry/telemetry.db`
    - local task artifacts when the selected track requires them
-   - `SESSION.md`
+   - `docs/session-resume-state.md`
 
 4. **Repo-local map layer**
    - thin repository orientation, preferably via root `AGENTS.md`
@@ -67,11 +67,11 @@ The local pipeline is the development spine consumed by this control layer. Supe
   `/execute-plan` is the current local pipeline entrypoint. `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility surfaces.
 - root `AGENTS.md` in active repos
   Owns thin repo-local orientation and truth-source routing only.
-- `AUTONOMY_POLICY.md`
+- `docs/command-permission-policy.md`
   Owns autonomy classes and escalation rules.
-- `OBSERVE.md`
+- `docs/runtime-evidence-requirements.md`
   Owns runtime observation requirements.
-- `SESSION.md`
+- `docs/session-resume-state.md`
   Owns session state, checkpoint semantics, and handoff contracts.
 
 ## Track-Based Artifact Chain

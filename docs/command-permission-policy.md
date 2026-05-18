@@ -1,4 +1,4 @@
-# Autonomy Policy
+# Command Permission Policy
 
 Use staged, bounded autonomy.
 

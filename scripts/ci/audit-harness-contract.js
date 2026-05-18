@@ -19,10 +19,10 @@ function assertIncludes(content, needle, label) {
 
 function main() {
   const claude = read('CLAUDE.md');
-  const harness = read('HARNESS.md');
-  const operatingModel = read('OPERATING_MODEL.md');
-  const session = read('SESSION.md');
-  const observe = read('OBSERVE.md');
+  const harness = read('docs/harness-structure-and-ownership.md');
+  const operatingModel = read('docs/harness-operating-loop.md');
+  const session = read('docs/session-resume-state.md');
+  const observe = read('docs/runtime-evidence-requirements.md');
   const hooksReadme = read('hooks/README.md');
   const hooksJson = read('hooks/hooks.json');
   const sessionTrace = read('scripts/lib/session-trace.js');
@@ -48,7 +48,7 @@ function main() {
   const postCommitCapture = read('commands/post-commit-capture.md');
   const hookSuite = read('tests/hooks/hooks.test.js');
   const commandIndexPath = path.join(ROOT, 'commands/COMMANDS.md');
-  const operatingModelPath = path.join(ROOT, 'OPERATING_MODEL.md');
+  const operatingModelPath = path.join(ROOT, 'docs/harness-operating-loop.md');
   const healthTemplatePath = path.join(ROOT, 'templates/health-summary-template.md');
   const reviewTemplatePath = path.join(ROOT, 'templates/review-summary-template.md');
   const observationTemplatePath = path.join(ROOT, 'templates/observation-summary-template.md');
@@ -56,38 +56,38 @@ function main() {
   const triageTemplatePath = path.join(ROOT, 'templates/triage-summary-template.md');
   const verificationTemplatePath = path.join(ROOT, 'templates/verification-summary-template.md');
 
-  assertIncludes(claude, 'OPERATING_MODEL.md', 'CLAUDE.md');
+  assertIncludes(claude, 'docs/harness-operating-loop.md', 'CLAUDE.md');
   assertIncludes(claude, 'commands/COMMANDS.md', 'CLAUDE.md');
   assertIncludes(claude, 'review-summary.md', 'CLAUDE.md');
   assertIncludes(claude, 'guardrail candidates', 'CLAUDE.md');
   assertIncludes(claude, 'repo-local map', 'CLAUDE.md');
   assertIncludes(claude, 'AGENTS.md', 'CLAUDE.md');
   assertIncludes(claude, 'health and triage', 'CLAUDE.md');
-  assertIncludes(harness, 'OPERATING_MODEL.md', 'HARNESS.md');
-  assertIncludes(harness, 'commands/COMMANDS.md', 'HARNESS.md');
-  assertIncludes(harness, 'review-summary.md', 'HARNESS.md');
-  assertIncludes(harness, 'severity prefix', 'HARNESS.md');
-  assertIncludes(harness, 'concrete source', 'HARNESS.md');
-  assertIncludes(harness, 'docs', 'HARNESS.md');
-  assertIncludes(harness, 'command', 'HARNESS.md');
-  assertIncludes(harness, 'hook', 'HARNESS.md');
-  assertIncludes(harness, 'skill', 'HARNESS.md');
-  assertIncludes(harness, 'Repo-Local Maps', 'HARNESS.md');
-  assertIncludes(harness, 'codemaps', 'HARNESS.md');
-  assertIncludes(harness, 'Triage And Health Loop', 'HARNESS.md');
-  assertIncludes(harness, 'promotion-ready', 'HARNESS.md');
-  assertIncludes(harness, 'resolved', 'HARNESS.md');
-  assertIncludes(operatingModel, 'Lifecycle Loop', 'OPERATING_MODEL.md');
-  assertIncludes(operatingModel, 'post-commit capture', 'OPERATING_MODEL.md');
-  assertIncludes(operatingModel, 'Enforced Now', 'OPERATING_MODEL.md');
-  assertIncludes(operatingModel, 'Not Enforced Yet', 'OPERATING_MODEL.md');
-  assertIncludes(operatingModel, 'health / triage', 'OPERATING_MODEL.md');
-  assertIncludes(session, 'review-summary.md', 'SESSION.md');
-  assertIncludes(session, 'telemetry.db', 'SESSION.md');
-  assertIncludes(session, 'run_state', 'SESSION.md');
-  assertIncludes(observe, 'Behavior Checked', 'OBSERVE.md');
-  assertIncludes(observe, 'runtime health', 'OBSERVE.md');
-  assertIncludes(observe, 'Verify vs Observe', 'OBSERVE.md');
+  assertIncludes(harness, 'docs/harness-operating-loop.md', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'commands/COMMANDS.md', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'review-summary.md', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'severity prefix', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'concrete source', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'docs', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'command', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'hook', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'skill', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'Repo-Local Maps', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'codemaps', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'Triage And Health Loop', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'promotion-ready', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(harness, 'resolved', 'docs/harness-structure-and-ownership.md');
+  assertIncludes(operatingModel, 'Lifecycle Loop', 'docs/harness-operating-loop.md');
+  assertIncludes(operatingModel, 'post-commit capture', 'docs/harness-operating-loop.md');
+  assertIncludes(operatingModel, 'Enforced Now', 'docs/harness-operating-loop.md');
+  assertIncludes(operatingModel, 'Not Enforced Yet', 'docs/harness-operating-loop.md');
+  assertIncludes(operatingModel, 'health / triage', 'docs/harness-operating-loop.md');
+  assertIncludes(session, 'review-summary.md', 'docs/session-resume-state.md');
+  assertIncludes(session, 'telemetry.db', 'docs/session-resume-state.md');
+  assertIncludes(session, 'run_state', 'docs/session-resume-state.md');
+  assertIncludes(observe, 'Behavior Checked', 'docs/runtime-evidence-requirements.md');
+  assertIncludes(observe, 'runtime health', 'docs/runtime-evidence-requirements.md');
+  assertIncludes(observe, 'Verify vs Observe', 'docs/runtime-evidence-requirements.md');
   assertIncludes(readme, 'Repo-Local Maps', 'README.md');
   assertIncludes(readme, 'commands/COMMANDS.md', 'README.md');
   assertIncludes(readme, 'AGENTS.md', 'README.md');
@@ -155,7 +155,7 @@ function main() {
   assertIncludes(hookSuite, 'Unexpected failures', 'hooks.test.js');
 
   if (!fs.existsSync(operatingModelPath)) {
-    throw new Error('OPERATING_MODEL.md is missing');
+    throw new Error('docs/harness-operating-loop.md is missing');
   }
   if (!fs.existsSync(commandIndexPath)) {
     throw new Error('commands/COMMANDS.md is missing');

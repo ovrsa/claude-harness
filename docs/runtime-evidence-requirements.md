@@ -1,4 +1,4 @@
-# Observation Requirements
+# Runtime Evidence Requirements
 
 Observation is required when a task changes runtime behavior, user-visible behavior, or system interactions that tests alone do not fully prove.
 

@@ -192,7 +192,7 @@ function main() {
           goal: 'Document the managed session contract',
           open_risks: 'Need interrupted-session coverage',
           next_action: 'Run verification',
-          files_touched: ['HARNESS.md', 'SESSION.md'],
+          files_touched: ['docs/harness-structure-and-ownership.md', 'docs/session-resume-state.md'],
           verification_run: ['node smoke-harness-lifecycle.js'],
           last_assistant_message: 'Updated the authority docs.',
         }),
@@ -205,7 +205,7 @@ function main() {
     assert(sessionAfterSubagent.includes('goal=Document the managed session contract'), 'subagent-stop should record goal');
     assert(sessionAfterSubagent.includes('open_risks=Need interrupted-session coverage'), 'subagent-stop should record open risks');
     assert(sessionAfterSubagent.includes('next_action=Run verification'), 'subagent-stop should record next action');
-    assert(sessionAfterSubagent.includes('files_touched=HARNESS.md, SESSION.md'), 'subagent-stop should record files touched');
+    assert(sessionAfterSubagent.includes('files_touched=docs/harness-structure-and-ownership.md, docs/session-resume-state.md'), 'subagent-stop should record files touched');
     assert(sessionAfterSubagent.includes('verification_run=node smoke-harness-lifecycle.js'), 'subagent-stop should record verification run');
     assert(progressAfterSubagent.includes('## Latest Delegated Handoff'), 'subagent-stop should persist handoff into progress.md');
     assert(progressAfterSubagent.includes('agent=docs-writer'), 'subagent-stop should persist handoff agent');

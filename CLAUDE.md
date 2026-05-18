@@ -21,12 +21,12 @@ Active repositories should expose a thin repo-local map, preferably root `AGENTS
 
 Deeper references:
 
-- `~/.claude/OPERATING_MODEL.md` for the fastest end-to-end operating loop summary
-- `~/.claude/HARNESS.md` for the canonical harness map
+- `~/.claude/docs/harness-operating-loop.md` for the fastest end-to-end operating loop summary
+- `~/.claude/docs/harness-structure-and-ownership.md` for the canonical harness map
 - `~/.claude/commands/COMMANDS.md` for the grouped command surface and preferred command path
-- `~/.claude/AUTONOMY_POLICY.md` for approval and autonomy classes
-- `~/.claude/OBSERVE.md` for runtime observation rules
-- `~/.claude/SESSION.md` for session state and resume rules
+- `~/.claude/docs/command-permission-policy.md` for approval and autonomy classes
+- `~/.claude/docs/runtime-evidence-requirements.md` for runtime observation rules
+- `~/.claude/docs/session-resume-state.md` for session state and resume rules
 
 Completion model:
 

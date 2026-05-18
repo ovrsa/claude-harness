@@ -4132,7 +4132,7 @@ Some random content without the expected ### Context to Load section
         summary: 'Added parser coverage for progress.md state.',
         open_risks: 'Need smoke coverage for interrupted sessions',
         next_action: 'Run smoke checks',
-        files_touched: ['SESSION.md', 'HARNESS.md'],
+        files_touched: ['docs/session-resume-state.md', 'docs/harness-structure-and-ownership.md'],
         verification_run: ['node smoke-harness-lifecycle.js']
       });
       const result = await runScriptInDir(path.join(scriptsDir, 'subagent-stop.js'), repoDir, input, {
@@ -4144,7 +4144,7 @@ Some random content without the expected ### Context to Load section
       assert.ok(content.includes('goal=Harden session restore contract'), 'Should include goal');
       assert.ok(content.includes('open_risks=Need smoke coverage for interrupted sessions'), 'Should include open risks');
       assert.ok(content.includes('next_action=Run smoke checks'), 'Should include next action');
-      assert.ok(content.includes('files_touched=SESSION.md, HARNESS.md'), 'Should include files touched');
+      assert.ok(content.includes('files_touched=docs/session-resume-state.md, docs/harness-structure-and-ownership.md'), 'Should include files touched');
       assert.ok(content.includes('verification_run=node smoke-harness-lifecycle.js'), 'Should include verification run');
       assert.ok(progress.includes('## Latest Delegated Handoff'), 'Should write delegated handoff section into progress.md');
       assert.ok(progress.includes('agent=worker-1'), 'Should persist handoff agent in progress.md');

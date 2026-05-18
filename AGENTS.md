@@ -71,7 +71,7 @@ actionable improvement.
 ## Pointers
 
 - canonical lifecycle: [CLAUDE.md](/Users/kyo/.claude/CLAUDE.md:1)
-- operating loop: [OPERATING_MODEL.md](/Users/kyo/.claude/OPERATING_MODEL.md:1)
-- harness map: [HARNESS.md](/Users/kyo/.claude/HARNESS.md:1)
+- operating loop: [docs/harness-operating-loop.md](/Users/kyo/.claude/docs/harness-operating-loop.md:1)
+- harness map: [docs/harness-structure-and-ownership.md](/Users/kyo/.claude/docs/harness-structure-and-ownership.md:1)
 - Codex runbook: [docs/codex-operations-runbook.md](/Users/kyo/.claude/docs/codex-operations-runbook.md:1)
 - Codex SQLite bridge: [docs/codex-telemetry-bridge.md](/Users/kyo/.claude/docs/codex-telemetry-bridge.md:1)

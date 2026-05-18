@@ -1,8 +1,8 @@
-# Operating Model
+# Harness Operating Loop
 
 This file is the fastest end-to-end summary of how the local `~/.claude` control layer operates today.
 
-Use it to reload the loop quickly. Use `HARNESS.md`, `OBSERVE.md`, and `AUTONOMY_POLICY.md` for deeper policy details.
+Use it to reload the loop quickly. Use `docs/harness-structure-and-ownership.md`, `docs/runtime-evidence-requirements.md`, and `docs/command-permission-policy.md` for deeper policy details.
 
 ## Lifecycle Loop
 
@@ -31,13 +31,13 @@ This keeps the local layer focused on observability, permission boundaries, cont
 
 ### Reference Docs
 
-- `HARNESS.md`
+- `docs/harness-structure-and-ownership.md`
   - canonical harness map
-- `OBSERVE.md`
+- `docs/runtime-evidence-requirements.md`
   - runtime evidence rules
-- `AUTONOMY_POLICY.md`
+- `docs/command-permission-policy.md`
   - approval and escalation classes
-- `SESSION.md`
+- `docs/session-resume-state.md`
   - resume and session continuity rules
 
 ### Workflow Commands
@@ -144,4 +144,4 @@ When resuming work:
 1. read repo-local `AGENTS.md`
 2. read the current task artifacts
 3. use this file to place the task inside the full operating loop
-4. jump to `HARNESS.md` or `OBSERVE.md` only when deeper rules are needed
+4. jump to `docs/harness-structure-and-ownership.md` or `docs/runtime-evidence-requirements.md` only when deeper rules are needed

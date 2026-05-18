@@ -107,7 +107,7 @@ function runTests() {
     assert.ok(shaped.decisionCandidates.includes('Add an always-on suggestion for ambiguous requests'));
     assert.ok(shaped.suggestedNextStep.includes('Compare decision candidates'));
     assert.ok(shaped.requiredEvidence.includes('progress.md next action alignment'));
-    assert.ok(shaped.requiredEvidence.includes('docs/agentic-development-pipeline.md alignment'));
+    assert.ok(shaped.requiredEvidence.includes('docs/development-task-pipeline.md alignment'));
   })) passed++; else failed++;
 
   if (test('does not misclassify route-task readiness discussion as shape-task quality implementation', () => {

@@ -1,4 +1,4 @@
-# Agentic Development Pipeline
+# Development Task Pipeline
 
 この文書は、`.claude` ハーネスで使う agentic development pipeline の純粋な作業フローをまとめる。
 

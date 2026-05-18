@@ -15,12 +15,15 @@ Canonical operating references:
 
 - `CLAUDE.md`
 - `AGENTS.md`
-- `OPERATING_MODEL.md`
-- `HARNESS.md`
+- `docs/harness-operating-loop.md`
+- `docs/harness-structure-and-ownership.md`
 - `commands/COMMANDS.md`
-- `AUTONOMY_POLICY.md`
-- `OBSERVE.md`
-- `SESSION.md`
+- `docs/command-permission-policy.md`
+- `docs/runtime-evidence-requirements.md`
+- `docs/session-resume-state.md`
+
+Root Markdown files are reserved for entrypoints only. Policy, architecture,
+session, observation, and other explanatory documents should live under `docs/`.
 
 ## What Is Tracked
 

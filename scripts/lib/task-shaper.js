@@ -130,7 +130,7 @@ function evidenceFor(taskWeight, signals) {
     evidence.push('adopt / hold / reject decision');
     if (signals.harnessContext) {
       evidence.push('progress.md next action alignment');
-      evidence.push('docs/agentic-development-pipeline.md alignment');
+      evidence.push('docs/development-task-pipeline.md alignment');
       evidence.push('existing command surface comparison');
     }
     return evidence;

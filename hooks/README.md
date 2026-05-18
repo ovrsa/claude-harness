@@ -134,7 +134,7 @@ Minimum recommended sections:
 - `Latest Checkpoint`
 - `Latest Delegated Handoff`
 
-See `~/.claude/SESSION.md` for the canonical session model.
+See `~/.claude/docs/session-resume-state.md` for the canonical session model.
 
 ### Autonomy Policy
 
@@ -145,7 +145,7 @@ The permission boundary is intentionally narrower than the rest of the harness.
 - `hard-deny` is for clearly destructive actions
 - `audit-only` is for low-risk metadata commands that should still leave a trace
 
-See `~/.claude/AUTONOMY_POLICY.md` for the canonical policy.
+See `~/.claude/docs/command-permission-policy.md` for the canonical policy.
 
 ### Progress-Aware Guardrails
 
@@ -162,7 +162,7 @@ For non-trivial implementation work, lifecycle guardrails now treat `progress.md
 
 Hooks may update only the machine-managed `Latest Checkpoint` and `Latest Delegated Handoff` sections. Operator-owned progress fields remain the human-authored view when they are populated.
 
-See `~/.claude/SESSION.md` for the durable session schema.
+See `~/.claude/docs/session-resume-state.md` for the durable session schema.
 
 ### Guardrail Candidate Capture
 
