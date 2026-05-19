@@ -65,12 +65,24 @@ function runTests() {
     assert.ok(shaped.requiredEvidence.includes('adopt / hold / reject decision'));
   })) passed++; else failed++;
 
+  if (test('proposes readonly delegation for heavy context reading', () => {
+    const shaped = shapeTask('1000行のログと大量ファイルを読んで、失敗原因の候補だけ要約してほしい');
+    assert.strictEqual(shaped.heavyContext, true);
+    assert.strictEqual(shaped.canDelegateReadOnly, true);
+    assert.ok(shaped.delegationTask.includes('read-only'));
+    assert.ok(shaped.delegationTask.includes('要点'));
+    assert.ok(shaped.constraints.includes('Delegate only reading, summarization, extraction, or evidence collection when heavy context is present.'));
+  })) passed++; else failed++;
+
   if (test('marks normal implementation as ready for plan or route', () => {
     const shaped = shapeTask('Add a /shape-task command and tests');
     assert.strictEqual(shaped.taskWeight, 'standard');
     assert.strictEqual(shaped.specNeeded, 'optional');
     assert.strictEqual(shaped.suggestedTrack, 'plan-or-route');
     assert.strictEqual(shaped.delegationReady, true);
+    assert.strictEqual(shaped.heavyContext, false);
+    assert.strictEqual(shaped.canDelegateReadOnly, false);
+    assert.strictEqual(shaped.delegationTask, 'none');
     assert.ok(shaped.requiredEvidence.includes('focused tests or validators'));
   })) passed++; else failed++;
 

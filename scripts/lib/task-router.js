@@ -41,6 +41,9 @@ function normalizeTaskBrief(taskBrief = {}) {
     nonGoals: normalizeList(source.nonGoals),
     requiredEvidence: normalizeList(source.requiredEvidence || source.evidenceNeeded),
     openQuestions: normalizeList(source.openQuestions),
+    heavyContext: Boolean(source.heavyContext),
+    canDelegateReadOnly: Boolean(source.canDelegateReadOnly),
+    delegationTask: normalizeText(source.delegationTask) || 'none',
   };
 }
 
@@ -83,6 +86,7 @@ function readinessFor(taskBrief, options, boundaries) {
 function destinationFor(taskBrief, options, readiness) {
   if (readiness !== 'ready') return 'human-decision';
   if (taskBrief.taskWeight === 'trivial') return 'main-context';
+  if (taskBrief.heavyContext && taskBrief.canDelegateReadOnly && options.readonly) return 'subagent-sidecar';
   if (taskBrief.taskWeight === 'exploratory' && options.preferDelegation && options.readonly) return 'subagent-sidecar';
   if (taskBrief.taskWeight === 'heavy-risky') {
     if (options.queueIntent && options.isolate) return 'isolated-clone';
@@ -122,6 +126,7 @@ function delegationFor(taskBrief, options, readiness, destination) {
   if (readiness !== 'ready') return false;
   if (destination !== 'subagent-sidecar') return false;
   if (!options.readonly && !options.isolatedWriteScope) return false;
+  if (taskBrief.heavyContext && !taskBrief.canDelegateReadOnly) return false;
   if (!taskBrief.objective || !hasAcceptance(taskBrief)) return false;
   return true;
 }
@@ -137,6 +142,7 @@ function boundaryFor(destination, delegationEligible) {
 function reasoningFor(taskBrief, readiness, destination) {
   if (readiness === 'needs-shaping') return ['Task is not ready because objective, acceptance, or open questions need shaping.'];
   if (readiness === 'blocked') return ['Task requires a human decision before routing can continue.'];
+  if (destination === 'subagent-sidecar' && taskBrief.heavyContext) return ['Task has heavy context that can be compressed by bounded readonly sidecar work.'];
   if (destination === 'subagent-sidecar') return ['Task is bounded, exploratory, and suitable for readonly sidecar work.'];
   if (destination === 'task-queue') return ['Task is approved and benefits from queued pipeline evidence.'];
   if (destination === 'isolated-clone') return ['Task is approved high-risk queued work and should be isolated from the main worktree.'];
@@ -174,6 +180,9 @@ function routeTask(taskBrief, options = {}) {
     reasoning: reasoningFor(normalized, inputReadiness, recommendedDestination),
     delegationEligible,
     delegationBoundary: boundaryFor(recommendedDestination, delegationEligible),
+    heavyContext: normalized.heavyContext,
+    canDelegateReadOnly: normalized.canDelegateReadOnly,
+    delegationTask: delegationEligible ? normalized.delegationTask : 'none',
     requiredApproval,
     requiredEvidence,
     stopConditions,

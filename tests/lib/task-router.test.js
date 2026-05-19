@@ -87,11 +87,34 @@ function runTests() {
     assert.strictEqual(routed.delegationEligible, true);
   })) passed++; else failed++;
 
+  if (test('routes heavy context readonly compression to subagent sidecar', () => {
+    const routed = routeTask(brief({
+      taskWeight: 'exploratory',
+      objective: 'Summarize a long log and many files into failure candidates',
+      requiredEvidence: ['source claims or observations'],
+      heavyContext: true,
+      canDelegateReadOnly: true,
+      delegationTask: 'Read the heavy inputs read-only and return concise findings.',
+    }), {
+      readonly: true,
+    });
+    assert.strictEqual(routed.inputReadiness, 'ready');
+    assert.strictEqual(routed.recommendedDestination, 'subagent-sidecar');
+    assert.strictEqual(routed.delegationEligible, true);
+    assert.strictEqual(routed.heavyContext, true);
+    assert.strictEqual(routed.canDelegateReadOnly, true);
+    assert.ok(routed.delegationTask.includes('Read the heavy inputs'));
+    assert.ok(routed.delegationBoundary.includes('return findings and evidence'));
+  })) passed++; else failed++;
+
   if (test('routes standard work to main context by default', () => {
     const routed = routeTask(brief());
     assert.strictEqual(routed.inputReadiness, 'ready');
     assert.strictEqual(routed.recommendedDestination, 'main-context');
     assert.strictEqual(routed.delegationEligible, false);
+    assert.strictEqual(routed.heavyContext, false);
+    assert.strictEqual(routed.canDelegateReadOnly, false);
+    assert.strictEqual(routed.delegationTask, 'none');
   })) passed++; else failed++;
 
   if (test('routes approved standard queued work to task queue', () => {

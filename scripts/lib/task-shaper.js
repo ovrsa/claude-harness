@@ -39,6 +39,13 @@ const KEYWORDS = {
   shapeTaskQuality: [
     'task shaping quality', 'output quality', '出力品質', '品質',
   ],
+  heavyContext: [
+    'large file', 'large files', 'long log', 'long logs', 'heavy context',
+    'generated artifact', 'generated artifacts', 'external doc', 'external docs',
+    'broad search', 'many files', 'read many', 'summarize logs',
+    '大量ファイル', '大きなファイル', '長いログ', 'ログ', '重い文脈',
+    '外部資料', '生成物', '広範な探索', '要約', '読んで',
+  ],
 };
 
 function normalizeText(value) {
@@ -73,6 +80,7 @@ function detectSignals(text) {
     prioritization: includesAny(text, KEYWORDS.prioritization),
     harnessContext: includesAny(text, KEYWORDS.harnessContext),
     shapeTaskQuality: includesAny(text, KEYWORDS.shapeTaskQuality),
+    heavyContext: includesAny(text, KEYWORDS.heavyContext),
   };
 }
 
@@ -216,6 +224,16 @@ function nextStepFor(suggestedTrack, signals, decisionCandidates) {
   return 'Proceed directly with minimal evidence.';
 }
 
+function decideCanDelegateReadOnly(signals, taskWeight) {
+  if (!signals.heavyContext) return false;
+  return taskWeight === 'exploratory' || signals.exploratory || !signals.implementation;
+}
+
+function delegationTaskFor(signals, canDelegateReadOnly) {
+  if (!signals.heavyContext || !canDelegateReadOnly) return 'none';
+  return 'Ask a read-only sidecar to read the heavy context, extract relevant findings, and return 要点 with evidence sources; main context keeps scope and acceptance.';
+}
+
 function shapeTask(input, options = {}) {
   const rawInput = normalizeText(input);
   const text = lower(rawInput);
@@ -226,6 +244,9 @@ function shapeTask(input, options = {}) {
   const requiredEvidence = unique([...(options.requiredEvidence || []), ...evidenceFor(taskWeight, signals)]);
   const openQuestions = unique([...(options.openQuestions || []), ...buildOpenQuestions(taskWeight, signals)]);
   const decisionCandidates = unique([...(options.decisionCandidates || []), ...decisionCandidatesFor(signals)]);
+  const heavyContext = Boolean(options.heavyContext ?? signals.heavyContext);
+  const canDelegateReadOnly = Boolean(options.canDelegateReadOnly ?? (heavyContext && decideCanDelegateReadOnly(signals, taskWeight)));
+  const delegationTask = options.delegationTask || delegationTaskFor({ ...signals, heavyContext }, canDelegateReadOnly);
 
   const interpretedPurpose = options.interpretedPurpose || sentenceFromInput(rawInput);
   const proposedObjective = options.proposedObjective || objectiveFor(rawInput, taskWeight, suggestedTrack, signals);
@@ -247,6 +268,7 @@ function shapeTask(input, options = {}) {
     ...(options.constraints || []),
     'Human-owned purpose, scope, and acceptance remain explicit.',
     'Do not spawn subagents, create queued work, or mutate repositories during shaping.',
+    heavyContext ? 'Delegate only reading, summarization, extraction, or evidence collection when heavy context is present.' : '',
   ]);
 
   const nonGoals = unique([
@@ -278,6 +300,9 @@ function shapeTask(input, options = {}) {
     requiredEvidence,
     reviewWeight: options.reviewWeight || decideReviewWeight(taskWeight),
     humanApprovalNeeded: taskWeight !== 'trivial',
+    heavyContext,
+    canDelegateReadOnly,
+    delegationTask,
     suggestedTrack,
     suggestedNextStep,
     delegationReady: ['plan-or-route'].includes(suggestedTrack) && openQuestions.length === 0,

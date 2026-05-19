@@ -56,6 +56,15 @@ Delegation Eligible:
 Delegation Boundary:
 - ...
 
+Heavy Context:
+- yes | no
+
+Can Delegate Read-Only:
+- yes | no
+
+Delegation Task:
+- ...
+
 Required Approval:
 - ...
 
@@ -73,6 +82,7 @@ Suggested Next Step:
 
 - Do not route unclear tasks to execution.
 - Do not delegate purpose, acceptance, scope expansion, destructive action, credential use, deploy, push, PR creation, or residual-risk acceptance.
+- Delegate heavy context only for readonly reading, summarization, extraction, or evidence collection.
 - Do not treat route-task output as approval to implement.
 - Do not create queue entries or clones in v0.
 - Heavy-risky work requires human risk approval before it can leave `human-decision`.
