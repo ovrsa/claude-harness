@@ -9,6 +9,8 @@ history.jsonl
 ide/
 paste-cache/
 plans/
+!docs/superpowers/plans/
+!docs/superpowers/plans/**
 plugins/
 policy-limits.json
 projects/
