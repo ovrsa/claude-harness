@@ -1,46 +1,17 @@
 #!/usr/bin/env node
-'use strict';
 
-const { getRuntimeKind, getRuntimeSessionId } = require('../lib/utils');
-const { getRepoRoot } = require('../lib/task-artifacts');
-const { recordSessionEvent, recordLifecycleSnapshot, getRunId } = require('../lib/session-trace');
+const { contextForInput, inferOutcome } = require('../lib/experience-hook');
+const { getRuntimeKind } = require('../lib/utils');
+const { observeSafely } = require('../lib/experience-store');
 
-function main() {
-  const runtime = getRuntimeKind();
-  const sessionId = getRuntimeSessionId() || undefined;
-  const runId = getRunId(sessionId);
-  const repoRoot = getRepoRoot(process.cwd()) || '';
-
-  if (repoRoot) {
-    recordLifecycleSnapshot({
-      sessionId,
-      runId,
-      repoRoot,
-      cwd: process.cwd(),
-      createdBy: 'runtime-session-end',
-      includeArtifactContextLoaded: false,
-    });
-  }
-
-  recordSessionEvent({
-    sessionId,
-    runId,
-    eventType: 'session_ended',
-    status: 'ended',
-    repoRoot,
-    cwd: process.cwd(),
-    createdBy: 'runtime-session-end',
-    metadata: {
-      runtime,
-      bridge_mode: 'manual',
-      final_status: 'persisted',
-    },
+observeSafely(() => {
+  const runtime = getRuntimeKind() === 'unknown' ? 'codex' : getRuntimeKind();
+  const { store, runId } = contextForInput({ runtime, cwd: process.cwd() }, { runtimeFallback: runtime });
+  store.appendTrace(runId, {
+    family: 'SessionEnd',
+    event: 'ended',
+    runtime,
+    bridge: 'manual',
   });
-}
-
-try {
-  main();
-  process.exit(0);
-} catch {
-  process.exit(0);
-}
+  store.finalizeRun(runId, inferOutcome(store, runId));
+});

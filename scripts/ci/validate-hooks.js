@@ -8,7 +8,7 @@ const path = require('path');
 const vm = require('vm');
 
 const HOOKS_FILE = path.join(__dirname, '../../hooks/hooks.json');
-const VALID_EVENTS = ['PreToolUse', 'PostToolUse', 'PreCompact', 'SessionStart', 'SessionEnd', 'Stop', 'Notification', 'SubagentStop', 'PermissionRequest'];
+const VALID_EVENTS = ['PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'PreCompact', 'SessionStart', 'SessionEnd', 'Stop', 'Notification', 'SubagentStop', 'PermissionRequest'];
 
 /**
  * Validate a single hook entry has required fields and valid inline JS

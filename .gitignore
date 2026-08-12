@@ -8,9 +8,6 @@ file-history/
 history.jsonl
 ide/
 paste-cache/
-plans/
-!docs/superpowers/plans/
-!docs/superpowers/plans/**
 plugins/
 policy-limits.json
 projects/
@@ -24,8 +21,14 @@ tasks/
 telemetry/
 todos/
 
-# Local lifecycle task artifacts.
-# Task-scoped artifacts should live under plan/<task-name>/ and may be tracked.
+# Grill and Meta-Harness local data
+/.scratch/
+/experience/
+/experiments/
+/archive/legacy-telemetry/
+/.quarantine/
+
+# Historical local task artifacts
 observation-summary.md
 plan.md
 progress.md
@@ -40,12 +43,10 @@ verification-summary.md
 examples/sessions/*.tmp
 node_modules/
 
-# Quarantined optional packs and helper tails
+# Optional packs outside the active managed lifecycle
 agents/**
 examples/**
 skills/**
-!skills/superpowers-tdd/
-!skills/superpowers-tdd/SKILL.md
 scripts/codemaps/**
 scripts/hooks/pre-bash-dev-server-block.js
 scripts/hooks/pre-write-doc-warn.js

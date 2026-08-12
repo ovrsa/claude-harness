@@ -1,167 +1,70 @@
 #!/usr/bin/env node
-/**
- * Run harness test suites.
- *
- * Usage:
- *   node tests/run-all.js [--suite core|full|hooks|pipeline|regression]
- */
 
 const { spawnSync } = require('child_process');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 
 const testsDir = __dirname;
 const suites = {
   core: [
-    { file: 'lib/task-artifacts.test.js' },
-    { file: 'lib/session-trace.test.js' },
-    { file: 'lib/permission-resolver.test.js' },
-    { file: 'lib/pipeline-evidence.test.js' },
-    { file: 'lib/task-shaper.test.js' },
-    { file: 'lib/task-router.test.js' },
-    { file: 'integration/hooks.test.js' },
+    'lib/managed-skill-resolver.test.js',
+    'lib/experience-redaction.test.js',
+    'lib/experience-store.test.js',
+    'lib/permission-resolver.test.js',
+    'lib/shell-split.test.js',
+    'integration/experience-hooks.test.js',
+    'integration/hooks.test.js',
+    'scripts/experience-status.test.js',
+    'ci/validators.test.js',
   ],
   hooks: [
-    { file: 'hooks/hooks.test.js', args: ['--allow-known-baseline'] },
-    { file: 'hooks/evaluate-session.test.js' },
-    { file: 'hooks/suggest-compact.test.js' },
-    { file: 'integration/hooks.test.js' },
-  ],
-  pipeline: [
-    { file: 'lib/permission-resolver.test.js' },
-    { file: 'lib/pipeline-evidence.test.js' },
-    { file: 'lib/task-router.test.js' },
-    { file: 'scripts/pipeline-runner.test.js' },
-    { file: 'scripts/provider-adapters.test.js' },
-    { file: 'scripts/prompt-assemble.test.js' },
-    { file: 'scripts/task-queue.test.js' },
-    { file: 'scripts/workflow-doctor.test.js' },
+    'integration/experience-hooks.test.js',
+    'integration/hooks.test.js',
+    'lib/permission-resolver.test.js',
   ],
   regression: [
-    { file: 'lib/utils.test.js' },
-    { file: 'lib/package-manager.test.js' },
-    { file: 'lib/session-manager.test.js' },
-    { file: 'lib/session-aliases.test.js' },
-    { file: 'lib/project-detect.test.js' },
-    { file: 'lib/harness-status.test.js' },
-    { file: 'lib/telemetry-health.test.js' },
-    { file: 'lib/triage-loop.test.js' },
-    { file: 'ci/validators.test.js' },
-    { file: 'scripts/claw.test.js' },
-    { file: 'scripts/harness-status.test.js' },
-    { file: 'scripts/setup-package-manager.test.js' },
-    { file: 'scripts/skill-create-output.test.js' },
+    'lib/utils.test.js',
+    'lib/package-manager.test.js',
+    'lib/project-detect.test.js',
+    'lib/session-aliases.test.js',
+    'lib/session-manager.test.js',
+    'scripts/claw.test.js',
+    'scripts/setup-package-manager.test.js',
+    'scripts/skill-create-output.test.js',
   ],
 };
 
-suites.full = [
-  { file: 'lib/utils.test.js' },
-  { file: 'lib/package-manager.test.js' },
-  { file: 'lib/session-manager.test.js' },
-  { file: 'lib/session-aliases.test.js' },
-  { file: 'lib/project-detect.test.js' },
-  { file: 'lib/task-artifacts.test.js' },
-  { file: 'lib/session-trace.test.js' },
-  { file: 'lib/permission-resolver.test.js' },
-  { file: 'lib/pipeline-evidence.test.js' },
-  { file: 'lib/task-shaper.test.js' },
-  { file: 'lib/task-router.test.js' },
-  { file: 'lib/harness-status.test.js' },
-  { file: 'lib/telemetry-health.test.js' },
-  { file: 'lib/triage-loop.test.js' },
-  { file: 'hooks/hooks.test.js', args: ['--allow-known-baseline'] },
-  { file: 'hooks/evaluate-session.test.js' },
-  { file: 'hooks/suggest-compact.test.js' },
-  { file: 'integration/hooks.test.js' },
-  { file: 'ci/validators.test.js' },
-  { file: 'scripts/claw.test.js' },
-  { file: 'scripts/pipeline-runner.test.js' },
-  { file: 'scripts/provider-adapters.test.js' },
-  { file: 'scripts/prompt-assemble.test.js' },
-  { file: 'scripts/task-queue.test.js' },
-  { file: 'scripts/workflow-doctor.test.js' },
-  { file: 'scripts/harness-status.test.js' },
-  { file: 'scripts/setup-package-manager.test.js' },
-  { file: 'scripts/skill-create-output.test.js' },
-];
+suites.full = [...new Set([...suites.core, ...suites.regression])];
 
-function parseSuiteName(argv) {
-  const suiteFlag = argv.find((arg) => arg.startsWith('--suite='));
-  if (suiteFlag) return suiteFlag.slice('--suite='.length);
-
-  const suiteIndex = argv.indexOf('--suite');
-  if (suiteIndex !== -1 && argv[suiteIndex + 1]) return argv[suiteIndex + 1];
-
-  return 'full';
+function suiteName(argv) {
+  const inline = argv.find((arg) => arg.startsWith('--suite='));
+  if (inline) return inline.slice('--suite='.length);
+  const index = argv.indexOf('--suite');
+  return index >= 0 && argv[index + 1] ? argv[index + 1] : 'full';
 }
 
-const suiteName = parseSuiteName(process.argv.slice(2));
-const testFiles = suites[suiteName];
-
-if (!testFiles) {
-  console.error(`Unknown test suite: ${suiteName}`);
-  console.error(`Available suites: ${Object.keys(suites).sort().join(', ')}`);
+const selected = suiteName(process.argv.slice(2));
+if (!suites[selected]) {
+  console.error('Unknown test suite: ' + selected);
   process.exit(1);
 }
 
-const BOX_W = 58; // inner width between ║ delimiters
-const boxLine = (s) => `║${s.padEnd(BOX_W)}║`;
-
-console.log('╔' + '═'.repeat(BOX_W) + '╗');
-console.log(boxLine(`           Claude Harness Test Suite: ${suiteName}`));
-console.log('╚' + '═'.repeat(BOX_W) + '╝');
-console.log();
-
-let totalPassed = 0;
-let totalFailed = 0;
-let totalTests = 0;
-
-for (const testEntry of testFiles) {
-  const testFile = typeof testEntry === 'string' ? testEntry : testEntry.file;
-  const testArgs = typeof testEntry === 'string' ? [] : (testEntry.args || []);
-  const testPath = path.join(testsDir, testFile);
-
+let failedFiles = 0;
+for (const relativePath of suites[selected]) {
+  const testPath = path.join(testsDir, relativePath);
   if (!fs.existsSync(testPath)) {
-    console.log(`⚠ Skipping ${testFile} (file not found)`);
+    console.error('Missing test file: ' + relativePath);
+    failedFiles += 1;
     continue;
   }
-
-  console.log(`\n━━━ Running ${testFile} ━━━`);
-
-  const result = spawnSync(process.execPath, [testPath, ...testArgs], {
-    encoding: 'utf8',
-    stdio: ['pipe', 'pipe', 'pipe']
-  });
-
-  const stdout = result.stdout || '';
-  const stderr = result.stderr || '';
-
-  // Show both stdout and stderr so hook warnings are visible
-  if (stdout) console.log(stdout);
-  if (stderr) console.log(stderr);
-
-  // Parse results from combined output
-  const combined = stdout + stderr;
-  const passedMatch = combined.match(/Passed:\s*(\d+)/);
-  const failedMatch = combined.match(/Failed:\s*(\d+)/);
-  const unexpectedFailedMatch = combined.match(/Unexpected failures:\s*(\d+)/);
-
-  if (passedMatch) totalPassed += parseInt(passedMatch[1], 10);
-  if (unexpectedFailedMatch) {
-    totalFailed += parseInt(unexpectedFailedMatch[1], 10);
-  } else if (failedMatch) {
-    totalFailed += parseInt(failedMatch[1], 10);
-  }
+  console.log('\n━━━ Running ' + relativePath + ' ━━━');
+  const result = spawnSync(process.execPath, [testPath], { encoding: 'utf8' });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (result.status !== 0) failedFiles += 1;
 }
 
-totalTests = totalPassed + totalFailed;
-
-console.log('\n╔' + '═'.repeat(BOX_W) + '╗');
-console.log(boxLine('                     Final Results'));
-console.log('╠' + '═'.repeat(BOX_W) + '╣');
-console.log(boxLine(`  Total Tests: ${String(totalTests).padStart(4)}`));
-console.log(boxLine(`  Passed:      ${String(totalPassed).padStart(4)}  ✓`));
-console.log(boxLine(`  Failed:      ${String(totalFailed).padStart(4)}  ${totalFailed > 0 ? '✗' : ' '}`));
-console.log('╚' + '═'.repeat(BOX_W) + '╝');
-
-process.exit(totalFailed > 0 ? 1 : 0);
+console.log('\nSuite: ' + selected);
+console.log('Files: ' + suites[selected].length);
+console.log('Failed: ' + failedFiles);
+process.exit(failedFiles > 0 ? 1 : 0);

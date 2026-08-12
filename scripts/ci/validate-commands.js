@@ -11,6 +11,7 @@ const ROOT_DIR = path.join(__dirname, '../..');
 const COMMANDS_DIR = path.join(ROOT_DIR, 'commands');
 const AGENTS_DIR = path.join(ROOT_DIR, 'agents');
 const SKILLS_DIR = path.join(ROOT_DIR, 'skills');
+const MANAGED_COMMANDS = new Set(['grill-me', 'grill-with-docs', 'to-spec', 'implement', 'tdd', 'code-review']);
 
 function validateCommands() {
   if (!fs.existsSync(COMMANDS_DIR)) {
@@ -81,7 +82,7 @@ function validateCommands() {
       const lineRefs = line.matchAll(/`\/([a-z][-a-z0-9]*)`/g);
       for (const match of lineRefs) {
         const refName = match[1];
-        if (!validCommands.has(refName)) {
+        if (!validCommands.has(refName) && !MANAGED_COMMANDS.has(refName)) {
           console.error(`ERROR: ${file} - references non-existent command /${refName}`);
           hasErrors = true;
         }

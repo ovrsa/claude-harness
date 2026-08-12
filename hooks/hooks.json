@@ -1,134 +1,44 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/telemetry-pre-tool.js\"",
-            "async": true,
-            "timeout": 10
-          }
-        ],
-        "description": "Record tool invocation telemetry in the local SQLite memory plane"
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/auto-tmux-dev.js\""
-          }
-        ],
-        "description": "Auto-start dev servers in tmux with directory-based session names"
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"pre:bash:tmux-reminder\" \"scripts/hooks/pre-bash-tmux-reminder.js\" \"strict\""
-          }
-        ],
-        "description": "Reminder to use tmux for long-running commands"
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"pre:bash:git-push-reminder\" \"scripts/hooks/pre-bash-git-push-reminder.js\" \"strict\""
-          }
-        ],
-        "description": "Reminder before git push to review changes"
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"pre:write:doc-file-warning\" \"scripts/hooks/doc-file-warning.js\" \"standard,strict\""
-          }
-        ],
-        "description": "Doc file warning: warn about non-standard documentation files (exit code 0; warns only)"
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"pre:edit-write:suggest-compact\" \"scripts/hooks/suggest-compact.js\" \"standard,strict\""
-          }
-        ],
-        "description": "Suggest manual compaction at logical intervals"
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags-shell.sh\" \"pre:observe\" \"skills/continuous-learning-v2/hooks/observe.sh\" \"standard,strict\"",
-            "async": true,
-            "timeout": 10
-          }
-        ],
-        "description": "Capture tool use observations for continuous learning"
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/lifecycle-progress-complete.js\""
-          }
-        ],
-        "description": "Lifecycle guardrail: block premature task completion when required verify/review/observe artifacts are missing"
-      },
-      {
-        "matcher": "tool == \"Edit\" || tool == \"Write\" || tool == \"MultiEdit\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/lifecycle-pre-edit.js\""
-          }
-        ],
-        "description": "Lifecycle guardrail: block code edits without approved plan"
-      },
-      {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"git\\s+commit\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/lifecycle-pre-commit.js\""
-          }
-        ],
-        "description": "Lifecycle guardrail: block git commit without required review, verify, and observe artifacts"
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"pre:compact\" \"scripts/hooks/pre-compact.js\" \"standard,strict\""
-          }
-        ],
-        "description": "Save state before context compaction"
-      }
-    ],
     "SessionStart": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'input=$(cat); root=\"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}\"; if [ -f \"$root/scripts/hooks/run-with-flags.js\" ]; then printf \"%s\" \"$input\" | node \"$root/scripts/hooks/run-with-flags.js\" \"session:start\" \"scripts/hooks/session-start.js\" \"minimal,standard,strict\"; exit $?; fi; if [ -f \"$HOME/.claude/scripts/hooks/session-start.js\" ]; then printf \"%s\" \"$input\" | node \"$HOME/.claude/scripts/hooks/session-start.js\"; exit $?; fi; echo \"[SessionStart] WARNING: could not resolve claude-harness root; skipping session-start hook\" >&2; printf \"%s\" \"$input\"; exit 0'"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/experience-session-start.js\""
           }
         ],
-        "description": "Load previous context and detect package manager on new session"
+        "description": "Start a sanitized JSON Experience run"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/experience-user-prompt.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ],
+        "description": "Record only a classified feedback signal, never the raw prompt"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/experience-pre-tool.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ],
+        "description": "Append a bounded, sanitized pre-tool Experience event"
       }
     ],
     "PermissionRequest": [
@@ -149,102 +59,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/telemetry-post-tool.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/experience-post-tool.js\"",
             "async": true,
             "timeout": 10
           }
         ],
-        "description": "Record tool completion telemetry in the local SQLite memory plane"
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"post:bash:pr-created\" \"scripts/hooks/post-bash-pr-created.js\" \"standard,strict\""
-          }
-        ],
-        "description": "Log PR URL and provide review command after PR creation"
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"post:bash:build-complete\" \"scripts/hooks/post-bash-build-complete.js\" \"standard,strict\"",
-            "async": true,
-            "timeout": 30
-          }
-        ],
-        "description": "Example: async hook for build analysis (runs in background without blocking)"
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"post:quality-gate\" \"scripts/hooks/quality-gate.js\" \"standard,strict\"",
-            "async": true,
-            "timeout": 30
-          }
-        ],
-        "description": "Run quality gate checks after file edits"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"post:edit:format\" \"scripts/hooks/post-edit-format.js\" \"standard,strict\""
-          }
-        ],
-        "description": "Auto-format JS/TS files after edits (auto-detects Biome or Prettier)"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"post:edit:typecheck\" \"scripts/hooks/post-edit-typecheck.js\" \"standard,strict\""
-          }
-        ],
-        "description": "TypeScript check after editing .ts/.tsx files"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"post:edit:console-warn\" \"scripts/hooks/post-edit-console-warn.js\" \"standard,strict\""
-          }
-        ],
-        "description": "Warn about console.log statements after edits"
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags-shell.sh\" \"post:observe\" \"skills/continuous-learning-v2/hooks/observe.sh\" \"standard,strict\"",
-            "async": true,
-            "timeout": 10
-          }
-        ],
-        "description": "Capture tool use results for continuous learning"
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/subagent-stop.js\"",
-            "async": true,
-            "timeout": 10
-          }
-        ],
-        "description": "Persist a short subagent completion summary for parent-session continuity"
+        "description": "Append a bounded, sanitized post-tool Experience event"
       }
     ],
     "Stop": [
@@ -253,46 +73,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"stop:check-console-log\" \"scripts/hooks/check-console-log.js\" \"standard,strict\""
-          }
-        ],
-        "description": "Check for console.log in modified files after each response"
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"stop:session-end\" \"scripts/hooks/session-end.js\" \"minimal,standard,strict\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/experience-stop.js\"",
             "async": true,
             "timeout": 10
           }
         ],
-        "description": "Persist session state after each response (Stop carries transcript_path)"
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"stop:evaluate-session\" \"scripts/hooks/evaluate-session.js\" \"minimal,standard,strict\"",
-            "async": true,
-            "timeout": 10
-          }
-        ],
-        "description": "Evaluate session for extractable patterns"
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"stop:cost-tracker\" \"scripts/hooks/cost-tracker.js\" \"minimal,standard,strict\"",
-            "async": true,
-            "timeout": 10
-          }
-        ],
-        "description": "Track token and cost metrics per session"
+        "description": "Record response completion without gating the session"
       }
     ],
     "SessionEnd": [
@@ -301,10 +87,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"session:end:marker\" \"scripts/hooks/session-end-marker.js\" \"minimal,standard,strict\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/experience-session-end.js\""
           }
         ],
-        "description": "Session end lifecycle marker (non-blocking)"
+        "description": "Finalize the JSON Experience run with an honest structured outcome"
       }
     ]
   }

@@ -1,103 +1,22 @@
 # Command Surface
 
-This file groups the local `~/.claude/commands/` surface by role.
+開発ライフサイクルはmanaged `mattpocock-skills@mattpocock` が提供する。
 
-Use it as the fastest command map after `CLAUDE.md`. It does not replace the command docs themselves.
+## Managed Development Commands
 
-## Preferred Lifecycle Path
+- `/grill-me`: 非codeも含むfocused interview
+- `/grill-with-docs`: Grillとdomain documentation
+- `/to-spec`: 合意済み会話をLocal Markdownへ統合
+- `/implement`: 合意済みspecを実装
+- `/tdd`: testable seamのRED-GREEN-REFACTOR
+- `/code-review`: standardsとspec fidelityの二軸review
 
-Use the local pipeline by default for standard and heavy-risky implementation and bug-fix work.
+通常の非自明な依頼はmodel-invoked `grilling` から始まる。managed commandsはこのdirectoryへコピーしない。
 
-- `/next-action` as the operator-facing status surface for the current recommended next step
-- `/shape-task` as the explicit task-shaping surface for rough intent before planning, routing, or execution
-- `/route-task` as the explicit readonly routing surface for shaped tasks before execution or delegation
-- `/execute-plan` as the current local pipeline entrypoint
-- `/research` and `/plan` for conversational scoping when requirements are unclear
-- `/verify` to capture local rerunnable evidence when needed
-- `/eval` to record local acceptance judgment when needed
+## Local Harness Commands
 
-Standard and heavy-risky work should leave pipeline run evidence through `/execute-plan` or task queue execution. The current guardrail warns when that evidence is missing but does not block the work.
+- `/experience-status`: Experienceの件数、容量、outcomeをread-only表示
+- `/improve-harness`: 明示的なharness experiment
+- `/harness-audit`: active surfaceの静的確認
 
-Local `/plan-task`, `/implement-task`, `/review-task`, and `/worktree-start` are fallback or compatibility commands when the operator explicitly wants manual local control.
-
-## Core Lifecycle Pairs
-
-These pairs separate conversational guidance from repository artifacts. They are local fallback paths, not the standard pipeline path.
-
-- `/shape-task` turns rough intent into an approval-ready task brief without mutating the repository
-- `/route-task` classifies a shaped task into main context, sidecar, queue, isolated clone, or human decision
-- `/research` is the conversational research entrypoint; `/research-task` creates or updates repository `research.md`
-- `/plan` is the conversational planning entrypoint; `/plan-task` creates or updates repository `plan.md`
-
-## Command Groups
-
-### Review, Verify, Evaluate
-
-Local evidence surface for implementation and bug-fix work.
-
-- `/review-task`
-- `/receive-review`
-- `/verify`
-- `/eval`
-
-### Implementation Helpers
-
-Used while moving a task through execution when manual local control or local wrapper behavior is needed.
-
-- `/execute-plan`
-- `/implement-task`
-- `/build-fix`
-- `/test-coverage`
-- `/code-review`
-
-`/execute-plan` is the preferred local pipeline entrypoint. It should preserve pipeline stop conditions rather than reimplement a parallel home-grown runner.
-
-`/implement-task` remains the conservative manual fallback and should not be the default when the pipeline can handle the task.
-
-### Repo Orientation And Maintenance
-
-Used to enter a repo cleanly and keep deeper references current.
-
-- `/next-action`
-- `/repo-map`
-- `/update-codemaps`
-- `/sessions`
-
-### Continuous Learning And Promotion
-
-Secondary surface. Use when a pattern is worth extracting or promoting beyond the current task.
-
-- `/learn`
-- `/learn-eval`
-- `/evolve`
-- `/promote`
-- `/post-commit-capture`
-- `/guardrail-status`
-- `/trace-status`
-- `/health-status`
-- `/triage-loop`
-- `/improve-harness`
-
-### Advanced Orchestration And Loops
-
-Preferred advanced workflows for multi-agent, long-running, or orchestrated work.
-
-- `/orchestrate`
-- `/multi-plan`
-- `/multi-execute`
-- `/multi-workflow`
-- `/loop-start`
-- `/loop-status`
-
-### Optional Builders And Utilities
-
-Optional surfaces for specialized operator workflows. Use only when the task clearly calls for them.
-
-- presentation, content, security, setup, and project-specific command packs
-- runtime-specific adapters that should not redefine the lifecycle
-
-## Visibility Tiers
-
-- `primary`: default local wrappers and evidence surfaces most sessions should prefer
-- `secondary`: useful but not required for the normal implementation path
-- `optional`: specialized packs and utilities outside the core harness path
+その他のlocal commandsはspecialized utilitiesであり、標準ライフサイクルを定義しない。commandの存在だけで自動実行、agent委譲、Git publishingを行わない。

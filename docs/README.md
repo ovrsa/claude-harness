@@ -1,25 +1,11 @@
-# Docs Index
+# Documentation Map
 
-このディレクトリは、`.claude` ハーネスの説明・仕様ドキュメントを置く場所。
-ルート直下には入口だけを残し、判断や運用の詳細はここへ置く。
+- [harness-operating-loop.md](harness-operating-loop.md): Grillから明示的な次工程まで
+- [harness-structure-and-ownership.md](harness-structure-and-ownership.md): component ownership
+- [experience-store.md](experience-store.md): JSON/JSONL contractと安全境界
+- [agents/issue-tracker.md](agents/issue-tracker.md): Local Markdown
+- [agents/domain.md](agents/domain.md): `CONTEXT.md` とADR
+- [adr/0001-grill-based-development-lifecycle.md](adr/0001-grill-based-development-lifecycle.md): cutover decision
+- [command-permission-policy.md](command-permission-policy.md): PermissionRequest policy
 
-## 読む順番
-
-1. `harness-operating-loop.md`
-   - 普段の作業ループと、どの順番で判断するか。
-2. `harness-structure-and-ownership.md`
-   - ハーネス全体の構造、各ディレクトリや文書の責務。
-3. `development-task-pipeline.md`
-   - タスクを intake して、計画、実装、検証、受け入れまで進める流れ。
-4. `command-permission-policy.md`
-   - コマンド実行時の許可、確認、禁止の境界。
-5. `runtime-evidence-requirements.md`
-   - 動作確認や runtime evidence が必要になる条件。
-6. `session-resume-state.md`
-   - セッション継続、resume、checkpoint の扱い。
-
-## 命名ルール
-
-- ファイル名は「中で何を判断する文書か」が分かる名前にする。
-- 抽象名だけの `model`, `policy`, `architecture` は避ける。
-- 一時的なタスク資料は `plan/<task-name>/` に置く。
+それ以外の文書は特定の運用・移行・historical contextとして必要時に読む。canonical lifecycleは [../CLAUDE.md](../CLAUDE.md) だけに置く。

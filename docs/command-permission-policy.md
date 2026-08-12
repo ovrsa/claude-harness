@@ -1,88 +1,48 @@
 # Command Permission Policy
 
-Use staged, bounded autonomy.
+PermissionRequestはBash commandだけを4分類し、開発ライフサイクルやExperienceとは独立して動く。
 
-## Core Rule
-
-Autonomy is allowed only inside an approved plan and only inside explicit tool and lifecycle boundaries.
-
-## Decision Classes
+## Classes
 
 ### `auto-allow`
 
-Use for clearly safe, read-only, low-risk commands.
+明らかなread-only inspection。
 
-Examples:
 - `pwd`
 - `ls`
 - `rg`
 - `sed -n`
 - `cat`
-- `git status`
-
-Expected human involvement:
-- none
-
-### `ask-with-justification`
-
-Use for commands that may be legitimate but have execution cost, side effects, or ambiguity.
-
-Examples:
-- test runs
-- builds
-- dependency installation
-- repo mutation that is not obviously destructive
-
-Expected human involvement:
-- explicit approval with a clear reason
-
-### `hard-deny`
-
-Use for clearly destructive or unsafe commands.
-
-Examples:
-- `rm -rf`
-- `git reset --hard`
-- `git clean -fd`
-- force pushes
-
-Expected human involvement:
-- deny by default
-- proceed only by changing approach or requesting an explicit override outside the normal harness path
+- `git status`, `git diff`, `git log`
 
 ### `audit-only`
 
-Use for commands that are low risk but should still leave a trace because they touch system/process state or are useful to review later.
+低riskなprocess/identity metadata。許可するが、raw commandの独自ログは作らない。
 
-Examples:
 - `ps`
 - `whoami`
 - `id`
 - `date`
 
-Expected human involvement:
-- none
+### `ask-with-justification`
 
-## Autonomy Ladder
+read-onlyと断定できないcommand。具体的な目的を示してhuman approvalを求める。
 
-1. Plan-first + edit/commit guard
-2. Artifact-first restore and continuity
-3. Verify + observe before completion
-4. Limited autonomous execution inside an approved plan
-5. Parallel subagents for independent work only
-6. Long-running loops with stronger evals and stronger sandboxing
+- test、build
+- dependency install
+- repository mutation
+- external side effect
 
-## Promotion Rule
+### `hard-deny`
 
-Do not move up the ladder unless the current level is supported by:
+明確にdestructiveなcommandをdenyし、safer alternativeへ切り替える。
 
-- explicit boundary rules
-- reproducible verification
-- runtime observation where relevant
-- a clear stop or rollback condition
+- recursive force removal
+- hard reset
+- forced clean
+- force push
+- recursive world-writable permission
 
-## Non-Goals
+## Data Boundary
 
-- full auto-merge
-- architecture changes without human approval
-- destructive operations without explicit human review
+PermissionRequestはClaude Code所定のdecision JSONだけをstdoutへ返す。raw command、credential、approval promptを独自fileへ保存しない。通常のsanitized tool observationはExperienceが担当する。

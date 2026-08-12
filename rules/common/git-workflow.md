@@ -1,24 +1,11 @@
 # Git Workflow
 
-## Commit Message Format
-```
-<type>: <description>
+Gitはユーザー作業を保護するために使う。
 
-<optional body>
-```
+- 既存dirty stateを保持し、対象外の変更を混ぜない
+- destructive restoreや広い削除を避ける
+- commit、push、PR、mergeはユーザーの明示的な依頼でのみ実行する
+- commitを依頼された場合は、対象差分とcheck結果を確認してから作成する
+- PRを依頼された場合は、baseとの差分全体とtest evidenceを要約する
 
-Types: feat, fix, refactor, docs, test, chore, perf, ci
-
-Note: Attribution disabled globally via ~/.claude/settings.json.
-
-## Pull Request Workflow
-
-When creating PRs:
-1. Analyze full commit history (not just latest commit)
-2. Use `git diff [base-branch]...HEAD` to see all changes
-3. Draft comprehensive PR summary
-4. Include test plan with TODOs
-5. Push with `-u` flag if new branch
-
-> For the full development process (planning, TDD, code review) before git operations,
-> see [development-workflow.md](./development-workflow.md).
+commit messageは `<type>: <description>` を基本形とする。
