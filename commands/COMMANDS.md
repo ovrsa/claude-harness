@@ -1,22 +1,179 @@
 # Command Surface
 
-開発ライフサイクルはmanaged `mattpocock-skills@mattpocock` が提供する。
+This file groups the local `~/.claude/commands/` surface by role.
 
-## Managed Development Commands
+Use it as the fastest command map after `CLAUDE.md`. It does not replace the command docs themselves.
 
-- `/grill-me`: 非codeも含むfocused interview
-- `/grill-with-docs`: Grillとdomain documentation
-- `/to-spec`: 合意済み会話をLocal Markdownへ統合
-- `/implement`: 合意済みspecを実装
-- `/tdd`: testable seamのRED-GREEN-REFACTOR
-- `/code-review`: standardsとspec fidelityの二軸review
+## Preferred Lifecycle Path
 
-通常の非自明な依頼はmodel-invoked `grilling` から始まる。managed commandsはこのdirectoryへコピーしない。
+Use the local pipeline by default for standard and heavy-risky implementation and bug-fix work.
 
-## Local Harness Commands
+- `/next-action` as the operator-facing status surface for the current recommended next step
+- `/shape-task` as the explicit task-shaping surface for rough intent before planning, routing, or execution
+- `/route-task` as the explicit readonly routing surface for shaped tasks before execution or delegation
+- `/grill-me` as the depth pass on a sharpened task before any file is written
+- `/docs-build` for persistent reference docs; it extracts the Grill Record from the grilling session
+- `/execute-plan` as the pipeline entrypoint when the work suits it
+- `/verify` to capture local rerunnable evidence when needed
+- `/eval` to record local acceptance judgment when needed
 
-- `/experience-status`: Experienceの件数、容量、outcomeをread-only表示
-- `/improve-harness`: 明示的なharness experiment
-- `/harness-audit`: active surfaceの静的確認
+### Ordered Path
 
-その他のlocal commandsはspecialized utilitiesであり、標準ライフサイクルを定義しない。commandの存在だけで自動実行、agent委譲、Git publishingを行わない。
+読み取り専用フェーズを前に固め、**最初にファイルを書く直前に worktree を作る**。
+
+```
+1  調査             質問に答える。ここで終わることも多い              read-only
+2  /shape-task      意図を固める（重み判定・任意）                    read-only
+3  /grill-me        尋問（upstream skill / 実体は grilling）。診断もここ read-only
+   ---- ここまで read-only。捨てるならここで捨てる ----
+4  worktree         書き込みが発生するならエージェントが作る（コマンドではない）
+5  /docs-build      docs/design/ に決定を記録する = **実装の入力**
+6  実装             skills/tdd（seam 合意 -> RED -> 最小 GREEN。refactor はしない）
+7  検証             -> verification-summary.md（RED 証拠を含む。入口は /verify・任意）
+8  レビュー         -> review-summary.md（**refactor / セキュリティ / コメント**はここ。入口は /review-task・任意）
+9  受容判断         成果物を持たない。7・8・10 を読んで受容を答える（入口は /eval・任意）
+10 観測（挙動が変わった時のみ）-> observation-summary.md
+11 確定             実装で判明した「触る対象」と Open Issues を design doc に降ろす
+12 commit / PR（明示指示がある時のみ）
+```
+
+1〜3 は read-only なので、ここでタスクを捨てる判断ができる。捨てるタスクに worktree を作らないための順序。
+
+**各段を実際にどう操作するかは [docs/how-to/run-a-task.md](../docs/how-to/run-a-task.md)。**
+この表は順序の正本で、操作方法はそちらが持つ（人間が手で行うのは3つだけ）。
+
+**5 は出力ではなく入力。** `/docs-build` が抽出する Grill Record 10項目のうち、実装後にしか
+分からないのは `触る対象` だけで、残りは 3 で確定している。後回しにすると compaction で失われる
+（2026-08-17 に `HARNESS.md` の Design Principles 9項目を実際に失った）。
+修正タスクの例外は狭い — 診断は 3 の read-only 側なので、**診断が終われば実装前に書ける**。
+実装後まで待つのは「実装してみて初めて原因が分かった回」だけ。
+
+**8 で refactor すると 7 をやり直す必要がある。** `skills/tdd` が「refactoring は red->green ループの
+外、review 段の仕事」と定めているため。7 -> 8 は一方向ではなくループになる回がある。
+
+**7〜9 の段は成果物であって、コマンドの起動ではない。** 保持期間中の全トランスクリプト
+（154コマンド起動）で `/verify` `/review-task` `/eval` は**0回**だが、成果物の側は
+`verification-summary.md` 37回・`review-summary.md` 37回・`observation-summary.md` 16回
+書かれている。エージェントが黙って書くのが実挙動なので、段の名前を成果物側に置いた。
+コマンドは残す — 成果物のスキーマを説明する場所として機能しており、
+撤去は 2026-08-12 の [pipeline-trim](../docs/design/2026-08-12-pipeline-trim.md) で却下済み。
+**機構はパーサとテンプレート**（`scripts/lib/task-artifacts.js` と `templates/`）であって、
+コマンドを打ったかどうかを見ているものは無い。
+
+**`plan.md` と `progress.md` はこの列に無い。** 2026-08-17 に撤去した。承認は 5 の design doc に対して
+会話で与える。**状態の要約を保存する仕組みは無い** — 復帰の根拠は git（ブランチ・log・diff）と
+`docs/design/` の最新1枚、そして `runs/<date>-<slug>/` に残るゲートの証拠。
+**compact の前にコミットする。** 経緯は
+[docs/design/2026-08-17-lifecycle-five-steps.md](../docs/design/2026-08-17-lifecycle-five-steps.md)
+と [docs/design/2026-08-20-retire-sqlite.md](../docs/design/2026-08-20-retire-sqlite.md)。
+
+`/shape-task` と `/grill-me` の棲み分け:
+
+- `/shape-task` は**広く浅く分類する**（task weight・spec 要否・次の一手）
+- `/grill-me` は**狭く深く尋問する**（却下した案・数字・触る契約・許容した負債）
+- `/shape-task` の重み判定が `/docs-build` の規模ゲート（Lynch 3問）に対応する
+
+11 を飛ばすと設計判断が消える。ドキュメント標準は `~/.claude/rules/common/documentation.md`。
+
+Standard and heavy-risky work should leave pipeline run evidence through `/execute-plan` or task queue execution. The current guardrail warns when that evidence is missing but does not block the work.
+
+この12段は**ライフサイクル**であって実行経路ではない。経路は3層に分かれる。
+
+| 層 | 実体 | 役割 |
+|---|---|---|
+| ライフサイクル | この Ordered Path | **何が起きなければならないか**。経路を問わない |
+| 既定エンジン | `/execute-plan`（ローカルパイプライン） | 手順6〜10 を回す。standard / heavy-risky の既定 |
+| 手動経路 | `/implement-task` `/review-task` | エンジンを使わない時の手順6・8 |
+
+`/review-task` は手順8の成果物（`review-summary.md`）を手で作るコマンドであって、
+パイプラインを使う場合の既定ではない。 `/worktree-start` is the manual override for the worktree the agent normally creates on its own — reach for it only when you want `--detached` (a separate process) or a specific base branch.
+
+## Core Lifecycle Pairs
+
+These pairs separate conversational guidance from repository artifacts. They are local fallback paths, not the standard pipeline path.
+
+- `/shape-task` turns rough intent into an approval-ready task brief without mutating the repository
+- `/route-task` classifies a shaped task into main context, sidecar, queue, isolated clone, or human decision
+- `/research` is the conversational research entrypoint; `/research-task` creates or updates repository `research.md`. Both are optional — `research.md` is no longer expected for non-trivial work, because nothing parsed it and the design doc already carries the findings that survive
+
+## Command Groups
+
+### Review, Verify, Evaluate
+
+Local evidence surface for implementation and bug-fix work.
+
+- `/review-task`
+- `/receive-review`
+- `/verify`
+- `/eval`
+
+### Implementation Helpers
+
+Used while moving a task through execution when manual local control or local wrapper behavior is needed.
+
+- `/execute-plan`
+- `/implement-task`
+- `/build-fix`
+- `/test-coverage`
+- `/code-review`
+
+`/execute-plan` is the preferred local pipeline entrypoint. It should preserve pipeline stop conditions rather than reimplement a parallel home-grown runner.
+
+`/implement-task` remains the conservative manual fallback and should not be the default when the pipeline can handle the task.
+
+### Repo Orientation And Maintenance
+
+Used to enter a repo cleanly and keep deeper references current.
+
+- `/next-action`
+- `/repo-map`
+- `/docs-build`
+- `/update-codemaps`
+- `/sessions`
+
+`/repo-map` は `AGENTS.md` のみを扱う。`docs/` の永続リファレンスは `/docs-build` が担い、
+`/grill-me` を通してから実行する。標準は `~/.claude/rules/common/documentation.md`。
+
+### Capture And Health
+
+Secondary surface. Use when a pattern is worth extracting, or to inspect harness health.
+
+instinct 系（evolve / promote / instinct-*）は 2026-08-18 に continuous-learning-v2 ごと撤去した。
+
+- `/learn`
+- `/learn-eval`
+- `/post-commit-capture`
+- `/guardrail-status`
+- `/runs`
+- `/trace-status`
+- `/health-status`
+- `/triage-loop`
+- `/improve-harness`
+
+`/runs` は過去タスクの証拠本文を読む入口。`/trace-status` `/health-status` が集計なのに対し、
+こちらは生の記録を返す。`/improve-harness` は 2026-08-18 に**集計ではなく生トレースを先に読む**
+指示に変えた（根拠は `commands/improve-harness.md` の「Why raw evidence, not summaries」）。
+
+### Advanced Orchestration And Loops
+
+Preferred advanced workflows for multi-agent, long-running, or orchestrated work.
+
+- `/orchestrate`
+- `/multi-plan`
+- `/multi-execute`
+- `/multi-workflow`
+- `/loop-start`
+- `/loop-status`
+
+### Optional Builders And Utilities
+
+Optional surfaces for specialized operator workflows. Use only when the task clearly calls for them.
+
+- presentation, content, security, setup, and project-specific command packs
+- runtime-specific adapters that should not redefine the lifecycle
+
+## Visibility Tiers
+
+- `primary`: default local wrappers and evidence surfaces most sessions should prefer
+- `secondary`: useful but not required for the normal implementation path
+- `optional`: specialized packs and utilities outside the core harness path

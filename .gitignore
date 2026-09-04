@@ -1,16 +1,28 @@
 # Local runtime state
+.claude/
 .codex-global-write-test
+.state/
+.last-cleanup
+.last-update-result.json
 backups/
 cache/
 claw/
+daemon/
+daemon.log
 debug/
 file-history/
 history.jsonl
 ide/
+image-cache/
+jobs/
+mcp-needs-auth-cache.json
+metrics/
 paste-cache/
+plans/
 plugins/
 policy-limits.json
 projects/
+remote-settings.json
 session-aliases.json
 session-env/
 sessions/
@@ -20,33 +32,32 @@ statsig/
 tasks/
 telemetry/
 todos/
+worktrees/
+.worktrees/
 
-# Grill and Meta-Harness local data
-/.scratch/
-/experience/
-/experiments/
-/archive/legacy-telemetry/
-/.quarantine/
-
-# Historical local task artifacts
-observation-summary.md
-plan.md
-progress.md
-research.md
-review-summary.md
-verification-summary.md
-!/plan/
-!/plan/**
+# Local lifecycle task artifacts
+# 先頭の / は必須。スラッシュを含まないパターンは任意の階層にマッチするため、
+# アンカーしないと commands/plan.md や commands/research.md まで巻き込み、
+# worktree からパイプラインの中核コマンドが消える。
+/health-summary.md
+/observation-summary.md
+/plan.md
+/progress.md
+/research.md
+/review-summary.md
+/triage-summary.md
+/verification-summary.md
 
 # Sample / generated debris
 **/.DS_Store
+skills/dx-diagram-skill/work/examples/structurizr/.structurizr/
 examples/sessions/*.tmp
 node_modules/
 
-# Optional packs outside the active managed lifecycle
-agents/**
+# Quarantined optional packs and helper tails
+# agents/** はここに置かない。rules/common/agents.md と commands/ が名指しで参照しており、
+# 無視すると worktree から agents 14件が消えて validate-commands.js が落ちる。
 examples/**
-skills/**
 scripts/codemaps/**
 scripts/hooks/pre-bash-dev-server-block.js
 scripts/hooks/pre-write-doc-warn.js

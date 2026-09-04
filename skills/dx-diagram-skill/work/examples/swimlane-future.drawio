@@ -1,0 +1,159 @@
+<mxfile host="app.diagrams.net" agent="Codex" version="24.7.17">
+  <diagram id="swimlane-future" name="Future Swimlane">
+    <mxGraphModel dx="1600" dy="980" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="980" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="改善後マトリクス・スイムレーン&#xa;標準案件は DX システムが処理し、例外だけ人が判断する" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=24;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="760" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="凡例: 青矢印=主経路 / 紫破線=例外経路 / 灰色セル=このフェーズでは主担当ではない / 矢印ラベル=セル内番号に対応" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="76" width="820" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="caption" value="読み方: 改善後の主経路を最短で追えることを優先する。標準案件は上段だけで読み切れ、例外だけ下段へ降りる" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8f9fa;strokeColor=#d0d0d0;fontSize=11;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="880" y="76" width="580" height="44" as="geometry" />
+        </mxCell>
+
+        <mxCell id="phase-label" value="フェーズ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d9e2f3;strokeColor=#8faadc;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="180" y="140" width="220" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" value="1. 受付" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d9e2f3;strokeColor=#8faadc;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="400" y="140" width="240" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="2. 自動判定" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d9e2f3;strokeColor=#8faadc;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="640" y="140" width="240" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" value="3. 実行・例外対応" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d9e2f3;strokeColor=#8faadc;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="880" y="140" width="260" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" value="4. 完了連絡" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d9e2f3;strokeColor=#8faadc;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="140" width="260" height="54" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lane-head" value="担当・システム" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e2f0d9;strokeColor=#82b366;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="194" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="l1" value="営業" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e2f0d9;strokeColor=#82b366;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="284" width="140" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="l2" value="DX システム" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e2f0d9;strokeColor=#82b366;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="402" width="140" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="l3" value="管理職" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e2f0d9;strokeColor=#82b366;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="140" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="l4" value="現場担当" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e2f0d9;strokeColor=#82b366;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="638" width="140" height="118" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c11" value="【この列では】&#xa;① 問い合わせを受ける&#xa;② 案件を登録する&#xa;③ 自動判定へ渡す" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="284" width="240" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="c14" value="【この列では】&#xa;① 完了状態を確認する&#xa;② 顧客へ完了連絡する" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="284" width="260" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="g12" value="【この列では】&#xa;判定結果を待つ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="640" y="284" width="240" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="g13" value="【この列では】&#xa;標準案件は関与しない" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="880" y="284" width="260" height="118" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c21" value="【この列では】&#xa;① 受付データを保持する&#xa;② 判定条件を整える" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="402" width="240" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="c22" value="【判断セル】&#xa;① 標準案件か判定する&#xa;② 標準なら自動実行へ進める&#xa;③ 例外なら管理職へ回す" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="640" y="402" width="240" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="c23" value="【この列では】&#xa;① 標準処理を自動実行する&#xa;② 状態を同期する&#xa;③ 通知準備を行う" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="880" y="402" width="260" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="c24" value="【この列では】&#xa;① 通知ログを残す&#xa;② 完了履歴を保持する" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="402" width="260" height="118" as="geometry" />
+        </mxCell>
+
+        <mxCell id="g31" value="【この列では】&#xa;標準案件は関与しない" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="520" width="240" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="g32" value="【この列では】&#xa;例外通知を待つ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="640" y="520" width="240" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="c33" value="【判断セル】&#xa;① 例外案件を承認する&#xa;② 判断理由を残す&#xa;③ 現場へ回す" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="880" y="520" width="260" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="g34" value="【この列では】&#xa;例外時のみ確認する" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="520" width="260" height="118" as="geometry" />
+        </mxCell>
+
+        <mxCell id="g41" value="【この列では】&#xa;受付待ち" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="638" width="240" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="g42" value="【この列では】&#xa;例外連絡を待つ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="640" y="638" width="240" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="c43" value="【この列では】&#xa;① 例外内容を確認する&#xa;② 必要な処理だけ実施する&#xa;③ 完了を共有する" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="880" y="638" width="260" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="g44" value="【この列では】&#xa;営業の連絡待ち" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="638" width="260" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="tool11" value="応募フォーム" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;fontSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="460" y="408" width="96" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="tool22a" value="ATS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;fontSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="690" y="526" width="60" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="tool22b" value="Google カレンダー" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;fontSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="758" y="526" width="118" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="tool23" value="ATS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;fontColor=#666666;fontSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="965" y="526" width="60" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="開始" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="318" width="70" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="end" value="完了" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1430" y="318" width="70" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="note1" value="標準案件は承認不要" style="shape=note;whiteSpace=wrap;html=1;fillColor=#e1f5e1;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="955" y="330" width="140" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="note2" value="例外だけ人が判断" style="shape=note;whiteSpace=wrap;html=1;fillColor=#e1f5e1;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="955" y="548" width="140" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="cond1" value="例外案件" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8f9fa;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="948" y="528" width="96" height="56" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" value="開始→①" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=3;strokeColor=#1a73e8;fontSize=10;fontColor=#1565c0;" edge="1" parent="1" source="start" target="c11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="③ 自動判定へ渡す" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=3;strokeColor=#1a73e8;fontSize=10;fontColor=#1565c0;" edge="1" parent="1" source="c11" target="c22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="② 標準なら自動実行" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=3;strokeColor=#1a73e8;fontSize=10;fontColor=#1565c0;" edge="1" parent="1" source="c22" target="c23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="③ 通知準備を行う" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=3;strokeColor=#1a73e8;fontSize=10;fontColor=#1565c0;" edge="1" parent="1" source="c23" target="c14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="② 顧客へ完了連絡" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeWidth=3;strokeColor=#1a73e8;fontSize=10;fontColor=#1565c0;" edge="1" parent="1" source="c14" target="end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="③ 例外なら管理職へ回す" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=2;strokeColor=#5c6bc0;dashed=1;dashPattern=4 4;fontSize=9;fontColor=#3949ab;" edge="1" parent="1" source="c22" target="c33">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="③ 現場へ回す" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=2;strokeColor=#5c6bc0;dashed=1;dashPattern=4 4;fontSize=9;fontColor=#3949ab;" edge="1" parent="1" source="c33" target="c43">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="③ 完了を共有する" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=2;strokeColor=#5c6bc0;dashed=1;dashPattern=4 4;fontSize=9;fontColor=#3949ab;" edge="1" parent="1" source="c43" target="c14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="連携 / 記録" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=2;strokeColor=#666666;dashed=1;dashPattern=4 4;fontSize=9;fontColor=#666666;" edge="1" parent="1" source="c23" target="tool22a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

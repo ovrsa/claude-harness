@@ -7,14 +7,7 @@ module.exports = [
             '.opencode/dist/**',
             '.cursor/**',
             'node_modules/**',
-            'plugins/**',
-            '.quarantine/**',
-            '.scratch/**',
-            'archive/**',
-            'experience/**',
-            'experiments/**',
-            'chrome/**',
-            'exports/**'
+            'plugins/marketplaces/**'
         ]
     },
     js.configs.recommended,

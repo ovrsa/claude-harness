@@ -1,0 +1,26 @@
+{
+  "kind": "review",
+  "source_path": "/Users/kyo/.claude/review-summary.md",
+  "captured_at": "2026-09-04T06:18:31.883Z",
+  "fingerprint": "",
+  "state": {
+    "reviewScope": [
+      "配布版への切替、managed Grill接続、Git・runtime状態の保持を確認した。"
+    ],
+    "findings": [],
+    "residualRisks": [
+      "Claude Codeの既存プロセスは設定を再読込しないため、次回の新規sessionで最終確認が必要。"
+    ],
+    "nextAction": "Claude CodeとCodexを新規sessionで起動し、配布版設定の再読込を確認する。",
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "parsedFindings": [],
+    "invalidFindings": [],
+    "missingValues": [],
+    "blockingFindings": [],
+    "hasBlockingFindings": false,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Review Summary\n\n## Review Scope\n\n- 配布版への切替、managed Grill接続、Git・runtime状態の保持を確認した。\n\n## Design Compliance\n\n- 配布版を正本とし、既存ライフサイクルの前段にmanaged Grillの確認ゲートだけを追加した。\n- 現行Git履歴とremote、会話履歴、session、plugin状態を保持した。\n\n## Security\n\n- 触れた面: `settings.json` のhook・plugin設定とmanaged skillのpath解決。\n- 秘密値は移行・表示していない。resolverは実在するmanaged `SKILL.md` の読み取り結果で確認した。\n\n## Comment Adequacy\n\n- 落とした: 該当なし。\n- 残した: 配布版の既存コメント。\n- 足した: 外部lockの過去記述をlive状態と比較しない理由。\n- 比率: Markdown中心の移行であり、コードコメント比率の比較対象外。\n\n## Code Quality\n\n- 配布版への変更はGrill入口、Codex resolver、plugin設定、移植性監査の最小範囲に限定した。\n\n## Test Adequacy\n\n- RED/GREEN evidence: 外部lock件数による監査失敗を再現し、原因修正後に同じ監査をPASS。\n- BDD scenarios: 配布版切替、状態保持、managed skill解決、runtime hook起動を確認。\n- integration/E2E evidence: `npm test` 1392件、実パスでのresolverとstart/end hook。\n- observe evidence: 新しい `runtime-session-start.js` のstdout。\n\n## Findings\n\n- none\n\n## Residual Risks\n\n- Claude Codeの既存プロセスは設定を再読込しないため、次回の新規sessionで最終確認が必要。\n\n## Guardrail Candidates\n\n- none\n\n## Next Action\n\n- Claude CodeとCodexを新規sessionで起動し、配布版設定の再読込を確認する。\n\n"
+}

@@ -545,16 +545,6 @@ function runTests() {
     assert.ok(Array.isArray(files));
   })) passed++; else failed++;
 
-  // getLearnedSkillsDir() test
-  console.log('\ngetLearnedSkillsDir():');
-
-  if (test('getLearnedSkillsDir returns path under Claude dir', () => {
-    const dir = utils.getLearnedSkillsDir();
-    assert.ok(dir.includes('.claude'));
-    assert.ok(dir.includes('skills'));
-    assert.ok(dir.includes('learned'));
-  })) passed++; else failed++;
-
   // replaceInFile behavior tests
   console.log('\nreplaceInFile (behavior):');
 

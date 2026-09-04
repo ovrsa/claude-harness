@@ -1,0 +1,5 @@
+version: 1
+interface:
+  display_name: Browser Verification Harness
+  short_description: Build Playwright/Puppeteer UI verification with accessibility-tree and screenshot based checks.
+  default_prompt: Build or improve a browser verification harness that lets an AI agent validate UI with Playwright or Puppeteer using accessibility-tree assertions, screenshots, traces, and CI-friendly artifacts.

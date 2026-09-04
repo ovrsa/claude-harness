@@ -1,0 +1,39 @@
+{
+  "kind": "observation",
+  "source_path": "/Users/kyo/.claude/observation-summary.md",
+  "captured_at": "2026-09-04T06:18:31.891Z",
+  "fingerprint": "",
+  "state": {
+    "behaviorChecked": [
+      "配布版へ切替後のCodex runtime start/end hookとmanaged Grill resolver。"
+    ],
+    "method": [
+      "stdout: `node scripts/hooks/runtime-session-start.js`",
+      "process state: `node scripts/hooks/runtime-session-end.js` のexit code 0",
+      "runtime health: active `~/.claude` のGit、plugin、会話状態を実パスで検査"
+    ],
+    "evidence": [
+      "stdout: start hookがartifact chainと次の必要actionを出力した。",
+      "stdout: managed resolverがv1.2.3の `grilling/SKILL.md` を返した。",
+      "logs: `npm test` は1392 passed / 0 failed。"
+    ],
+    "remainingUncertainty": [
+      "Claude Codeの新規プロセスによるsettings再読込は、次回session開始時に確認する。"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "missingValues": [],
+    "concreteEvidenceLines": [
+      "stdout: `node scripts/hooks/runtime-session-start.js`",
+      "process state: `node scripts/hooks/runtime-session-end.js` のexit code 0",
+      "runtime health: active `~/.claude` のGit、plugin、会話状態を実パスで検査",
+      "stdout: start hookがartifact chainと次の必要actionを出力した。",
+      "stdout: managed resolverがv1.2.3の `grilling/SKILL.md` を返した。",
+      "logs: `npm test` は1392 passed / 0 failed。"
+    ],
+    "hasConcreteEvidence": true,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Observation Summary\n\n## Behavior Checked\n\n- 配布版へ切替後のCodex runtime start/end hookとmanaged Grill resolver。\n\n## Method\n\n- stdout: `node scripts/hooks/runtime-session-start.js`\n- process state: `node scripts/hooks/runtime-session-end.js` のexit code 0\n- runtime health: active `~/.claude` のGit、plugin、会話状態を実パスで検査\n\n## Evidence\n\n- stdout: start hookがartifact chainと次の必要actionを出力した。\n- stdout: managed resolverがv1.2.3の `grilling/SKILL.md` を返した。\n- logs: `npm test` は1392 passed / 0 failed。\n\n## Remaining Uncertainty\n\n- Claude Codeの新規プロセスによるsettings再読込は、次回session開始時に確認する。\n\n## Guardrail Candidates\n\n- none\n\n"
+}

@@ -1,0 +1,36 @@
+{
+  "kind": "verification",
+  "source_path": "/Users/kyo/.claude/verification-summary.md",
+  "captured_at": "2026-09-04T06:18:31.891Z",
+  "fingerprint": "",
+  "state": {
+    "scope": [
+      "Distribution replacement staging",
+      "Managed Grill entry and Codex bridge",
+      "Existing Git history, conversation state, and plugin state preservation"
+    ],
+    "commandsRun": [
+      "`node scripts/ci/audit-harness-contract.js`",
+      "`npm test`",
+      "`node scripts/resolve-managed-skill.js grilling`"
+    ],
+    "verificationOutcome": [
+      "harness contract audit: PASS",
+      "full suite: 1392 passed, 0 failed",
+      "managed Grill resolution: v1.2.3 `grilling/SKILL.md` resolved",
+      "`settings.json`: valid JSON"
+    ],
+    "assessment": [
+      "All staged migration checks pass. The active-directory cutover and post-cutover smoke check",
+      "remain."
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [
+      "unrecognized candidate line: - Distribution contract audits must not treat historical documentation counts as live external"
+    ],
+    "missingValues": [],
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Verification Summary\n\n## Scope\n\n- Distribution replacement staging\n- Managed Grill entry and Codex bridge\n- Existing Git history, conversation state, and plugin state preservation\n\n## Commands Run\n\n- `node scripts/ci/audit-harness-contract.js`\n- `npm test`\n- `node scripts/resolve-managed-skill.js grilling`\n\n## RED Evidence\n\n- command: `npm test`\n- observed failure: `repo-map-counts` compared the distribution's\n  historical 13-skill statement with the recipient machine's current 11-entry external lock.\n\n## Verification Outcome\n\n- harness contract audit: PASS\n- full suite: 1392 passed, 0 failed\n- managed Grill resolution: v1.2.3 `grilling/SKILL.md` resolved\n- `settings.json`: valid JSON\n\n## Guardrail Candidates\n\n- Distribution contract audits must not treat historical documentation counts as live external\n  machine state.\n\n## Assessment\n\n- All staged migration checks pass. The active-directory cutover and post-cutover smoke check\n  remain.\n"
+}
