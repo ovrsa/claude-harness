@@ -1,39 +1,30 @@
 {
   "kind": "observation",
-  "source_path": "/Users/kyo/.claude/observation-summary.md",
-  "captured_at": "2026-09-04T06:18:31.891Z",
+  "source_path": "/Users/kyo/development/Projects/GenbaFlow/.worktrees/person-model-consolidation/observation-summary.md",
+  "captured_at": "2026-09-04T07:58:40.804Z",
   "fingerprint": "",
   "state": {
-    "behaviorChecked": [
-      "配布版へ切替後のCodex runtime start/end hookとmanaged Grill resolver。"
-    ],
-    "method": [
-      "stdout: `node scripts/hooks/runtime-session-start.js`",
-      "process state: `node scripts/hooks/runtime-session-end.js` のexit code 0",
-      "runtime health: active `~/.claude` のGit、plugin、会話状態を実パスで検査"
-    ],
-    "evidence": [
-      "stdout: start hookがartifact chainと次の必要actionを出力した。",
-      "stdout: managed resolverがv1.2.3の `grilling/SKILL.md` を返した。",
-      "logs: `npm test` は1392 passed / 0 failed。"
-    ],
-    "remainingUncertainty": [
-      "Claude Codeの新規プロセスによるsettings再読込は、次回session開始時に確認する。"
-    ],
+    "behaviorChecked": [],
+    "method": [],
+    "evidence": [],
+    "remainingUncertainty": [],
     "guardrailCandidates": [],
     "guardrailCandidateWarnings": [],
-    "missingValues": [],
-    "concreteEvidenceLines": [
-      "stdout: `node scripts/hooks/runtime-session-start.js`",
-      "process state: `node scripts/hooks/runtime-session-end.js` のexit code 0",
-      "runtime health: active `~/.claude` のGit、plugin、会話状態を実パスで検査",
-      "stdout: start hookがartifact chainと次の必要actionを出力した。",
-      "stdout: managed resolverがv1.2.3の `grilling/SKILL.md` を返した。",
-      "logs: `npm test` は1392 passed / 0 failed。"
+    "missingValues": [
+      "Behavior Checked",
+      "Method",
+      "Evidence",
+      "Remaining Uncertainty"
     ],
-    "hasConcreteEvidence": true,
-    "missingSections": [],
-    "complete": true
+    "concreteEvidenceLines": [],
+    "hasConcreteEvidence": false,
+    "missingSections": [
+      "Behavior Checked",
+      "Method",
+      "Evidence",
+      "Remaining Uncertainty"
+    ],
+    "complete": false
   },
-  "body": "# Observation Summary\n\n## Behavior Checked\n\n- 配布版へ切替後のCodex runtime start/end hookとmanaged Grill resolver。\n\n## Method\n\n- stdout: `node scripts/hooks/runtime-session-start.js`\n- process state: `node scripts/hooks/runtime-session-end.js` のexit code 0\n- runtime health: active `~/.claude` のGit、plugin、会話状態を実パスで検査\n\n## Evidence\n\n- stdout: start hookがartifact chainと次の必要actionを出力した。\n- stdout: managed resolverがv1.2.3の `grilling/SKILL.md` を返した。\n- logs: `npm test` は1392 passed / 0 failed。\n\n## Remaining Uncertainty\n\n- Claude Codeの新規プロセスによるsettings再読込は、次回session開始時に確認する。\n\n## Guardrail Candidates\n\n- none\n\n"
+  "body": "# Observation Summary — P6（contract / 最終 DROP・不可逆）\n\ndate: 2026-06-05 / track: heavy-risky / branch: feature/person-model-consolidation\n\nP6 は新モデル/デッドマスタ/AI テーブルの **不可逆 DROP** を含むため、plan.md「Observe」/ spec §4・§10 に基づき\nDROP を含む全 migration chain を実 DB に適用した状態で挙動を観測した。観測は共有ローカル Supabase\n（DB port 54332）に対して実施。\n\n## 観測対象の環境\n- `supabase db reset` で **全 migration chain（…〜20260531000007）+ seed を fresh DB へ適用**（成功）。\n  - これは chain 統合 + 不可逆 DROP の実適用テストそのもの。chain はこれまで BEGIN…ROLLBACK でしか\n    検証されておらず、今回が初の永続フル適用。**全 7 本（000001–000007）がエラーなく適用**。\n  - 副次発見と対応: seed.sql が P4 改名（profiles→users / craftsmen→workers /\n    craftsman_assignments→worker_assignments）に未追従で、かつ P6 DROP 対象\n    （project_statuses/building_types/craftsman_types/people/worker_profiles/user_accounts）への\n    INSERT が残存していたため db reset が失敗 → seed を chain 整合へ修正後、reset 成功。\n\n## 観測結果（実機・DB レベル）\n\n### スキーマ（post-reset 実査）\n- DROP 対象が全て消滅: people / user_accounts / worker_profiles / craftsman_types /\n  ai_conversation_states / ai_usage_limits / project_statuses / building_types、および\n  旧名 profiles / craftsmen / craftsman_assignments（改名済み）。\n- 目標テーブル存在 + seed 投入: `users`=2 / `workers`=14 / `worker_assignments`=99 / `projects`=9。\n- `workers.craftsman_type_id` 列は消滅。\n- `projects` の `ck_projects_status` / `ck_projects_building_type` CHECK 制約が存在。\n\n### 挙動オブジェクト配線（signup / realtime / tenant scope）\n- `handle_new_user()` body → `insert into public.users (...)`（サインアップ→users 行生成）。\n- `current_user_company_id()` body → `from public.users`（会社スコープ解決）。\n- `internal.realtime_notify_management_change()` の CASE → `worker_assignments`(mgmt:projects) /\n  `workers`(mgmt:masters) / `users`(mgmt:users)。旧ラベル profiles/craftsmen/craftsman_assignments 残存ゼロ。\n- 同関数を呼ぶトリガは `users` / `workers` / `worker_assignments`（＋projects 系）に正しく付与。\n\n### 機能プローブ（アプリと同経路の SQL を BEGIN…ROLLBACK で実行）\n- 職人 CREATE（craftsman_type 列なしで成功）/ UPDATE（workers トリガ発火・エラーなし）/\n  割当 INSERT（FK worker_assignments.craftsman_id→workers.id 成功）/\n  スケジュール読取（worker_assignments JOIN workers が正データ返却）/ DELETE 成功。\n- projects CHECK: 正準値 `ON_HOLD`/`OFFICE` 受理、日本語 `進行中` を `ck_projects_status` で棄却（check_violation）。\n- ROLLBACK により seeded DB は無変更。\n\n### テスト（再掲・別アーティファクト）\n- backend: 7 failed（既知ベースライン）/ 467 passed（新規回帰ゼロ）。\n- frontend: tsc 0 error / vitest 379 passed（旧フレーキー含め通過）。\n\n## 受け入れ判定\nDROP の不可逆操作後も、サインアップ・realtime・会社スコープの配線、職人 CRUD・割当・スケジュール・\nprojects 値域 CHECK の各経路が DB レベルで期待どおり動作することを確認。**P6 受容可**。\n\n## 残・未観測（マージ/本番適用前に消化）\n1. **ブラウザ実機 UI 観測（手動 QA 推奨）**: 実際のサインアップ E2E（users 行生成までの HTTP/認証層）、\n   2 タブ間の realtime ライブ更新配信、projects status/building_type の UI CRUD、職人 CRUD の UI 操作。\n   DB レベル + テストで強く裏付け済みだが、HTTP/認証/ブラウザ層の最終確認は未実施。\n   （backend に .env 未配置のため API サーバ駆動観測は本セッションでは未実施。）\n2. **P5 デプロイ前ゲート**: 本番 `projects` の値域外データ実査\n   （`select distinct status, building_type from public.projects`）→ 値域外があれば正規化 or 値域拡張。\n   デプロイ禁止中のため非ブロッカーだが本番適用前に必須。\n3. **stale 生成型**: `frontend/src/types/supabase.ts` は生成型のまま（実クエリ未使用・runtime 影響なし）。\n"
 }

@@ -1,0 +1,2 @@
+{"occurred_at":"2026-09-04T06:32:16.666Z","type":"session_started","status":"started","session_id":"codex-session-01a038a9-4044-74f2-a171-dd7f142d6500","resume_expected":true,"resume_success":false,"resume_reason":"artifacts-missing","resume_source":"none"}
+{"occurred_at":"2026-09-04T12:33:21.399Z","type":"session_started","status":"started","session_id":"","resume_expected":false,"resume_success":false,"resume_reason":"","resume_source":"none"}

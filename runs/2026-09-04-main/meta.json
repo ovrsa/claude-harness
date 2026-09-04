@@ -1,12 +1,11 @@
 {
-  "repo_root": "/Users/kyo/.claude",
+  "repo_root": "/Users/kyo/orca/workspaces/.claude/main",
   "branch": "main",
   "run_id": "2026-09-04-main",
   "started_at": "2026-09-04T06:15:21.103Z",
-  "updated_at": "2026-09-04T06:18:31.892Z",
+  "updated_at": "2026-09-04T09:08:08.599Z",
   "gates": [
     "observation",
-    "review",
     "verification"
   ],
   "session_ids": [
