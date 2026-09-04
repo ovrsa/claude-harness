@@ -9,11 +9,8 @@ const {
   getRepoRoot,
   parsePlanState,
 } = require('./lib/task-artifacts');
-const {
-  recordSessionEvent,
-  recordLifecycleSnapshot,
-  getRunId,
-} = require('./lib/session-trace');
+const { resolveBranch } = require('./lib/run-record');
+const { recordLifecycleGates } = require('./lib/lifecycle-record');
 const {
   getRuntimeSessionId,
   getRuntimeKind,
@@ -125,25 +122,6 @@ function adapterLabel(adapterCommand) {
   return extension ? baseName.slice(0, -extension.length) : baseName;
 }
 
-function recordPipelineEvent(context, eventType, status, metadata = {}) {
-  recordSessionEvent({
-    sessionId: context.sessionId,
-    runId: context.runId,
-    eventType,
-    status,
-    repoRoot: context.repoRoot,
-    cwd: context.repoRoot || process.cwd(),
-    metadata: {
-      task_id: context.taskId,
-      track: context.track,
-      runtime: context.runtime,
-      plan_path: context.planInput || context.planPath,
-      ...metadata,
-    },
-    createdBy: 'pipeline-runner',
-  });
-}
-
 function nowIso() {
   return new Date().toISOString();
 }
@@ -213,6 +191,40 @@ function writeRunMeta(runDir, meta) {
 
 function appendRunEvent(runDir, event) {
   fs.appendFileSync(path.join(runDir, 'logs', 'events.ndjson'), `${JSON.stringify(event)}\n`);
+}
+
+/**
+ * Pipeline events go into the run record this pipeline already writes
+ * (`runs/<runId>/logs/events.ndjson`, the same log createRunEvidence starts).
+ *
+ * Was a session_events insert. Measured across the store's whole life: not one
+ * `pipeline_*` row was ever recorded, so the pipeline has not run since these
+ * calls were added -- the events were being written to a table nobody read from
+ * a code path nobody reached.
+ *
+ * ensureDir because preflight events fire before createRunEvidence. Silent on
+ * failure: a telemetry line must not abort a pipeline step.
+ */
+function recordPipelineEvent(context, eventType, status, metadata = {}) {
+  if (!context || !context.runId) return;
+  try {
+    const runDir = getRunDir(context.runId);
+    ensureDir(path.join(runDir, 'logs'));
+    appendRunEvent(runDir, {
+      occurred_at: nowIso(),
+      type: eventType,
+      status,
+      session_id: context.sessionId,
+      repo_root: context.repoRoot,
+      task_id: context.taskId,
+      track: context.track,
+      runtime: context.runtime,
+      plan_path: context.planInput || context.planPath,
+      ...metadata,
+    });
+  } catch {
+    // Intentionally silent.
+  }
 }
 
 function safeEvidenceName(value, fallback = 'step') {
@@ -1148,7 +1160,9 @@ async function buildResult(options) {
   let status = blockers.length > 0 ? 'BLOCKED' : (decisions.length > 0 ? 'NEEDS_DECISION' : 'READY');
   const preflight = status === 'READY' ? 'pass' : 'fail';
   const sessionId = getRuntimeSessionId('pipeline-runner');
-  const runId = String(options.runId || '').trim() || getRunId(sessionId);
+  // getRunId was an identity function over the session id; the wrapper went
+  // with session-trace.js.
+  const runId = String(options.runId || '').trim() || sessionId;
   const context = {
     sessionId,
     runId,
@@ -1174,13 +1188,12 @@ async function buildResult(options) {
     recordPipelineEvent(context, 'pipeline_started', 'started');
     recordPipelineEvent(context, 'pipeline_preflight_completed', status.toLowerCase(), metadata);
     if (repoRoot) {
-      recordLifecycleSnapshot({
-        sessionId,
-        runId,
+      recordLifecycleGates({
         repoRoot,
+        runId,
+        sessionId,
+        branch: resolveBranch(repoRoot),
         cwd: repoRoot,
-        includeArtifactContextLoaded: false,
-        createdBy: 'pipeline-runner',
       });
     }
 

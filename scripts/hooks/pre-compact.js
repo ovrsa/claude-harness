@@ -21,9 +21,6 @@ const {
 const {
   getRepoRoot,
   buildArtifactSnapshot,
-  findTaskArtifacts,
-  buildLifecycleState,
-  writeProgressCheckpoint,
 } = require('../lib/task-artifacts');
 
 async function main() {
@@ -37,20 +34,8 @@ async function main() {
   const timestamp = getDateTimeString();
   appendFile(compactionLog, `[${timestamp}] Context compaction triggered\n`);
 
-  if (repoRoot) {
-    const artifacts = findTaskArtifacts(repoRoot);
-    const state = buildLifecycleState(artifacts);
-    writeProgressCheckpoint(path.join(repoRoot, 'progress.md'), {
-      updatedAt: timestamp,
-      event: 'pre-compact',
-      currentPhase: state.sessionState.currentPhase,
-      lastCompletedStep: state.sessionState.lastCompletedStep,
-      suggestedNextAction: state.sessionState.nextActionExplicitNone ? 'none' : state.sessionState.nextAction,
-      blockers: state.sessionState.blockers,
-      delegatedWork: state.sessionState.delegatedWork,
-    });
-  }
-
+  // 状態の要約は保存しない。このフックはエージェントの認識にアクセスできず、
+  // リポジトリの成果物しか見えないため。残すのは「どれが存在するか」だけ。
   const artifactSnapshot = buildArtifactSnapshot(repoRoot);
 
   // If there's an active session file, note the compaction

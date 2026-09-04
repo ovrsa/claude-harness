@@ -6,7 +6,9 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const CLAUDE_ROOT = path.resolve(__dirname, '..', '..');
-const HOOKS_FILE = path.join(CLAUDE_ROOT, 'hooks', 'hooks.json');
+// 定数名は HOOKS_FILE のまま（tests が定数名でパスを差し替える）。
+// 実際に読まれる設定は settings.json であり、hooks/hooks.json は 2026-08-15 に撤去した。
+const HOOKS_FILE = path.join(CLAUDE_ROOT, 'settings.json');
 
 function toHarnessRelative(absPath) {
   return path.relative(CLAUDE_ROOT, absPath).replace(/\\/g, '/');
@@ -37,8 +39,8 @@ function getTrackedFiles() {
 function extractHookEntryFiles(command) {
   const refs = new Set();
   const value = String(command || '');
-  for (const match of value.matchAll(/(scripts\/hooks\/[A-Za-z0-9._-]+|skills\/continuous-learning-v2\/hooks\/observe\.sh)/g)) {
-    refs.add(match[1]);
+  for (const match of value.matchAll(/scripts\/hooks\/[A-Za-z0-9._-]+/g)) {
+    refs.add(match[0]);
   }
   return refs;
 }
@@ -54,7 +56,6 @@ function normalizeLocalJsDependency(filePath, rawRef) {
 function extractLocalDependencies(filePath) {
   const deps = new Set();
   const content = fs.readFileSync(filePath, 'utf8');
-  const repoRelative = toHarnessRelative(filePath);
 
   if (filePath.endsWith('.js')) {
     for (const match of content.matchAll(/require\(['"](\.\.?\/[^'"]+)['"]\)/g)) {
@@ -66,12 +67,6 @@ function extractLocalDependencies(filePath) {
     for (const match of content.matchAll(/scripts\/hooks\/[A-Za-z0-9._-]+/g)) {
       deps.add(path.join(CLAUDE_ROOT, match[0]));
     }
-
-    if (repoRelative.startsWith('.claude/skills/continuous-learning-v2/')) {
-      for (const match of content.matchAll(/scripts\/[A-Za-z0-9._-]+/g)) {
-        deps.add(path.join(CLAUDE_ROOT, 'skills', 'continuous-learning-v2', match[0]));
-      }
-    }
   }
 
   return [...deps];
@@ -79,7 +74,7 @@ function extractLocalDependencies(filePath) {
 
 function collectRuntimeSurface() {
   if (!fs.existsSync(HOOKS_FILE)) {
-    console.log('No hooks.json found, skipping runtime surface validation');
+    console.log('No settings.json found, skipping runtime surface validation');
     process.exit(0);
   }
 

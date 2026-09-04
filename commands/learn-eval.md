@@ -26,8 +26,8 @@ Look for:
 
 3. **Determine save location:**
    - Ask: "Would this pattern be useful in a different project?"
-   - **Global** (`~/.claude/skills/learned/`): Generic patterns usable across 2+ projects (bash compatibility, LLM API behavior, debugging techniques, etc.)
-   - **Project** (`.claude/skills/learned/` in current project): Project-specific knowledge (quirks of a particular config file, project-specific architecture decisions, etc.)
+   - **Global** (`~/.claude/skills/<name>/SKILL.md`): Generic patterns usable across 2+ projects (bash compatibility, LLM API behavior, debugging techniques, etc.)
+   - **Project** (`.claude/skills/<name>/SKILL.md` in current project): Project-specific knowledge (quirks of a particular config file, project-specific architecture decisions, etc.)
    - When in doubt, choose Global (moving Global → Project is easier than the reverse)
 
 4. Draft the skill file using this format:

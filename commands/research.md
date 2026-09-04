@@ -41,7 +41,7 @@ description: 実装前リサーチ。既存コード、関連フロー、ライ�
 - 技術リスク
 - 仕様の曖昧さ
 - テストしづらい箇所
-- `/plan` で詰めるべき未解決事項
+- design doc で詰めるべき未解決事項
 
 ## 出力フォーマット
 
@@ -70,7 +70,7 @@ description: 実装前リサーチ。既存コード、関連フロー、ライ�
 
 ## 次のステップ
 
-- `plan.md` を作る
+- design doc を書く（`/docs-build`）
 - 不明点が大きければ 1-2 個だけ確認質問をする
 ```
 
@@ -84,12 +84,12 @@ description: 実装前リサーチ。既存コード、関連フロー、ライ�
 
 - このコマンドは plan の後ではなく plan の前に使う
 - substantial task では結果を `research.md` または `{task}_research.md` に残す
-- research 完了後に `/plan` へ進む
+- research 完了後は `/grill-me` で決定を固め、`/docs-build` で design doc を書く段階へ進む
 - research 段階ではコードを書かない
 
 ## 後続コマンド
 
-- `/plan` — 実装計画を作成
+- `templates/plan-template.md` — 実装計画の雛形
 
 ## `/research-task` との関係
 

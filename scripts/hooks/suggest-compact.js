@@ -11,6 +11,14 @@
  * - Strategic compacting preserves context through logical phases
  * - Compact after exploration, before execution
  * - Compact after completing a milestone, before starting next
+ *
+ * Why the count-based suggestion is opt-in (default off):
+ * Tool-call count is not a proxy for context pressure. On a 1M-context model,
+ * 50 tool calls is a few percent of the window, so a count-based nag spends the
+ * long-context advantage instead of protecting it. Set COMPACT_THRESHOLD to a
+ * positive integer to re-enable it for narrow-context setups. The judgment that
+ * matters -- compact at phase boundaries, not at call counts -- lives in
+ * rules/common/performance.md, not in this counter.
  */
 
 const fs = require('fs');
@@ -28,10 +36,13 @@ async function main() {
   // or parent PID as fallback
   const sessionId = getRuntimeSessionId('default').replace(/[^a-zA-Z0-9_-]/g, '') || 'default';
   const counterFile = path.join(getTempDir(), `claude-tool-count-${sessionId}`);
-  const rawThreshold = parseInt(process.env.COMPACT_THRESHOLD || '50', 10);
+  // 0 means disabled. Unset or out-of-range values disable the suggestion
+  // rather than falling back to a count, because there is no count that is
+  // correct across context sizes.
+  const rawThreshold = parseInt(process.env.COMPACT_THRESHOLD || '', 10);
   const threshold = Number.isFinite(rawThreshold) && rawThreshold > 0 && rawThreshold <= 10000
     ? rawThreshold
-    : 50;
+    : 0;
 
   let count = 1;
 
@@ -62,13 +73,13 @@ async function main() {
     writeFile(counterFile, String(count));
   }
 
-  // Suggest compact after threshold tool calls
-  if (count === threshold) {
+  // Suggest compact after threshold tool calls (opt-in only)
+  if (threshold > 0 && count === threshold) {
     log(`[StrategicCompact] ${threshold} tool calls reached - consider /compact if transitioning phases`);
   }
 
   // Suggest at regular intervals after threshold (every 25 calls from threshold)
-  if (count > threshold && (count - threshold) % 25 === 0) {
+  if (threshold > 0 && count > threshold && (count - threshold) % 25 === 0) {
     log(`[StrategicCompact] ${count} tool calls - good checkpoint for /compact if context is stale`);
   }
 

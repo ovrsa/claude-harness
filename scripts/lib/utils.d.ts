@@ -22,7 +22,6 @@ export function getClaudeDir(): string;
 export function getSessionsDir(): string;
 
 /** Get the learned skills directory (~/.claude/skills/learned) */
-export function getLearnedSkillsDir(): string;
 
 /** Get the temp directory (cross-platform) */
 export function getTempDir(): string;

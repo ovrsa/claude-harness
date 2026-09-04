@@ -9,7 +9,16 @@
 
 Types: feat, fix, refactor, docs, test, chore, perf, ci
 
-Note: Attribution disabled globally via ~/.claude/settings.json.
+Attribution（`Co-Authored-By` トレーラーと PR 説明文への付記）は付けない。
+根拠は `~/.claude/settings.json` の `attribution.commit` と `attribution.pr` を空文字にしていること。
+
+```bash
+jq '.attribution' ~/.claude/settings.json   # {"commit": "", "pr": ""} なら有効
+```
+
+`includeCoAuthoredBy` は deprecated なので使わない（2026-08-10 時点のスキーマ）。
+2026-08-10 まで、この節は「settings.json で無効化済み」と書いていたが実際にはキーが存在せず、
+既定値（attribution あり）に依存していた。既定値が変われば黙って挙動が変わる状態だった。
 
 ## Pull Request Workflow
 

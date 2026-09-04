@@ -24,7 +24,8 @@ const {
   log
 } = require('../lib/utils');
 const { getRepoRoot } = require('../lib/task-artifacts');
-const { recordLifecycleSnapshot, recordSessionEvent, getRunId } = require('../lib/session-trace');
+const { resolveRunSlug, resolveBranch } = require('../lib/run-record');
+const { recordLifecycleGates } = require('../lib/lifecycle-record');
 
 const SUMMARY_START_MARKER = '<!-- ECC:SUMMARY:START -->';
 const SUMMARY_END_MARKER = '<!-- ECC:SUMMARY:END -->';
@@ -147,7 +148,6 @@ async function main() {
   const shortId = getSessionIdShort();
   const sessionFile = path.join(sessionsDir, `${today}-${shortId}-session.tmp`);
   const sessionId = getRuntimeSessionId() || undefined;
-  const runId = getRunId(sessionId);
 
   ensureDir(sessionsDir);
 
@@ -222,38 +222,31 @@ ${summarySection}
     log(`[SessionEnd] Created session file: ${sessionFile}`);
   }
 
+  // Last chance to capture the gate evidence before the session ends -- and
+  // before a worktree removal takes the artifacts with it.
+  //
+  // The session_ended row and its human_intervention_count are gone with the
+  // table. The count was userMessages.length - 1, which included task
+  // notifications, local command output and compact continuations; the
+  // transcript-derived version lives in transcript-log.sessionTurnCounts.
   const repoRoot = getRepoRoot(process.cwd());
-  const humanInterventionCount = summary ? Math.max(summary.totalMessages - 1, 0) : 0;
   if (repoRoot) {
-    recordLifecycleSnapshot({
-      sessionId,
-      runId,
-      repoRoot,
-      cwd: process.cwd(),
-      createdBy: 'session-end',
-      humanInterventionCount,
-      includeArtifactContextLoaded: false,
-    });
+    try {
+      const branch = resolveBranch(repoRoot);
+      recordLifecycleGates({
+        repoRoot,
+        runId: resolveRunSlug({ repoRoot, branch, sessionId }),
+        sessionId,
+        branch,
+        cwd: process.cwd(),
+      });
+    } catch {
+      // Recording must never keep a session from ending.
+    }
   }
-
-  recordSessionEvent({
-    sessionId,
-    runId,
-    eventType: 'session_ended',
-    status: 'ended',
-    repoRoot: repoRoot || '',
-    cwd: process.cwd(),
-    createdBy: 'session-end',
-    metadata: {
-      final_status: repoRoot ? 'persisted' : DEFAULT_EXIT_STATUS,
-      human_intervention_count: humanInterventionCount,
-    },
-  });
 
   process.exit(0);
 }
-
-const DEFAULT_EXIT_STATUS = 'persisted';
 
 function buildSummarySection(summary) {
   let section = '## Session Summary\n\n';

@@ -81,8 +81,10 @@ function validateCommands() {
       const lineRefs = line.matchAll(/`\/([a-z][-a-z0-9]*)`/g);
       for (const match of lineRefs) {
         const refName = match[1];
-        if (!validCommands.has(refName)) {
-          console.error(`ERROR: ${file} - references non-existent command /${refName}`);
+        // `/name` resolves to either commands/<name>.md or skills/<name>/ —
+        // skills are slash-invocable too, so both are valid targets.
+        if (!validCommands.has(refName) && !validSkills.has(refName)) {
+          console.error(`ERROR: ${file} - references non-existent command or skill /${refName}`);
           hasErrors = true;
         }
       }
@@ -98,7 +100,7 @@ function validateCommands() {
       }
     }
 
-    // Check skill directory references (e.g., "skills/tdd-workflow/")
+    // Check skill directory references (e.g., "skills/grilling/")
     const skillRefs = contentNoCodeBlocks.matchAll(/skills\/([a-z][-a-z0-9]*)\//g);
     for (const match of skillRefs) {
       const refName = match[1];

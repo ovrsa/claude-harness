@@ -10,6 +10,10 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
+// runs/ は git 追跡なので、テストが実リポジトリの run 記録に
+// フィクスチャを混ぜないようにする（scripts/lib/run-record.js）。
+process.env.CLAUDE_DISABLE_RUN_RECORD = '1';
+
 const SCRIPT = path.join(__dirname, '..', '..', 'scripts', 'harness-status.js');
 
 function test(name, fn) {
@@ -79,7 +83,8 @@ function runTests() {
       const repo = initRepo(dir);
       const result = run(['--repo', repo, '--home', dir]);
       assert.strictEqual(result.code, 0);
-      assert.ok(result.stdout.includes('HARNESS STATUS: BLOCKED'));
+      // 成果物ゼロはブロックではないが READY にもしない。
+      assert.ok(result.stdout.includes('HARNESS STATUS: NEEDS_ACTION'));
       assert.ok(result.stdout.includes('Repo:'));
       assert.ok(result.stdout.includes('Recommended next action:'));
     } finally {
@@ -94,9 +99,9 @@ function runTests() {
       const result = run(['--repo', repo, '--home', dir, '--format', 'json']);
       assert.strictEqual(result.code, 0);
       const parsed = JSON.parse(result.stdout);
-      assert.strictEqual(parsed.status, 'BLOCKED');
+      assert.strictEqual(parsed.status, 'NEEDS_ACTION');
       assert.strictEqual(parsed.repo.root, repo);
-      assert.ok(parsed.recommendedAction.includes('Resolve lifecycle blocker'));
+      assert.ok(parsed.recommendedAction.includes('docs/design/'));
     } finally {
       cleanup(dir);
     }

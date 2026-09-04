@@ -1,4 +1,4 @@
 {
-  "name": "claude-harness",
+  "name": "everything-claude-code-local",
   "description": "Local harness manifest for the canonical ~/.claude control plane."
 }

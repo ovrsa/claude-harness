@@ -11,6 +11,10 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { spawn, execFileSync } = require('child_process');
+
+// runs/ は git 追跡なので、テストが実リポジトリの run 記録に
+// フィクスチャを混ぜないようにする（scripts/lib/run-record.js）。
+process.env.CLAUDE_DISABLE_RUN_RECORD = '1';
 const REPO_ROOT = path.join(__dirname, '..', '..');
 
 // Test helper
@@ -46,9 +50,10 @@ async function asyncTest(name, fn) {
  * @param {object} env - Environment variables
  * @returns {Promise<{code: number, stdout: string, stderr: string}>}
  */
-function runHookWithInput(scriptPath, input = {}, env = {}, timeoutMs = 10000) {
+function runHookWithInput(scriptPath, input = {}, env = {}, timeoutMs = 10000, cwd = undefined) {
   return new Promise((resolve, reject) => {
     const proc = spawn('node', [scriptPath], {
+      cwd,
       env: { ...process.env, ...env },
       stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -101,10 +106,15 @@ function runHookCommand(command, input = {}, env = {}, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const isWindows = process.platform === 'win32';
     const mergedEnv = { ...process.env, CLAUDE_PLUGIN_ROOT: REPO_ROOT, ...env };
-    const resolvedCommand = command.replace(
-      /\$\{([A-Z_][A-Z0-9_]*)\}/g,
-      (_, name) => String(mergedEnv[name] || '')
+    // settings.json は ${VAR} と ${VAR:-default} の両形式を使う。後者を展開しないと
+    // パスが未解決のまま node に渡り、フックが起動していないのに「出力が無い」形で失敗する。
+    const expandVars = (value) => value.replace(
+      /\$\{([A-Z_][A-Z0-9_]*)(?::-([^}]*))?\}/g,
+      (_, name, fallback) => mergedEnv[name]
+        ? String(mergedEnv[name])
+        : String(fallback || '').replace(/\$([A-Z_][A-Z0-9_]*)/g, (__, n) => String(mergedEnv[n] || ''))
     );
+    const resolvedCommand = expandVars(command);
 
     const nodeMatch = resolvedCommand.match(/^node\s+"([^"]+)"\s*(.*)$/);
     const useDirectNodeSpawn = Boolean(nodeMatch);
@@ -179,7 +189,7 @@ async function runTests() {
   let failed = 0;
 
   const scriptsDir = path.join(__dirname, '..', '..', 'scripts', 'hooks');
-  const hooksJsonPath = path.join(__dirname, '..', '..', 'hooks', 'hooks.json');
+  const hooksJsonPath = path.join(__dirname, '..', '..', 'settings.json');
   const hooks = JSON.parse(fs.readFileSync(hooksJsonPath, 'utf8'));
 
   // ==========================================
@@ -246,31 +256,27 @@ async function runTests() {
     assert.ok(result.stderr.includes('[SessionStart]'), 'Should have [SessionStart] prefix');
   })) passed++; else failed++;
 
+  // Run in a throwaway repository: pre-compact.js writes progress.md into the repo at cwd, so
+  // inheriting this process's cwd made the test rewrite THIS repository's session state.
   if (await asyncTest('PreCompact hook logs to stderr', async () => {
-    const result = await runHookWithInput(path.join(scriptsDir, 'pre-compact.js'), {});
-    assert.ok(result.stderr.includes('[PreCompact]'), 'Should output to stderr with prefix');
+    const sandboxRepo = createTestDir();
+    execFileSync('git', ['init'], { cwd: sandboxRepo, stdio: 'ignore' });
+    try {
+      const result = await runHookWithInput(path.join(scriptsDir, 'pre-compact.js'), {}, {}, 10000, sandboxRepo);
+      assert.ok(result.stderr.includes('[PreCompact]'), 'Should output to stderr with prefix');
+    } finally {
+      fs.rmSync(sandboxRepo, { recursive: true, force: true });
+    }
   })) passed++; else failed++;
 
+  // ブロックするフックは git-push-guard.js の1つだけ。
   if (await asyncTest('blocking hooks output BLOCKED message', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    const srcDir = path.join(repoDir, 'src');
-    const filePath = path.join(srcDir, 'app.ts');
-    fs.mkdirSync(srcDir, { recursive: true });
-    fs.writeFileSync(filePath, 'export const ok = true;\n');
-    execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+    const result = await runHookWithInput(path.join(REPO_ROOT, 'hooks', 'git-push-guard.js'), {
+      tool_input: { command: 'git push origin main' }
+    });
 
-    try {
-      const blockingScript = path.join(REPO_ROOT, 'hooks', 'lifecycle-pre-edit.js');
-      const result = await runHookWithInput(blockingScript, {
-        tool_input: { file_path: filePath }
-      });
-
-      assert.ok(result.stderr.includes('Missing plan.md'), 'Blocking hook should explain the missing plan gate');
-      assert.strictEqual(result.code, 2, 'Blocking hook should exit with code 2');
-    } finally {
-      cleanupTestDir(testDir);
-    }
+    assert.strictEqual(result.code, 2, 'Blocking hook should exit with code 2');
+    assert.ok(/main|master/.test(result.stderr), 'Blocking hook should name the protected branch');
   })) passed++; else failed++;
 
   // ==========================================
@@ -284,21 +290,35 @@ async function runTests() {
   })) passed++; else failed++;
 
   if (await asyncTest('blocking hooks exit with code 2', async () => {
+    const result = await runHookWithInput(path.join(REPO_ROOT, 'hooks', 'git-push-guard.js'), {
+      tool_input: { command: 'git push origin master' }
+    });
+
+    assert.strictEqual(result.code, 2, 'Blocking hook should exit 2');
+  })) passed++; else failed++;
+
+  if (await asyncTest('advisory hooks exit 0 while naming the gap', async () => {
     const testDir = createTestDir();
+    // 助言の重み判定は linked worktree かどうか
+    const base = path.join(testDir, 'base');
     const repoDir = path.join(testDir, 'repo');
+    fs.mkdirSync(base, { recursive: true });
+    execFileSync('git', ['init'], { cwd: base, stdio: 'ignore' });
+    execFileSync('git', ['-c', 'user.email=t@example.com', '-c', 'user.name=t',
+      'commit', '--allow-empty', '-m', 'init'], { cwd: base, stdio: 'ignore' });
+    execFileSync('git', ['worktree', 'add', repoDir, '-b', 'advisory-test'], { cwd: base, stdio: 'ignore' });
     const srcDir = path.join(repoDir, 'src');
     const filePath = path.join(srcDir, 'app.ts');
     fs.mkdirSync(srcDir, { recursive: true });
     fs.writeFileSync(filePath, 'export const ok = true;\n');
-    execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
 
     try {
-      const blockingScript = path.join(REPO_ROOT, 'hooks', 'lifecycle-pre-edit.js');
-      const result = await runHookWithInput(blockingScript, {
+      const result = await runHookWithInput(path.join(REPO_ROOT, 'hooks', 'lifecycle-pre-edit.js'), {
         tool_input: { file_path: filePath }
       });
 
-      assert.strictEqual(result.code, 2, 'Blocking hook should exit 2');
+      assert.strictEqual(result.code, 0, 'Edit guard should not block');
+      assert.ok(result.stderr.includes('[Lifecycle Guardrail]'), 'Edit guard should still name the gap');
     } finally {
       cleanupTestDir(testDir);
     }
@@ -306,12 +326,14 @@ async function runTests() {
 
   if (await asyncTest('hooks handle missing files gracefully', async () => {
     const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'nonexistent.jsonl');
 
     try {
+      // 入れ物を evaluate-session.js から lifecycle-pre-edit.js へ移した
+      // （2026-08-18 に学習ループごと撤去）。守っているのは「フックが存在しない
+      // ファイルを渡されても落ちない」ことで、どのフックかではない。
       const result = await runHookWithInput(
-        path.join(scriptsDir, 'evaluate-session.js'),
-        { transcript_path: transcriptPath }
+        path.join(REPO_ROOT, 'hooks', 'lifecycle-pre-edit.js'),
+        { tool_input: { file_path: path.join(testDir, 'nonexistent.js') } }
       );
 
       // Should not crash, just skip processing
@@ -349,37 +371,11 @@ async function runTests() {
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('evaluate-session processes transcript with sufficient messages', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'transcript.jsonl');
-
-    // Create a transcript with 15 user messages
-    const messages = Array(15).fill(null).map((_, i) => ({
-      type: 'user',
-      content: `Test message ${i + 1}`
-    }));
-
-    fs.writeFileSync(
-      transcriptPath,
-      messages.map(m => JSON.stringify(m)).join('\n')
-    );
-
-    try {
-      const result = await runHookWithInput(
-        path.join(scriptsDir, 'evaluate-session.js'),
-        { transcript_path: transcriptPath }
-      );
-
-      assert.ok(result.stderr.includes('15 messages'), 'Should process session');
-    } finally {
-      cleanupTestDir(testDir);
-    }
-  })) passed++; else failed++;
-
   if (await asyncTest('PostToolUse PR hook extracts PR URL', async () => {
     // Find the PR logging hook
+    // settings.json のフックは description を持たないので、コマンド内容で特定する。
     const prHook = hooks.hooks.PostToolUse.find(h =>
-      h.description && h.description.includes('PR URL')
+      (h.hooks || []).some(x => String(x.command || '').includes('post:bash:pr-created'))
     );
 
     assert.ok(prHook, 'PR hook should exist');
@@ -683,15 +679,16 @@ async function runTests() {
           const isInline = hook.command.startsWith('node -e');
           const isFilePath = hook.command.startsWith('node "');
           const isShellWrapper =
-            hook.command.startsWith('bash "') ||
-            hook.command.startsWith('sh "') ||
+            /^(bash|sh)\s+["']/.test(hook.command) ||
             hook.command.startsWith('bash -lc ') ||
             hook.command.startsWith('sh -c ');
-          const isShellScriptPath = hook.command.endsWith('.sh');
+          const isShellScriptPath = /\.sh["']?(\s|$)/.test(hook.command);
+          // 音を鳴らすだけのオペレータ用フック。スクリプトを持たない。
+          const isNotificationSound = /^afplay\s/.test(hook.command);
 
           assert.ok(
-            isInline || isFilePath || isShellWrapper || isShellScriptPath,
-            `Hook command in ${hookType} should be node -e, node script, or shell wrapper/script, got: ${hook.command.substring(0, 80)}`
+            isInline || isFilePath || isShellWrapper || isShellScriptPath || isNotificationSound,
+            `Hook command in ${hookType} should be node -e, node script, shell wrapper/script, or afplay, got: ${hook.command.substring(0, 80)}`
           );
         }
       }

@@ -149,41 +149,40 @@ function runTests() {
   // Environment variable handling
   console.log('\nEnvironment variable handling:');
 
-  if (test('uses default threshold (50) when COMPACT_THRESHOLD is not set', () => {
+  if (test('stays silent when COMPACT_THRESHOLD is not set', () => {
     cleanupCounter();
-    // Write counter to 49, next run will be 50 = default threshold
+    // 49 -> 50, which used to be the hardcoded default threshold
     fs.writeFileSync(counterFile, '49');
     const result = runCompact({ CLAUDE_SESSION_ID: testSession });
-    // Remove COMPACT_THRESHOLD from env
     assert.ok(
-      result.stderr.includes('50 tool calls reached'),
-      `Should use default threshold of 50. Got stderr: ${result.stderr}`
+      !result.stderr.includes('tool calls'),
+      `Count-based suggestion must be opt-in. Got stderr: ${result.stderr}`
     );
     cleanupCounter();
   })) passed++;
   else failed++;
 
-  if (test('ignores invalid COMPACT_THRESHOLD (negative)', () => {
+  if (test('stays silent for invalid COMPACT_THRESHOLD (negative)', () => {
     cleanupCounter();
     fs.writeFileSync(counterFile, '49');
     const result = runCompact({ CLAUDE_SESSION_ID: testSession, COMPACT_THRESHOLD: '-5' });
-    // Invalid threshold falls back to 50
+    // Invalid disables rather than falling back — no call count is correct
+    // across context sizes
     assert.ok(
-      result.stderr.includes('50 tool calls reached'),
-      `Should fallback to 50 for negative threshold. Got stderr: ${result.stderr}`
+      !result.stderr.includes('tool calls'),
+      `Should stay silent for negative threshold. Got stderr: ${result.stderr}`
     );
     cleanupCounter();
   })) passed++;
   else failed++;
 
-  if (test('ignores non-numeric COMPACT_THRESHOLD', () => {
+  if (test('stays silent for non-numeric COMPACT_THRESHOLD', () => {
     cleanupCounter();
     fs.writeFileSync(counterFile, '49');
     const result = runCompact({ CLAUDE_SESSION_ID: testSession, COMPACT_THRESHOLD: 'abc' });
-    // NaN falls back to 50
     assert.ok(
-      result.stderr.includes('50 tool calls reached'),
-      `Should fallback to 50 for non-numeric threshold. Got stderr: ${result.stderr}`
+      !result.stderr.includes('tool calls'),
+      `Should stay silent for non-numeric threshold. Got stderr: ${result.stderr}`
     );
     cleanupCounter();
   })) passed++;
@@ -265,14 +264,14 @@ function runTests() {
   // ── Round 29: threshold boundary values ──
   console.log('\nThreshold boundary values:');
 
-  if (test('rejects COMPACT_THRESHOLD=0 (falls back to 50)', () => {
+  if (test('treats COMPACT_THRESHOLD=0 as disabled', () => {
     cleanupCounter();
     fs.writeFileSync(counterFile, '49');
     const result = runCompact({ CLAUDE_SESSION_ID: testSession, COMPACT_THRESHOLD: '0' });
-    // 0 is invalid (must be > 0), falls back to 50, count becomes 50 → should suggest
+    // 0 is the explicit off switch
     assert.ok(
-      result.stderr.includes('50 tool calls reached'),
-      `Should fallback to 50 for threshold=0. Got stderr: ${result.stderr}`
+      !result.stderr.includes('tool calls'),
+      `threshold=0 should disable the suggestion. Got stderr: ${result.stderr}`
     );
     cleanupCounter();
   })) passed++;
@@ -291,14 +290,14 @@ function runTests() {
   })) passed++;
   else failed++;
 
-  if (test('rejects COMPACT_THRESHOLD=10001 (falls back to 50)', () => {
+  if (test('treats COMPACT_THRESHOLD=10001 as disabled (out of range)', () => {
     cleanupCounter();
     fs.writeFileSync(counterFile, '49');
     const result = runCompact({ CLAUDE_SESSION_ID: testSession, COMPACT_THRESHOLD: '10001' });
-    // 10001 > 10000, invalid, falls back to 50, count becomes 50 → should suggest
+    // 10001 > 10000, out of range → disabled, not a silent fallback
     assert.ok(
-      result.stderr.includes('50 tool calls reached'),
-      `Should fallback to 50 for threshold=10001. Got stderr: ${result.stderr}`
+      !result.stderr.includes('tool calls'),
+      `threshold=10001 should disable the suggestion. Got stderr: ${result.stderr}`
     );
     cleanupCounter();
   })) passed++;

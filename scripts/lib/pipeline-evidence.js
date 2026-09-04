@@ -8,6 +8,7 @@ const PIPELINE_EVENT_TYPES = new Set([
   'pipeline_started',
   'run_started',
   'task_run_started',
+  'run_created',
 ]);
 
 function getClaudeRunsDir(options = {}) {
@@ -63,16 +64,7 @@ function runSortTime(runDir, meta) {
   }
 }
 
-function isPipelineEvidenceRequired(meta = {}) {
-  const taskType = String(meta.task_type || '').trim();
-  const track = String(meta.track || meta.task_track || '').trim();
-  return (
-    taskType === 'non_trivial' ||
-    meta.worktree_required === 'true' ||
-    track === 'standard' ||
-    track === 'heavy-risky'
-  );
-}
+// 重み判定は hooks 側の linked worktree 検査が持つ（旧 isPipelineEvidenceRequired は撤去）。
 
 function findLatestPipelineEvidence(repoRoot, options = {}) {
   const normalizedRepo = normalizePath(repoRoot);
@@ -110,7 +102,8 @@ function findLatestPipelineEvidence(repoRoot, options = {}) {
   }
 
   matches.sort((left, right) => right.sortTime - left.sortTime || right.run_id.localeCompare(left.run_id));
-  const { sortTime, ...run } = matches[0];
+  // sortTime は並べ替え用の内部フィールドなので、返す run からは落とす
+  const { sortTime: _sortTime, ...run } = matches[0];
   return {
     found: true,
     run,
@@ -123,9 +116,6 @@ function formatMissingPipelineEvidenceWarning(result) {
 }
 
 module.exports = {
-  PIPELINE_EVENT_TYPES,
   findLatestPipelineEvidence,
   formatMissingPipelineEvidenceWarning,
-  getClaudeRunsDir,
-  isPipelineEvidenceRequired,
 };

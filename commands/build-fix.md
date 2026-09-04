@@ -88,5 +88,5 @@ Fix one error at a time for safety. Prefer minimal diffs over refactoring.
 ## Next Handoff
 
 - If build/type failures are fixed, run `/verify`.
-- If root cause requires design changes, return to `/plan` or `/plan-task`.
+- If root cause requires design changes, return to `/grill-me` and add a new `docs/design/` entry before the next attempt.
 - If the fix changed behavior, update tests and observation requirements before `/eval`.

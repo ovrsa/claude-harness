@@ -17,17 +17,17 @@ node ~/.claude/scripts/harness-status.js --format json
 ## Reads
 
 - git branch, working tree, latest commit, and remote presence
-- lifecycle artifacts: `research.md`, `plan.md`, `progress.md`, `review-summary.md`, `verification-summary.md`, `observation-summary.md`
+- lifecycle artifacts: `research.md`, `docs/design/` の最新の1枚, `review-summary.md`, `verification-summary.md`, `observation-summary.md`
 - latest pipeline evidence under `~/.claude/runs`
 - task queue state under `~/.claude/tasks/index.json`
-- optional runtime checkpoint state from telemetry SQLite when available
+- the latest run record's recorded next action and residual risks, from `runs/<id>/evidence/review.json`
 
 ## Recommendation Priority
 
 1. Dirty working tree: review, verify, then commit or continue active edits.
 2. Lifecycle blocker: resolve the narrowest open lifecycle gate.
 3. Blocked or running task queue item: inspect/recover before starting new work.
-4. Clean and verified lifecycle: continue from the current `progress.md` next action.
+4. Clean and verified lifecycle: continue from git (branch, log, diff) and the design doc's Open Issues.
 5. Missing remote or missing pipeline evidence: report as secondary action unless it blocks the current work.
 
 ## Output Contract

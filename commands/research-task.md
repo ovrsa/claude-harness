@@ -1,12 +1,12 @@
 ---
-description: Local fallback for persistent research artifacts when durable context is needed before Superpowers planning.
+description: Persistent research artifact for when durable context is needed before planning.
 ---
 
 # Research Task
 
 Use this command when durable local research is needed before pipeline planning, or when the repository needs a persistent research artifact.
 
-`/research-task` is the local artifact-producing research path. It is not required for trivial tasks and should not be used as a competing default when Superpowers can gather enough context for planning.
+`/research-task` is the artifact-producing research path and `/research` is the conversational one. Neither is required for trivial work.
 
 ## Required behavior
 
@@ -25,7 +25,7 @@ Use this command when durable local research is needed before pipeline planning,
 
 - Do not skip directly to planning.
 - Do not keep output only in chat.
-- Do not make architecture commitments that belong in `plan.md`.
+- Do not make architecture commitments that belong in the design doc.
 - If research is shallow, continue until a planner can work from the file alone.
 
 ## Relationship To `/research`

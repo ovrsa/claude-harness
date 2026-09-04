@@ -11,7 +11,6 @@
 
 const {
   getSessionsDir,
-  getLearnedSkillsDir,
   findFiles,
   ensureDir,
   readFile,
@@ -22,37 +21,39 @@ const {
 const { getPackageManager, getSelectionPrompt } = require('../lib/package-manager');
 const { listAliases } = require('../lib/session-aliases');
 const { detectProjectType } = require('../lib/project-detect');
-const { getRepoRoot, buildArtifactContext } = require('../lib/task-artifacts');
-const {
-  recordSessionEvent,
-  recordLifecycleSnapshot,
-  getRunId,
-  getLatestRunState,
-  formatResumeState,
-} = require('../lib/session-trace');
+const { getRepoRoot } = require('../lib/task-artifacts');
+const { recordSessionStart, resolveRunSlug, resolveBranch } = require('../lib/run-record');
+const { resolveResumeState } = require('../lib/run-log');
+const { recordLifecycleGates } = require('../lib/lifecycle-record');
 
 async function main() {
   const sessionsDir = getSessionsDir();
-  const learnedDir = getLearnedSkillsDir();
   const repoRoot = getRepoRoot(process.cwd());
-  const artifactContext = buildArtifactContext(repoRoot);
   const sessionId = getRuntimeSessionId() || undefined;
-  const runId = getRunId(sessionId);
-  const persistedState = repoRoot
-    ? (getLatestRunState({ repoRoot }) || getLatestRunState())
-    : getLatestRunState();
+
+  // The SQLite run_state row is gone. Measured 2026-08-20 with all three gate
+  // artifacts present: every non-empty field it contributed already appeared in
+  // buildArtifactContext, which also had next_required_action and detail. The
+  // narrative fields (current_phase / current_step / next_action / blockers)
+  // came from progress.md and have been empty since 2026-08-17.
+  // resolveResumeState handles an empty repoRoot itself, so no branch here.
+  const resume = resolveResumeState({ repoRoot });
 
   // Ensure directories exist
   ensureDir(sessionsDir);
-  ensureDir(learnedDir);
 
   // Check for recent session files (last 7 days)
   const recentSessions = findFiles(sessionsDir, '*-session.tmp', { maxAge: 7 });
 
-  if (persistedState) {
-    output(formatResumeState(persistedState));
-  } else if (artifactContext) {
-    output(artifactContext);
+  if (resume.context) {
+    output(resume.context);
+  } else if (resume.expected) {
+    // A run record holds evidence for this repository but the artifacts are
+    // gone, so the task is over. Falling through to the session .tmp branch
+    // would replace one wrong answer with a worse one: those files are not
+    // repo-scoped, so the newest one belongs to whichever project was touched
+    // last. Nothing is the honest output.
+    log(`[SessionStart] No current task state to restore (evidence remains in runs/${resume.runId})`);
   } else if (recentSessions.length > 0) {
     const latest = recentSessions[0];
     log(`[SessionStart] Found ${recentSessions.length} recent session(s)`);
@@ -64,13 +65,6 @@ async function main() {
       // Only inject if the session has actual content (not the blank template)
       output(`Previous session summary:\n${content}`);
     }
-  }
-
-  // Check for learned skills
-  const learnedSkills = findFiles(learnedDir, '*.md');
-
-  if (learnedSkills.length > 0) {
-    log(`[SessionStart] ${learnedSkills.length} learned skill(s) available in ${learnedDir}`);
   }
 
   // Check for available session aliases
@@ -108,33 +102,28 @@ async function main() {
     log('[SessionStart] No specific project type detected');
   }
 
-  recordSessionEvent({
-    sessionId,
-    runId,
-    eventType: 'session_started',
-    status: persistedState ? 'resumed' : (artifactContext ? 'artifact_resumed' : 'started'),
-    repoRoot: repoRoot || '',
-    cwd: process.cwd(),
-    taskPhase: persistedState?.currentPhase || '',
-    metadata: {
-      frameworks: projectInfo.frameworks,
-      languages: projectInfo.languages,
-      recent_session_count: recentSessions.length,
-      resume_success: Boolean(persistedState || artifactContext),
-      resume_source: persistedState ? 'sqlite' : (artifactContext ? 'artifacts' : (recentSessions.length > 0 ? 'session_tmp' : 'none')),
-    },
-    createdBy: 'session-start',
-  });
-
   if (repoRoot) {
-    recordLifecycleSnapshot({
-      sessionId,
-      runId,
-      repoRoot,
-      cwd: process.cwd(),
-      includeArtifactContextLoaded: true,
-      createdBy: 'session-start',
-    });
+    // Recording must never keep a session from starting, so both writes are
+    // guarded. Gate evidence first: it is the copy that survives ExitWorktree.
+    try {
+      const branch = resolveBranch(repoRoot);
+      const runId = resolveRunSlug({ repoRoot, branch, sessionId });
+
+      recordLifecycleGates({ repoRoot, runId, sessionId, branch, cwd: process.cwd() });
+
+      recordSessionStart({
+        repoRoot,
+        runId,
+        sessionId,
+        branch,
+        resumeExpected: resume.expected,
+        resumeSuccess: resume.success,
+        resumeReason: resume.reason,
+        resumeSource: resume.source,
+      });
+    } catch {
+      // Intentionally silent.
+    }
   }
 
   process.exit(0);

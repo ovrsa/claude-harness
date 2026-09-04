@@ -1,40 +1,34 @@
 #!/usr/bin/env node
 'use strict';
 
-const { getRuntimeKind, getRuntimeSessionId } = require('../lib/utils');
+/**
+ * The codex-bridge counterpart of session-end-marker.js: capture the gate
+ * evidence as the session ends.
+ *
+ * The `session_ended` row it also wrote is gone with the table. Its
+ * `bridge_mode: 'manual'` metadata was the input to a health detector retired
+ * on 2026-08-20 -- that value was never recorded once in the entire telemetry
+ * history, because this hook only writes on session end while the detector read
+ * `session_started`.
+ */
+
+const { getRuntimeSessionId } = require('../lib/utils');
 const { getRepoRoot } = require('../lib/task-artifacts');
-const { recordSessionEvent, recordLifecycleSnapshot, getRunId } = require('../lib/session-trace');
+const { resolveRunSlug, resolveBranch } = require('../lib/run-record');
+const { recordLifecycleGates } = require('../lib/lifecycle-record');
 
 function main() {
-  const runtime = getRuntimeKind();
   const sessionId = getRuntimeSessionId() || undefined;
-  const runId = getRunId(sessionId);
   const repoRoot = getRepoRoot(process.cwd()) || '';
+  if (!repoRoot) return;
 
-  if (repoRoot) {
-    recordLifecycleSnapshot({
-      sessionId,
-      runId,
-      repoRoot,
-      cwd: process.cwd(),
-      createdBy: 'runtime-session-end',
-      includeArtifactContextLoaded: false,
-    });
-  }
-
-  recordSessionEvent({
-    sessionId,
-    runId,
-    eventType: 'session_ended',
-    status: 'ended',
+  const branch = resolveBranch(repoRoot);
+  recordLifecycleGates({
     repoRoot,
+    runId: resolveRunSlug({ repoRoot, branch, sessionId }),
+    sessionId,
+    branch,
     cwd: process.cwd(),
-    createdBy: 'runtime-session-end',
-    metadata: {
-      runtime,
-      bridge_mode: 'manual',
-      final_status: 'persisted',
-    },
   });
 }
 

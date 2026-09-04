@@ -1,0 +1,14 @@
+{
+  "repo_root": "/Users/kyo/orca/workspaces/.claude/main",
+  "branch": "main",
+  "run_id": "2026-09-04-main",
+  "started_at": "2026-09-04T06:15:21.103Z",
+  "updated_at": "2026-09-04T09:08:08.599Z",
+  "gates": [
+    "observation",
+    "verification"
+  ],
+  "session_ids": [
+    "codex-session-01a038a9-4044-74f2-a171-dd7f142d6500"
+  ]
+}

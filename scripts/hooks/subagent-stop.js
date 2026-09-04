@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
 const {
   readStdinJson,
@@ -11,12 +10,6 @@ const {
   findFiles,
   getDateTimeString,
 } = require('../lib/utils');
-const {
-  getRepoRoot,
-  parseProgressState,
-  writeProgressCheckpoint,
-  writeProgressDelegatedHandoff,
-} = require('../lib/task-artifacts');
 
 function summarize(input) {
   const goal =
@@ -103,33 +96,9 @@ async function main() {
     appendFile(sessions[0].path, `${lines.join('\n')}\n`);
   }
 
-  const repoRoot = getRepoRoot(process.cwd());
-  const progressPath = repoRoot ? path.join(repoRoot, 'progress.md') : null;
-  if (progressPath && fs.existsSync(progressPath)) {
-    const progress = parseProgressState(fs.readFileSync(progressPath, 'utf8'));
-    writeProgressDelegatedHandoff(progressPath, {
-      updatedAt: getDateTimeString(),
-      agent: summary.agent,
-      status: summary.status,
-      goal: summary.goal,
-      result: summary.summary,
-      filesTouched: summary.filesTouched ? summary.filesTouched.split(/\s*,\s*/) : [],
-      verificationRun: summary.verificationRun ? summary.verificationRun.split(/\s*\|\s*/) : [],
-      openRisks: summary.openRisks,
-      nextAction: summary.nextAction,
-    });
-    writeProgressCheckpoint(progressPath, {
-      updatedAt: getDateTimeString(),
-      event: 'subagent-stop',
-      currentPhase: progress.currentPhase,
-      lastCompletedStep: summary.summary || progress.lastCompletedStep,
-      suggestedNextAction: summary.nextAction || (progress.nextActionExplicitNone ? 'none' : progress.nextAction),
-      blockers: progress.blockers,
-      delegatedWork: progress.delegatedWork.length > 0
-        ? progress.delegatedWork
-        : (summary.goal ? [`${summary.agent}: ${summary.goal}`] : []),
-    });
-  }
+  // progress.md への handoff / checkpoint 書き込みは 2026-08-17 に撤去した
+  // （経緯: docs/design/2026-08-17-lifecycle-five-steps.md）。
+  // handoff は上のセッションファイルへの追記として残る。
 }
 
 main().catch(() => process.exit(0));

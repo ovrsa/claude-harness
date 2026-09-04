@@ -14,7 +14,6 @@ const {
   summarizeCurrentTriage,
   formatTriageStatus,
 } = require('../../scripts/lib/triage-loop');
-const { createDatabase, recordSessionEvent } = require('../../scripts/lib/session-trace');
 
 function test(name, fn) {
   try {
@@ -113,80 +112,72 @@ function runTests() {
   if (test('summarizes registry and telemetry-backed health into triage output', () => {
     const dir = createTempDir();
     try {
-      const dbPath = path.join(dir, 'telemetry.db');
       const registryPath = path.join(dir, 'guardrail-candidates.jsonl');
 
       writeRegistry(registryPath, [
         {
-          candidate_key: 'plan::missing::hook',
-          failure_pattern: 'plan_missing_or_skipped',
+          candidate_key: 'registry::recurring::hook',
+          failure_pattern: 'example_registry_pattern',
           recommended_layer: 'hook',
-          source_artifact: 'plan.md',
-          promotion_hint: 'enforce approved plan before execution',
+          source_artifact: 'docs/how-to/run-a-task.md',
+          promotion_hint: 'enforce the recurring fix at the narrowest layer',
           captured_at: '2026-04-16T00:00:00.000Z',
         },
         {
-          candidate_key: 'plan::missing::hook',
-          failure_pattern: 'plan_missing_or_skipped',
+          candidate_key: 'registry::recurring::hook',
+          failure_pattern: 'example_registry_pattern',
           recommended_layer: 'hook',
-          source_artifact: 'plan.md',
-          promotion_hint: 'enforce approved plan before execution',
+          source_artifact: 'docs/how-to/run-a-task.md',
+          promotion_hint: 'enforce the recurring fix at the narrowest layer',
           captured_at: '2026-04-17T00:00:00.000Z',
         },
       ]);
 
-      recordSessionEvent({
-        sessionId: 'session-triage',
-        runId: 'run-triage',
-        occurredAt: '2026-04-17T01:00:00.000Z',
-        eventType: 'session_started',
-        status: 'started',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { resume_success: false },
-      }, { dbPath });
+      // One genuine resume failure. Both runs/ and the transcripts must be
+      // sandboxed: telemetry-health reads runs/ directly, and leaving it unset
+      // lets the suite assert against the developer's real history.
+      const runsDir = path.join(dir, 'runs');
+      const transcriptDir = path.join(dir, 'projects');
+      const runDir = path.join(runsDir, '2026-04-17-triage');
+      fs.mkdirSync(path.join(runDir, 'logs'), { recursive: true });
+      fs.writeFileSync(
+        path.join(runDir, 'meta.json'),
+        `${JSON.stringify({ run_id: '2026-04-17-triage', started_at: '2026-04-17T00:00:00.000Z' })}\n`
+      );
+      fs.writeFileSync(
+        path.join(runDir, 'logs', 'events.ndjson'),
+        `${JSON.stringify({
+          occurred_at: '2026-04-17T01:00:00.000Z',
+          type: 'session_started',
+          session_id: 'session-triage',
+          resume_expected: true,
+          resume_success: false,
+        })}\n`
+      );
 
-      recordSessionEvent({
-        sessionId: 'session-manual-bridge',
-        runId: 'run-manual-bridge',
-        occurredAt: '2026-04-17T02:00:00.000Z',
-        eventType: 'session_started',
-        status: 'started',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: {
-          bridge_mode: 'manual',
-          runtime: 'codex',
-          resume_success: true,
-        },
-      }, { dbPath });
-
-      const db = createDatabase(dbPath);
-      db.prepare(`
-        UPDATE session_runs
-        SET plan_present = 1, verify_present = 1, review_present = 1, final_status = 'completed_clean'
-        WHERE run_id = 'run-manual-bridge'
-      `).run();
-      db.close();
+      fs.mkdirSync(transcriptDir, { recursive: true });
 
       const summary = summarizeCurrentTriage({
         registryPath,
-        dbPath,
+        runsDir,
+        transcriptDir,
         promotionThreshold: 3,
         recurringThreshold: 2,
         now: '2026-04-18T00:00:00.000Z',
       });
 
       assert.strictEqual(summary.recommendedNextTasks.length, 1);
-      assert.strictEqual(summary.monitorOnly.length, 3);
+      // plan_missing_or_skipped went 2026-08-19; the bridge observability pair
+      // and high_session_turn_count went 2026-08-20. resume_failed is the only
+      // telemetry detector left, and it is the only one that names a fault.
+      assert.strictEqual(summary.monitorOnly.length, 1);
 
       const formatted = formatTriageStatus(summary, { limit: 5 });
       assert.ok(formatted.includes('Triage Loop'));
       assert.ok(formatted.includes('Recommended Next Tasks:'));
       assert.ok(formatted.includes('Monitor Only:'));
-      assert.ok(formatted.includes('plan_missing_or_skipped'));
+      assert.ok(formatted.includes('example_registry_pattern'));
       assert.ok(formatted.includes('resume_failed'));
-      assert.ok(formatted.includes('manual_bridge_session_level_only'));
       assert.ok(formatted.includes('provenance=telemetry'));
     } finally {
       cleanup(dir);

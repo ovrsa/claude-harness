@@ -10,6 +10,10 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
+// runs/ は git 追跡なので、テストが実リポジトリの run 記録に
+// フィクスチャを混ぜないようにする（scripts/lib/run-record.js）。
+process.env.CLAUDE_DISABLE_RUN_RECORD = '1';
+
 const {
   summarizeHarnessStatus,
   formatHarnessStatus,
@@ -65,71 +69,6 @@ function writeFile(repo, name, content) {
 
 function writeCompleteArtifacts(repo, nextAction = 'Observe warning frequency before tightening enforcement.') {
   writeFile(repo, 'research.md', '# Research\n\n- done\n');
-  writeFile(repo, 'plan.md', [
-    '---',
-    'status: approved',
-    'task_type: non_trivial',
-    'worktree_required: true',
-    'review_required: true',
-    'observe_required: false',
-    '---',
-    '',
-    '# Plan',
-    '',
-    '## Summary',
-    '- Build a status surface.',
-    '',
-    '## Acceptance Criteria',
-    '- Reports next action.',
-    '',
-    '## Touched Files',
-    '- scripts/lib/harness-status.js',
-    '',
-    '## Behavior Spec',
-    '- Given a clean verified lifecycle',
-    '- When status is requested',
-    '- Then it reports the next action',
-    '- normal: clean verified lifecycle',
-    '- boundary: missing remote',
-    '- abnormal: lifecycle blocker',
-    '',
-    '## Verify',
-    '- node tests/lib/harness-status.test.js',
-    '',
-    '## Test Evidence Plan',
-    '- RED command: node tests/lib/harness-status.test.js',
-    '- expected failure: status surface missing',
-    '- GREEN command: node tests/lib/harness-status.test.js',
-    '',
-    '## Evaluate',
-    '- Review output priority.',
-    '',
-    '## Observe',
-    '- required: no',
-    '',
-    '## Execution Todo',
-    '- [x] implement',
-    '',
-  ].join('\n'));
-  writeFile(repo, 'progress.md', [
-    '# Progress',
-    '',
-    '## Current Phase',
-    '- Ready to continue',
-    '',
-    '## Last Completed Step',
-    '- Completed verification and review',
-    '',
-    '## Next Action',
-    `- ${nextAction}`,
-    '',
-    '## Blockers',
-    '- none',
-    '',
-    '## Delegated Work',
-    '- none',
-    '',
-  ].join('\n'));
   writeFile(repo, 'verification-summary.md', [
     '# Verification Summary',
     '',
@@ -152,13 +91,49 @@ function writeCompleteArtifacts(repo, nextAction = 'Observe warning frequency be
     '## Review Scope',
     '- harness status behavior',
     '',
+    '## Design Compliance',
+    '- matches the design doc',
+    '',
+    '## Security',
+    '- no decision boundary touched',
+    '',
+    '## Comment Adequacy',
+    '- unchanged',
+    '',
+    '## Code Quality',
+    '- acceptable',
+    '',
+    '## Test Adequacy',
+    '- covered',
+    '',
     '## Findings',
     '- none',
     '',
     '## Residual Risks',
     '- none',
     '',
+    '## Guardrail Candidates',
+    '- none',
+    '',
     '## Next Action',
+    `- ${nextAction}`,
+    '',
+  ].join('\n'));
+  // observation is owed whenever verification exists (2026-08-20). plan.md's
+  // `observe_required: false` used to opt out of it; that field went with the file.
+  writeFile(repo, 'observation-summary.md', [
+    '# Observation Summary',
+    '',
+    '## Behavior Checked',
+    '- the status surface output',
+    '',
+    '## Method',
+    '- ran the command and read stdout',
+    '',
+    '## Evidence',
+    '- stdout listed the lifecycle chain',
+    '',
+    '## Remaining Uncertainty',
     '- none',
     '',
   ].join('\n'));
@@ -185,7 +160,7 @@ function runTests() {
   let passed = 0;
   let failed = 0;
 
-  if (test('recommends progress next action for clean verified lifecycle', () => {
+  if (test('reports READY for a clean verified lifecycle', () => {
     const dir = createTempDir();
     try {
       const repo = initRepo(dir);
@@ -197,7 +172,8 @@ function runTests() {
       assert.strictEqual(summary.repo.workingTree, 'clean');
       assert.strictEqual(summary.lifecycle.currentStepId, 'complete');
       assert.strictEqual(summary.pipeline.found, true);
-      assert.ok(summary.recommendedAction.includes('Tighten the next guardrail'));
+      // 次の動作は run 記録の review 証拠から読む。フィクスチャは持たないので既定文言に落ちる。
+      assert.ok(summary.recommendedAction.includes('Continue with the next'));
     } finally {
       cleanup(dir);
     }
@@ -223,19 +199,30 @@ function runTests() {
     const dir = createTempDir();
     try {
       const repo = initRepo(dir);
-      writeFile(repo, 'plan.md', [
-        '---',
-        'status: draft',
-        'task_type: non_trivial',
-        '---',
+      // Was `plan.md status=draft`. plan.md is no longer scanned (2026-08-20);
+      // an incomplete gate artifact is what blocks now.
+      writeFile(repo, 'verification-summary.md', [
+        '# Verification Summary',
         '',
-        '# Plan',
+        '## Scope',
+        '- the change',
+        '',
+        '## Commands Run',
+        '- none yet',
+        '',
+        '## Verification Outcome',
+        '',
+        '## Assessment',
+        '',
       ].join('\n'));
-      commitAll(repo, 'Add draft plan');
+      commitAll(repo, 'Add incomplete verification');
 
       const summary = summarizeHarnessStatus({ repoRoot: repo, homeDir: dir });
       assert.strictEqual(summary.status, 'BLOCKED');
-      assert.ok(summary.lifecycle.blocked.includes('plan.md status=draft'));
+      assert.ok(
+        summary.lifecycle.blocked.some(entry => entry.startsWith('incomplete verification-summary.md')),
+        JSON.stringify(summary.lifecycle.blocked)
+      );
       assert.ok(summary.recommendedAction.includes('Resolve lifecycle blocker'));
     } finally {
       cleanup(dir);
@@ -275,6 +262,93 @@ function runTests() {
     } finally {
       cleanup(dir);
     }
+  })) passed++; else failed++;
+
+  if (test('the next action comes from the run record, not SQLite', () => {
+    const dir = createTempDir();
+    try {
+      const repo = initRepo(dir);
+      writeCompleteArtifacts(repo);
+      writeRun(dir, repo, 'run-ready');
+
+      // run_state.next_action was filled from progress.md, retired 2026-08-17.
+      // Every row written since is empty; the last non-empty one is dated
+      // 2026-08-17T06:55. review-summary.md's "## Next Action" is written by
+      // hand and survives in evidence/review.json.
+      const runsDir = path.join(dir, 'runs');
+      const runDir = path.join(runsDir, '2026-08-20-my-task');
+      fs.mkdirSync(path.join(runDir, 'evidence'), { recursive: true });
+      fs.writeFileSync(
+        path.join(runDir, 'meta.json'),
+        `${JSON.stringify({
+          run_id: '2026-08-20-my-task',
+          repo_root: repo,
+          branch: 'worktree-my-task',
+          started_at: '2026-08-20T00:00:00.000Z',
+          updated_at: '2026-08-20T01:00:00.000Z',
+        }, null, 2)}\n`
+      );
+      fs.writeFileSync(
+        path.join(runDir, 'evidence', 'review.json'),
+        `${JSON.stringify({
+          kind: 'review',
+          captured_at: '2026-08-20T01:00:00.000Z',
+          body: '# Review\n',
+          state: { complete: true, parsedFindings: [], nextAction: 'Merge the branch and remove the worktree.' },
+        }, null, 2)}\n`
+      );
+
+      const summary = summarizeHarnessStatus({ repoRoot: repo, homeDir: dir, runsDir });
+      assert.strictEqual(summary.runtime.present, true);
+      assert.strictEqual(summary.runtime.state.runId, '2026-08-20-my-task');
+      assert.strictEqual(summary.runtime.state.nextAction, 'Merge the branch and remove the worktree.');
+      assert.ok(
+        summary.recommendedAction.includes('Merge the branch'),
+        `expected the run record's next action, got: ${summary.recommendedAction}`
+      );
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('a run record for a different repository is not picked up', () => {
+    const dir = createTempDir();
+    try {
+      const repo = initRepo(dir);
+      writeCompleteArtifacts(repo);
+      writeRun(dir, repo, 'run-ready');
+
+      const runsDir = path.join(dir, 'runs');
+      const runDir = path.join(runsDir, '2026-08-20-elsewhere');
+      fs.mkdirSync(path.join(runDir, 'evidence'), { recursive: true });
+      fs.writeFileSync(
+        path.join(runDir, 'meta.json'),
+        `${JSON.stringify({ run_id: '2026-08-20-elsewhere', repo_root: '/some/other/repo', started_at: '2026-08-20T00:00:00.000Z' }, null, 2)}\n`
+      );
+      fs.writeFileSync(
+        path.join(runDir, 'evidence', 'review.json'),
+        `${JSON.stringify({ kind: 'review', body: '#\n', state: { nextAction: 'Do something in the other repo.' } }, null, 2)}\n`
+      );
+
+      const summary = summarizeHarnessStatus({ repoRoot: repo, homeDir: dir, runsDir });
+      assert.strictEqual(summary.runtime.present, false);
+      assert.ok(!summary.recommendedAction.includes('other repo'));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
+  if (test('harness-status does not shell out to sqlite3', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'scripts', 'lib', 'harness-status.js'),
+      'utf8'
+    );
+    // The old query interpolated repoRoot into SQL and depended on the sqlite3
+    // binary being on PATH. Both go away with the column it read. Matching on
+    // invocation rather than the word: the comment explaining the removal
+    // names sqlite3, and a test that forbids the word forbids the explanation.
+    assert.ok(!/spawnSync\(\s*'sqlite3'/.test(source), 'harness-status must not invoke sqlite3');
+    assert.ok(!/FROM\s+run_state/i.test(source), 'harness-status must not query run_state');
   })) passed++; else failed++;
 
   if (test('formats concise text output', () => {

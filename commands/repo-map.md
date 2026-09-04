@@ -32,6 +32,15 @@ The preferred target is root `AGENTS.md`.
 - `Repository Purpose`
 - `Read First`
 - `Source Of Truth`
+- `Mistakes To Avoid`
+- `Out-Of-Repo Realities`
 - `Artifact Expectations`
 - `Verify And Observe`
 - `Local Boundaries`
+
+## Documentation standard
+
+`AGENTS.md` の運用（~100行・追記only・値を書かない・索引を作らない）は
+`~/.claude/rules/common/documentation.md` が正本。
+
+`docs/` 側の構築は `/docs-build` が担う。このコマンドは `AGENTS.md` だけを扱う。

@@ -1,0 +1,4 @@
+interface:
+  display_name: "DX Delivery Diagram Workflow"
+  short_description: "DX 推進の問答から図解と実装前整理までつなぐ skill"
+  default_prompt: "Use $dx-diagram-skill to turn this rough DX context into the right level of analysis, stakeholder mapping, swimlane intake, current/future diagrams, implementation-critical Mermaid sequence diagrams when needed, C4 diagrams, prioritization notes, and implementation-ready artifacts."

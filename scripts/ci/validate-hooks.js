@@ -1,14 +1,37 @@
 #!/usr/bin/env node
 /**
- * Validate hooks.json schema
+ * settings.json の hooks スキーマを検証する。
+ *
+ * 2026-08-15 まで、この検証の主対象は hooks/hooks.json だった。同じ24スクリプトを
+ * settings.json と二重に配線しており、実際に読まれるのは settings.json だけなので、
+ * 片方だけ直すともう片方が黙って古いまま残った（expression-style matcher が両方に
+ * 生き残った実例がある）。そのためのドリフト検出まで作っていた。
+ * 二重配線ごと撤去し、動いている設定を直接検証する。
  */
 
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const HOOKS_FILE = path.join(__dirname, '../../hooks/hooks.json');
-const VALID_EVENTS = ['PreToolUse', 'PostToolUse', 'PreCompact', 'SessionStart', 'SessionEnd', 'Stop', 'Notification', 'SubagentStop', 'PermissionRequest'];
+// 定数名は HOOKS_FILE のまま。tests/ci/validators.test.js が定数名でパスを差し替える。
+const HOOKS_FILE = path.join(__dirname, '../../settings.json');
+const VALID_EVENTS = ['PreToolUse', 'PostToolUse', 'PreCompact', 'SessionStart', 'SessionEnd', 'Stop', 'Notification', 'SubagentStop', 'PermissionRequest', 'UserPromptSubmit'];
+
+// Matchers are tool-name patterns ("Edit|Write|MultiEdit", "Bash", "*"), not expressions.
+// An expression-style matcher (tool == "Edit" || ...) does not filter, so the hook runs on
+// every tool call — including read-only ones. Reject the syntax instead of trusting it.
+const EXPRESSION_MATCHER_TOKENS = ['==', '!=', '&&', '||', 'matches', 'tool_input', 'tool_name'];
+
+function validateMatcherSyntax(matcher, label) {
+  if (typeof matcher !== 'string') return false;
+  const offending = EXPRESSION_MATCHER_TOKENS.filter(token => matcher.includes(token));
+  if (offending.length === 0) return false;
+  console.error(
+    `ERROR: ${label} uses expression-style matcher syntax (${offending.join(', ')}): ${matcher}\n` +
+    '       Matchers must be tool-name patterns such as "Edit|Write|MultiEdit", "Bash", or "*".'
+  );
+  return true;
+}
 
 /**
  * Validate a single hook entry has required fields and valid inline JS
@@ -55,7 +78,7 @@ function validateHookEntry(hook, label) {
 
 function validateHooks() {
   if (!fs.existsSync(HOOKS_FILE)) {
-    console.log('No hooks.json found, skipping validation');
+    console.log('No settings.json found, skipping validation');
     process.exit(0);
   }
 
@@ -63,7 +86,7 @@ function validateHooks() {
   try {
     data = JSON.parse(fs.readFileSync(HOOKS_FILE, 'utf-8'));
   } catch (e) {
-    console.error(`ERROR: Invalid JSON in hooks.json: ${e.message}`);
+    console.error(`ERROR: Invalid JSON in settings.json: ${e.message}`);
     process.exit(1);
   }
 
@@ -96,6 +119,8 @@ function validateHooks() {
         }
         if (!matcher.matcher) {
           console.error(`ERROR: ${eventType}[${i}] missing 'matcher' field`);
+          hasErrors = true;
+        } else if (validateMatcherSyntax(matcher.matcher, `settings.json ${eventType}[${i}]`)) {
           hasErrors = true;
         }
         if (!matcher.hooks || !Array.isArray(matcher.hooks)) {
@@ -134,7 +159,7 @@ function validateHooks() {
       totalMatchers++;
     }
   } else {
-    console.error('ERROR: hooks.json must be an object or array');
+    console.error('ERROR: settings.json hooks must be an object or array');
     process.exit(1);
   }
 

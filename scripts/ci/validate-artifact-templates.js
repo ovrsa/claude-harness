@@ -5,7 +5,6 @@ const fs = require('fs');
 const path = require('path');
 const {
   parseObservationState,
-  parsePlanState,
   parseReviewState,
   parseVerificationState,
 } = require('../lib/task-artifacts');
@@ -13,19 +12,10 @@ const {
 const ROOT_DIR = path.join(__dirname, '../..');
 const TEMPLATE_DIR = path.join(ROOT_DIR, 'templates');
 
+// plan-template.md は 2026-08-17 に撤去した。RED/GREEN の証拠要求はここから
+// verification-summary-template.md の `RED Evidence` 節へ移った。
+// 雛形が復活していないことは audit-harness-contract.js の retired-artifact が見る。
 const TEMPLATE_CHECKS = [
-  {
-    file: 'plan-template.md',
-    parser: parsePlanState,
-    extra(state) {
-      const errors = [];
-      if (!state.hasGivenWhenThen) errors.push('Behavior Spec must include Given / When / Then');
-      if (!state.hasCaseCoverage) errors.push('Behavior Spec must include normal / boundary / abnormal cases');
-      if (!state.hasTddEvidencePlan) errors.push('Test Evidence Plan must include RED/GREEN evidence fields');
-      if (!state.hasExecutionCheckboxes) errors.push('Execution Todo must include checkbox tasks');
-      return errors;
-    },
-  },
   {
     file: 'review-summary-template.md',
     parser: parseReviewState,
@@ -33,6 +23,9 @@ const TEMPLATE_CHECKS = [
   {
     file: 'verification-summary-template.md',
     parser: parseVerificationState,
+    extra(_state, content) {
+      return /^##\s+RED Evidence/m.test(content) ? [] : ['Verification template must include a RED Evidence section'];
+    },
   },
   {
     file: 'observation-summary-template.md',
@@ -53,7 +46,10 @@ function main() {
       continue;
     }
 
-    const state = check.parser(fs.readFileSync(filePath, 'utf8'));
+    // extra() には本文も渡す。パーサが必須節しか返さないので、節の存在そのものを
+    // 検査したい場合（RED Evidence など）に state だけでは足りない。
+    const content = fs.readFileSync(filePath, 'utf8');
+    const state = check.parser(content);
     if (state.missingSections && state.missingSections.length > 0) {
       errors.push(`${check.file}: missing sections ${state.missingSections.join(', ')}`);
     }
@@ -61,7 +57,7 @@ function main() {
       errors.push(`${check.file}: empty sections ${state.missingValues.join(', ')}`);
     }
     if (check.extra) {
-      for (const error of check.extra(state)) {
+      for (const error of check.extra(state, content)) {
         errors.push(`${check.file}: ${error}`);
       }
     }

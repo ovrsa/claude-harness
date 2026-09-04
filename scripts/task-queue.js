@@ -7,7 +7,6 @@ const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 
 const { ensureDir, getClaudeDir } = require('./lib/utils');
-const { recordTaskRun } = require('./lib/session-trace');
 const {
   checkCloneMerge,
   deleteCloneWorkspace,
@@ -302,14 +301,6 @@ function finalizeTaskRun({
   task.current_run_id = runId;
   task.updated_at = occurredAt;
 
-  recordTaskRun({
-    taskId: task.task_id,
-    runId,
-    repoRoot,
-    objective: task.title,
-    status: finalStatus,
-    occurredAt,
-  });
 
   return meta;
 }
@@ -353,14 +344,6 @@ function startTask(options, claudeDir = getClaudeDir()) {
   task.updated_at = occurredAt;
   writeIndex(index, claudeDir);
 
-  recordTaskRun({
-    taskId,
-    runId,
-    repoRoot,
-    objective: task.title,
-    status: 'running',
-    occurredAt,
-  });
 
   return {
     status: 'RUN_CREATED',
@@ -526,14 +509,6 @@ function recoverRunningTasks(claudeDir = getClaudeDir()) {
     if (meta && (meta.status === 'done' || meta.status === 'blocked')) {
       task.status = meta.status;
       task.updated_at = occurredAt;
-      recordTaskRun({
-        taskId: task.task_id,
-        runId,
-        repoRoot: meta.repo_root || '',
-        objective: task.title,
-        status: meta.status,
-        occurredAt,
-      });
       recovered += 1;
       continue;
     }
@@ -591,14 +566,6 @@ function reconcileRuns(claudeDir = getClaudeDir()) {
       task.current_run_id = runId;
       task.updated_at = occurredAt;
     }
-    recordTaskRun({
-      taskId: task.task_id,
-      runId,
-      repoRoot: meta.repo_root || '',
-      objective: task.title,
-      status: nextStatus,
-      occurredAt,
-    });
     appendRunEvent(runDir, {
       type: 'run_reconciled',
       occurred_at: occurredAt,

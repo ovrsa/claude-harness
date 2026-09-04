@@ -1,24 +1,18 @@
 'use strict';
 
-const fs = require('fs');
+/**
+ * Health candidates derived from the JSON logs.
+ *
+ * Sources: runs/<id>/logs/events.ndjson for lifecycle outcomes, and Claude
+ * Code's own transcripts for session shape. SQLite is not consulted.
+ *
+ * Four detectors were retired rather than moved, because each read a column
+ * that no longer carries signal (see docs/design/2026-08-20-json-readers-and-
+ * dead-metrics.md). A detector that cannot stop firing is not a detector.
+ */
 
-const {
-  createDatabase,
-  getTelemetryDbPath,
-  isSqliteAvailable,
-} = require('./session-trace');
+const { resumeStats } = require('./run-log');
 const { normalizeGuardrailCandidate } = require('./guardrail-candidates');
-
-const DEFAULT_HIGH_INTERVENTION_THRESHOLD = 2;
-
-function safeJsonParse(value, fallback) {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
-}
 
 function buildTelemetryCandidate(candidate, options = {}) {
   return normalizeGuardrailCandidate(candidate, {
@@ -27,194 +21,68 @@ function buildTelemetryCandidate(candidate, options = {}) {
   });
 }
 
-function getResumeFailedCandidates(db) {
-  const rows = db.prepare(`
-    SELECT occurred_at, run_id, session_id, metadata_json
-    FROM session_events
-    WHERE event_type = 'session_started'
-    ORDER BY occurred_at DESC
-  `).all();
+/**
+ * Sessions that had state available and did not restore it.
+ *
+ * `resume_expected` is what makes this a failure rather than a fresh start.
+ * Without it, resume_success === false alone counted every new worktree, which
+ * is how 382 of 471 candidates came to be new worktrees.
+ */
+function getResumeFailedCandidates(options = {}) {
+  const stats = resumeStats(options);
 
-  return rows
-    .map(row => ({
-      row,
-      metadata: safeJsonParse(row.metadata_json, {}),
-    }))
-    .filter(({ metadata }) => metadata.resume_success === false)
-    .map(({ row, metadata }) => buildTelemetryCandidate({
-      failure_pattern: 'resume_failed',
-      source: 'telemetry:session_started',
-      source_artifact: 'progress.md',
-      example: `run_id=${row.run_id}; session_id=${row.session_id}; resume_reason=${String(metadata.resume_reason || 'unknown')}`,
-      recommended_layer: 'hook',
-      severity: 'high',
-      confidence: 'high',
-      false_positive_risk: 'low',
-      promotion_hint: 'improve session resume and artifact rehydration',
-    }, {
-      capturedAt: row.occurred_at,
-      sourceArtifact: 'progress.md',
-    }));
-}
-
-function getPlanMissingCandidates(db) {
-  const rows = db.prepare(`
-    SELECT run_id, session_id, started_at, ended_at, final_status
-    FROM session_runs
-    WHERE plan_present = 0
-    ORDER BY started_at DESC
-  `).all();
-
-  return rows.map(row => buildTelemetryCandidate({
-    failure_pattern: 'plan_missing_or_skipped',
-    source: 'telemetry:session_runs',
-    source_artifact: 'plan.md',
-    example: `run_id=${row.run_id}; session_id=${row.session_id}; final_status=${String(row.final_status || 'unknown')}`,
+  return stats.failures.map(failure => buildTelemetryCandidate({
+    failure_pattern: 'resume_failed',
+    source: 'runs:session_started',
+    // progress.md was the resume source until 2026-08-17. Pointing at it would
+    // send the operator to a file the harness no longer creates.
+    source_artifact: 'docs/design/2026-08-17-lifecycle-five-steps.md',
+    example: `run_id=${failure.runId}; session_id=${failure.sessionId}; resume_reason=${failure.reason}`,
     recommended_layer: 'hook',
     severity: 'high',
     confidence: 'high',
     false_positive_risk: 'low',
-    promotion_hint: 'enforce approved plan before execution',
+    promotion_hint: 'improve session resume and artifact rehydration',
   }, {
-    capturedAt: row.ended_at || row.started_at,
-    sourceArtifact: 'plan.md',
+    capturedAt: failure.occurredAt,
+    sourceArtifact: 'docs/design/2026-08-17-lifecycle-five-steps.md',
   }));
 }
 
-function getVerificationMissingCandidates(db) {
-  const rows = db.prepare(`
-    SELECT run_id, session_id, started_at, ended_at, final_status
-    FROM session_runs
-    WHERE plan_present = 1 AND verify_present = 0
-    ORDER BY started_at DESC
-  `).all();
-
-  return rows.map(row => buildTelemetryCandidate({
-    failure_pattern: 'verification_missing_before_completion',
-    source: 'telemetry:session_runs',
-    source_artifact: 'verification-summary.md',
-    example: `run_id=${row.run_id}; session_id=${row.session_id}; final_status=${String(row.final_status || 'unknown')}`,
-    recommended_layer: 'hook',
-    severity: 'high',
-    confidence: 'high',
-    false_positive_risk: 'low',
-    promotion_hint: 'enforce verification before completion',
-  }, {
-    capturedAt: row.ended_at || row.started_at,
-    sourceArtifact: 'verification-summary.md',
-  }));
-}
-
-function getHighInterventionCandidates(db, threshold = DEFAULT_HIGH_INTERVENTION_THRESHOLD) {
-  const rows = db.prepare(`
-    SELECT run_id, session_id, started_at, ended_at, final_status, human_intervention_count
-    FROM session_runs
-    WHERE human_intervention_count >= ?
-    ORDER BY started_at DESC
-  `).all(threshold);
-
-  return rows.map(row => buildTelemetryCandidate({
-    failure_pattern: 'high_human_intervention_run',
-    source: 'telemetry:session_runs',
-    source_artifact: 'progress.md',
-    example: `run_id=${row.run_id}; session_id=${row.session_id}; interventions=${Number(row.human_intervention_count) || 0}; final_status=${String(row.final_status || 'unknown')}`,
-    recommended_layer: 'docs',
-    severity: 'medium',
-    confidence: 'medium',
-    false_positive_risk: 'medium',
-    promotion_hint: 'clarify task and recovery guidance before execution',
-  }, {
-    capturedAt: row.ended_at || row.started_at,
-    sourceArtifact: 'progress.md',
-  }));
-}
-
-function getManualBridgeLimitedObservabilityCandidates(db) {
-  const rows = db.prepare(`
-    SELECT
-      r.run_id,
-      r.session_id,
-      r.started_at,
-      r.ended_at,
-      r.final_status,
-      r.plan_present,
-      r.verify_present,
-      r.review_present,
-      e.metadata_json,
-      COUNT(t.id) AS tool_execution_count
-    FROM session_runs r
-    JOIN session_events e
-      ON e.run_id = r.run_id
-     AND e.event_type = 'session_started'
-    LEFT JOIN tool_executions t
-      ON t.run_id = r.run_id
-    GROUP BY r.run_id, r.session_id, r.started_at, r.ended_at, r.final_status, r.plan_present, r.verify_present, r.review_present, e.metadata_json
-    ORDER BY r.started_at DESC
-  `).all();
-
-  return rows
-    .map(row => ({
-      row,
-      metadata: safeJsonParse(row.metadata_json, {}),
-    }))
-    .filter(({ row, metadata }) => (
-      (Number(row.tool_execution_count) || 0) === 0
-      && (
-        String(metadata.bridge_mode || '').trim().toLowerCase() === 'manual'
-        || (
-          Number(row.plan_present) === 1
-          && Number(row.verify_present) === 1
-          && Number(row.review_present) === 1
-        )
-      )
-    ))
-    .map(({ row, metadata }) => {
-      const bridgeMode = String(metadata.bridge_mode || '').trim().toLowerCase();
-      const isManualBridge = bridgeMode === 'manual';
-      return buildTelemetryCandidate({
-        failure_pattern: isManualBridge ? 'manual_bridge_session_level_only' : 'session_level_observability_only',
-        source: 'telemetry:session_started',
-        source_artifact: 'docs/codex-telemetry-bridge.md',
-        example: `run_id=${row.run_id}; session_id=${row.session_id}; runtime=${String(metadata.runtime || 'unknown')}; bridge_mode=${bridgeMode || 'unknown'}; final_status=${String(row.final_status || 'unknown')}; tool_executions=${Number(row.tool_execution_count) || 0}`,
-        recommended_layer: 'command',
-        severity: 'medium',
-        confidence: 'high',
-        false_positive_risk: 'low',
-        promotion_hint: isManualBridge
-          ? 'derive improvement recommendations from manual-bridge session telemetry before adding more autonomy'
-          : 'close the session-level observability gap before increasing autonomy',
-      }, {
-        capturedAt: row.ended_at || row.started_at,
-        sourceArtifact: 'docs/codex-telemetry-bridge.md',
-      });
-    });
-}
+// Retired 2026-08-20, with the measurement that killed each one:
+//
+//   plan_missing_or_skipped            plan.md retired 2026-08-17, so it fires
+//                                      on every run and recommends recreating a
+//                                      retired artifact. 45 historical hits.
+//   verification_missing_before_...    requires plan_present=1, which can no
+//                                      longer happen. 6 historical hits.
+//   manual_bridge_session_level_only   bridge_mode='manual' was never recorded
+//                                      once in the entire telemetry history.
+//   session_level_observability_only   requires plan_present=1 AND zero
+//                                      tool_executions. Phase 1 stopped writing
+//                                      tool_executions, so the second condition
+//                                      is now permanently true and the detector
+//                                      fired on runs where all three gates were
+//                                      present -- the opposite of its intent.
+//   high_session_turn_count            not a fault at all. Over 245 sessions:
+//                                      median 1 human turn, p75 = 2, p90 = 7,
+//                                      max 128. At its threshold of 2 it fired
+//                                      on 40% of every session ever recorded,
+//                                      always recommending the same generic
+//                                      docs change. It was measuring session
+//                                      length. Correcting the turn count (see
+//                                      transcript-log.js) made the reading
+//                                      honest and the detector no more useful:
+//                                      98 candidates out of 127 total entries.
+//
+// What is left is one detector, and it names an actual malfunction: state was
+// available and the session did not load it.
 
 function loadTelemetryHealthCandidates(options = {}) {
-  const dbPath = String(options.dbPath || getTelemetryDbPath()).trim();
-  if (!dbPath || !isSqliteAvailable() || !fs.existsSync(dbPath)) return [];
-
-  let db = null;
   try {
-    db = createDatabase(dbPath);
-    return [
-      ...getResumeFailedCandidates(db),
-      ...getPlanMissingCandidates(db),
-      ...getVerificationMissingCandidates(db),
-      ...getHighInterventionCandidates(
-        db,
-        Number.isFinite(Number(options.highInterventionThreshold))
-          ? Number(options.highInterventionThreshold)
-          : DEFAULT_HIGH_INTERVENTION_THRESHOLD
-      ),
-      ...getManualBridgeLimitedObservabilityCandidates(db),
-    ];
+    return getResumeFailedCandidates(options);
   } catch {
     return [];
-  } finally {
-    if (db && typeof db.close === 'function') {
-      db.close();
-    }
   }
 }
 

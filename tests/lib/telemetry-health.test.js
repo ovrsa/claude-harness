@@ -10,9 +10,6 @@ const os = require('os');
 const path = require('path');
 
 const {
-  recordSessionEvent,
-} = require('../../scripts/lib/session-trace');
-const {
   loadTelemetryHealthCandidates,
 } = require('../../scripts/lib/telemetry-health');
 
@@ -36,141 +33,165 @@ function cleanup(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
+/** A run record with a lifecycle event log, as run-record.js writes it. */
+function seedRun(runsDir, runId, { meta = {}, events = [] } = {}) {
+  const runDir = path.join(runsDir, runId);
+  fs.mkdirSync(path.join(runDir, 'logs'), { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, 'meta.json'),
+    `${JSON.stringify({ run_id: runId, started_at: '2026-08-10T00:00:00.000Z', ...meta }, null, 2)}\n`
+  );
+  if (events.length > 0) {
+    fs.writeFileSync(
+      path.join(runDir, 'logs', 'events.ndjson'),
+      `${events.map(e => JSON.stringify(e)).join('\n')}\n`
+    );
+  }
+}
+
+function seedTranscript(transcriptDir, slug, sessionId, userTurns) {
+  const dir = path.join(transcriptDir, slug);
+  fs.mkdirSync(dir, { recursive: true });
+  const lines = userTurns.map((text, i) => JSON.stringify({
+    type: 'user',
+    timestamp: `2026-08-10T00:0${i}:00.000Z`,
+    sessionId,
+    message: { role: 'user', content: [{ type: 'text', text }] },
+  }));
+  fs.writeFileSync(path.join(dir, `${sessionId}.jsonl`), `${lines.join('\n')}\n`);
+}
+
 function runTests() {
   console.log('\n=== Testing telemetry-health.js ===\n');
 
   let passed = 0;
   let failed = 0;
 
-  if (test('returns no candidates when telemetry db is missing', () => {
+  if (test('returns no candidates when there is no run record and no transcript', () => {
     const dir = createTempDir();
     try {
-      const rows = loadTelemetryHealthCandidates({ dbPath: path.join(dir, 'missing.db') });
+      const rows = loadTelemetryHealthCandidates({
+        runsDir: path.join(dir, 'runs'),
+        transcriptDir: path.join(dir, 'projects'),
+      });
       assert.deepStrictEqual(rows, []);
     } finally {
       cleanup(dir);
     }
   })) passed++; else failed++;
 
-  if (test('derives telemetry-backed health candidates from session events and runs', () => {
+  if (test('resume_failed comes from the run record, only when state was available', () => {
     const dir = createTempDir();
     try {
-      const dbPath = path.join(dir, 'telemetry.db');
+      const runsDir = path.join(dir, 'runs');
+      seedRun(runsDir, '2026-08-10-alpha', {
+        meta: { branch: 'worktree-alpha' },
+        events: [
+          // A fresh worktree has nothing to resume. Counting this produced 382
+          // of 471 candidates before 2026-08-19, every one a new worktree.
+          { occurred_at: '2026-08-10T00:00:00.000Z', type: 'session_started', session_id: 'fresh', resume_expected: false, resume_success: false },
+          { occurred_at: '2026-08-10T01:00:00.000Z', type: 'session_started', session_id: 'broken', resume_expected: true, resume_success: false, resume_reason: 'stale-artifacts-missing' },
+          { occurred_at: '2026-08-10T02:00:00.000Z', type: 'session_started', session_id: 'fine', resume_expected: true, resume_success: true },
+        ],
+      });
+      const rows = loadTelemetryHealthCandidates({
+        runsDir,
+        transcriptDir: path.join(dir, 'projects'),
+      });
+      const resume = rows.filter(r => r.failure_pattern === 'resume_failed');
+      assert.strictEqual(resume.length, 1, `expected 1 resume failure, got ${resume.length}`);
+      assert.ok(resume[0].example.includes('broken'));
+      assert.ok(!resume[0].example.includes('fresh'));
+      assert.strictEqual(resume[0].recommended_layer, 'hook');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
 
-      recordSessionEvent({
-        sessionId: 'session-a',
-        runId: 'run-resume-failed',
-        occurredAt: '2026-04-17T00:00:00.000Z',
-        eventType: 'session_started',
-        status: 'started',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { resume_success: false, resume_reason: 'missing-context' },
-      }, { dbPath });
+  if (test('session length is not reported as a failure', () => {
+    const dir = createTempDir();
+    try {
+      const transcriptDir = path.join(dir, 'projects');
+      seedTranscript(transcriptDir, 'proj-a', 'chatty', ['one', 'two', 'three', 'four']);
+      const rows = loadTelemetryHealthCandidates({
+        runsDir: path.join(dir, 'runs'),
+        transcriptDir,
+      });
+      // Measured over 245 sessions: median 1 human turn, p75 = 2, p90 = 7,
+      // max 128. At the threshold of 2 the detector fired on 40% of all
+      // sessions, and its recommendation was the generic "clarify task and
+      // recovery guidance". A long session is a long session, not a fault.
+      assert.deepStrictEqual(
+        rows.filter(r => r.failure_pattern === 'high_session_turn_count'),
+        []
+      );
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
 
-      recordSessionEvent({
-        sessionId: 'session-b',
-        runId: 'run-plan-missing',
-        occurredAt: '2026-04-17T01:00:00.000Z',
-        eventType: 'session_started',
-        status: 'started',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { resume_success: true },
-      }, { dbPath });
-      recordSessionEvent({
-        sessionId: 'session-b',
-        runId: 'run-plan-missing',
-        occurredAt: '2026-04-17T01:05:00.000Z',
-        eventType: 'session_ended',
-        status: 'blocked',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { final_status: 'blocked_before_plan', human_intervention_count: 0 },
-      }, { dbPath });
+  if (test('retired detectors are gone', () => {
+    const dir = createTempDir();
+    try {
+      const runsDir = path.join(dir, 'runs');
+      const transcriptDir = path.join(dir, 'projects');
+      seedRun(runsDir, '2026-08-10-alpha', {
+        events: [{ occurred_at: '2026-08-10T00:00:00.000Z', type: 'session_started', session_id: 's', resume_expected: true, resume_success: false }],
+      });
+      seedTranscript(transcriptDir, 'proj-a', 'sess-1', ['a', 'b', 'c', 'd']);
+      const rows = loadTelemetryHealthCandidates({ runsDir, transcriptDir, highInterventionThreshold: 2 });
+      const patterns = new Set(rows.map(r => r.failure_pattern));
 
-      recordSessionEvent({
-        sessionId: 'session-c',
-        runId: 'run-verify-missing',
-        occurredAt: '2026-04-17T02:00:00.000Z',
-        eventType: 'session_started',
-        status: 'started',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { resume_success: true },
-      }, { dbPath });
-      recordSessionEvent({
-        sessionId: 'session-c',
-        runId: 'run-verify-missing',
-        occurredAt: '2026-04-17T02:03:00.000Z',
-        eventType: 'plan_status_observed',
-        status: 'approved',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { plan_status: 'approved' },
-      }, { dbPath });
-      recordSessionEvent({
-        sessionId: 'session-c',
-        runId: 'run-verify-missing',
-        occurredAt: '2026-04-17T02:10:00.000Z',
-        eventType: 'session_ended',
-        status: 'blocked',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { final_status: 'blocked_after_plan', human_intervention_count: 0 },
-      }, { dbPath });
+      // plan.md was retired 2026-08-17: the first fires forever recommending a
+      // retired artifact, the second requires plan_present=1 and never fires.
+      assert.ok(!patterns.has('plan_missing_or_skipped'));
+      assert.ok(!patterns.has('verification_missing_before_completion'));
 
-      recordSessionEvent({
-        sessionId: 'session-d',
-        runId: 'run-high-intervention',
-        occurredAt: '2026-04-17T03:00:00.000Z',
-        eventType: 'session_started',
-        status: 'started',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { resume_success: true },
-      }, { dbPath });
-      recordSessionEvent({
-        sessionId: 'session-d',
-        runId: 'run-high-intervention',
-        occurredAt: '2026-04-17T03:02:00.000Z',
-        eventType: 'plan_status_observed',
-        status: 'approved',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { plan_status: 'approved' },
-      }, { dbPath });
-      recordSessionEvent({
-        sessionId: 'session-d',
-        runId: 'run-high-intervention',
-        occurredAt: '2026-04-17T03:08:00.000Z',
-        eventType: 'verification_completed',
-        status: 'complete',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: {},
-      }, { dbPath });
-      recordSessionEvent({
-        sessionId: 'session-d',
-        runId: 'run-high-intervention',
-        occurredAt: '2026-04-17T03:12:00.000Z',
-        eventType: 'session_ended',
-        status: 'complete',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { final_status: 'completed_with_intervention', human_intervention_count: 3 },
-      }, { dbPath });
+      // bridge_mode='manual' was never recorded once in the whole telemetry
+      // history, and the companion branch needs plan_present=1 plus a zero
+      // tool_executions count -- which Phase 1 made permanently true, so it
+      // fired on runs where all three gates were present. Backwards.
+      assert.ok(!patterns.has('manual_bridge_session_level_only'));
+      assert.ok(!patterns.has('session_level_observability_only'));
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
 
-      const rows = loadTelemetryHealthCandidates({ dbPath });
-      const byPattern = new Map(rows.map(row => [row.failure_pattern, row]));
+  if (test('no candidate points at an artifact the harness no longer creates', () => {
+    const dir = createTempDir();
+    try {
+      const runsDir = path.join(dir, 'runs');
+      const transcriptDir = path.join(dir, 'projects');
+      seedRun(runsDir, '2026-08-10-alpha', {
+        events: [{ occurred_at: '2026-08-10T00:00:00.000Z', type: 'session_started', session_id: 's', resume_expected: true, resume_success: false }],
+      });
+      seedTranscript(transcriptDir, 'proj-a', 'sess-1', ['a', 'b', 'c']);
+      const rows = loadTelemetryHealthCandidates({ runsDir, transcriptDir, highInterventionThreshold: 2 });
+      assert.ok(rows.length > 0, 'fixture should produce candidates');
+      const retired = ['plan.md', 'progress.md', 'docs/how-to/codex-telemetry-bridge.md'];
+      for (const row of rows) {
+        assert.ok(
+          !retired.includes(String(row.source_artifact || '')),
+          `candidate ${row.failure_pattern} references retired artifact ${row.source_artifact}`
+        );
+      }
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
 
-      assert.ok(byPattern.has('resume_failed'));
-      assert.ok(byPattern.has('plan_missing_or_skipped'));
-      assert.ok(byPattern.has('verification_missing_before_completion'));
-      assert.ok(byPattern.has('high_human_intervention_run'));
-      assert.strictEqual(byPattern.get('resume_failed').recommended_layer, 'hook');
-      assert.strictEqual(byPattern.get('high_human_intervention_run').recommended_layer, 'docs');
-      assert.ok(byPattern.get('resume_failed').candidate_key.includes('resume_failed'));
+  if (test('SQLite is not consulted', () => {
+    const dir = createTempDir();
+    try {
+      // A dbPath that would throw if it were opened. The detectors must not
+      // care: their inputs are runs/ and the transcripts.
+      const rows = loadTelemetryHealthCandidates({
+        runsDir: path.join(dir, 'runs'),
+        transcriptDir: path.join(dir, 'projects'),
+        dbPath: path.join(dir, 'definitely-not-a-database'),
+      });
+      assert.deepStrictEqual(rows, []);
     } finally {
       cleanup(dir);
     }

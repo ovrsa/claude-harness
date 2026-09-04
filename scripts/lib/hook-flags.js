@@ -3,13 +3,18 @@
  * Shared hook enable/disable controls.
  *
  * Controls:
- * - ECC_HOOK_PROFILE=minimal|standard|strict (default: standard)
+ * - ECC_HOOK_PROFILE=minimal|standard (default: standard)
  * - ECC_DISABLED_HOOKS=comma,separated,hook,ids
+ *
+ * `strict` was removed on 2026-08-12. It gated exactly two hooks, no code path
+ * ever set ECC_HOOK_PROFILE, and the default is `standard` — so both hooks were
+ * silently dead while the docs described them as active. An empty tier that
+ * nothing can select is the same failure as an unenforced rule.
  */
 
 'use strict';
 
-const VALID_PROFILES = new Set(['minimal', 'standard', 'strict']);
+const VALID_PROFILES = new Set(['minimal', 'standard']);
 
 function normalizeId(value) {
   return String(value || '').trim().toLowerCase();
@@ -32,7 +37,7 @@ function getDisabledHookIds() {
   );
 }
 
-function parseProfiles(rawProfiles, fallback = ['standard', 'strict']) {
+function parseProfiles(rawProfiles, fallback = ['standard']) {
   if (!rawProfiles) return [...fallback];
 
   if (Array.isArray(rawProfiles)) {

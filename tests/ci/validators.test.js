@@ -518,10 +518,12 @@ function runTests() {
   // ==========================================
   console.log('\nvalidate-skills.js:');
 
-  if (test('real project skills surface is quarantined and reports known contract mismatch', () => {
+  // 2026-08-18 まで、この検査は exit 1 を期待していた。skills/learned/ が SKILL.md を持たない
+  // 学習成果の置き場で、それを既知の不整合として保留していたため。学習ループごと撤去したので
+  // 保留する理由が無くなった。以降、skills/ 配下は全ディレクトリが SKILL.md を持つ。
+  if (test('real project skills surface passes without known mismatches', () => {
     const result = runValidator('validate-skills');
-    assert.strictEqual(result.code, 1, 'Quarantined skills surface should not be treated as canonical green');
-    assert.ok(result.stderr.includes('Missing SKILL.md'), 'Should report the known learned/ contract mismatch');
+    assert.strictEqual(result.code, 0, `Skills surface should be clean, got stderr: ${result.stderr}`);
   })) passed++; else failed++;
 
   if (test('exits 0 when directory does not exist', () => {
@@ -2276,8 +2278,83 @@ function runTests() {
   if (test('passes on real artifact templates', () => {
     const result = runValidator('validate-artifact-templates');
     assert.strictEqual(result.code, 0, `Should pass, got stderr: ${result.stderr}`);
-    assert.ok(result.stdout.includes('Validated 4 artifact templates'),
+    assert.ok(result.stdout.includes('Validated 3 artifact templates'),
       `Should report artifact template validation, got: ${result.stdout}`);
+  })) passed++; else failed++;
+
+  console.log('\nvalidate-text-sources.js:');
+
+  if (test('passes on real tracked sources', () => {
+    const result = runValidator('validate-text-sources');
+    assert.strictEqual(result.code, 0, `Should pass, got stderr: ${result.stderr}`);
+    assert.ok(result.stdout.includes('are text'), `Should confirm sources are text, got: ${result.stdout}`);
+  })) passed++; else failed++;
+
+  if (test('finds a control byte that would make a source binary to grep', () => {
+    const { findControlBytes } = require(path.join(__dirname, '..', '..', 'scripts', 'ci', 'validate-text-sources.js'));
+    // A raw NUL in a source file cost a full verification pass on 2026-08-20:
+    // grep skips binary files and exits 1, exactly as it does on no match, so
+    // every grep-based check against that file passed vacuously.
+    const withNul = Buffer.from([0x63, 0x6f, 0x6e, 0x73, 0x74, 0x00, 0x3b]);
+    const found = findControlBytes(withNul);
+    assert.strictEqual(found.length, 1);
+    assert.strictEqual(found[0].offset, 5);
+    assert.strictEqual(found[0].byte, 0);
+  })) passed++; else failed++;
+
+  if (test('tab, newline, form feed and carriage return are text', () => {
+    const { findControlBytes } = require(path.join(__dirname, '..', '..', 'scripts', 'ci', 'validate-text-sources.js'));
+    assert.deepStrictEqual(findControlBytes(Buffer.from([9, 10, 12, 13, 0x61])), []);
+  })) passed++; else failed++;
+
+  console.log('\nvalidate-no-personal-paths.js:');
+
+  // The scope of this validator IS the contract: a surface outside TARGETS is a
+  // surface where a hardcoded home passes green. On 2026-08-21 that was
+  // settings.json — the one file that decides whether the hooks fire at all on
+  // another machine — so these cases pin the execution and entry surfaces.
+  if (test('finds a personal path in settings.json (hook wiring that would not fire elsewhere)', () => {
+    const testDir = createTestDir();
+    fs.writeFileSync(path.join(testDir, 'settings.json'), JSON.stringify({
+      hooks: { SessionStart: [{ hooks: [{ command: "bash '/Users/someauthor/.claude/hooks/x.sh' session" }] }] },
+    }, null, 2));
+    const result = runValidatorWithDir('validate-no-personal-paths', 'ROOT', testDir);
+    assert.strictEqual(result.code, 1, `Should reject a hardcoded home in hook wiring, got: ${result.stdout}`);
+    assert.ok(result.stderr.includes('settings.json'), `Should name settings.json, got: ${result.stderr}`);
+    cleanupTestDir(testDir);
+  })) passed++; else failed++;
+
+  if (test('finds a personal path in AGENTS.md (the first file a new reader opens)', () => {
+    const testDir = createTestDir();
+    fs.writeFileSync(path.join(testDir, 'AGENTS.md'),
+      'See [CLAUDE.md](/Users/someauthor/.claude/CLAUDE.md:1).\n');
+    const result = runValidatorWithDir('validate-no-personal-paths', 'ROOT', testDir);
+    assert.strictEqual(result.code, 1, `Should reject a hardcoded home in AGENTS.md, got: ${result.stdout}`);
+    cleanupTestDir(testDir);
+  })) passed++; else failed++;
+
+  if (test('finds a personal path in a hook script', () => {
+    const testDir = createTestDir();
+    fs.mkdirSync(path.join(testDir, 'hooks'));
+    fs.writeFileSync(path.join(testDir, 'hooks', 'x.sh'), 'source /Users/someauthor/.claude/lib.sh\n');
+    const result = runValidatorWithDir('validate-no-personal-paths', 'ROOT', testDir);
+    assert.strictEqual(result.code, 1, `Should reject a hardcoded home in hooks/, got: ${result.stdout}`);
+    cleanupTestDir(testDir);
+  })) passed++; else failed++;
+
+  if (test('accepts the portable forms in the same surfaces', () => {
+    const testDir = createTestDir();
+    fs.writeFileSync(path.join(testDir, 'settings.json'), JSON.stringify({
+      hooks: { SessionStart: [{ hooks: [{ command: 'bash "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/x.sh" session' }] }] },
+    }, null, 2));
+    fs.writeFileSync(path.join(testDir, 'AGENTS.md'), 'See [CLAUDE.md](../CLAUDE.md) and `~/.claude/rules/`.\n');
+    const result = runValidatorWithDir('validate-no-personal-paths', 'ROOT', testDir);
+    assert.strictEqual(result.code, 0, `Portable forms should pass, got: ${result.stderr}`);
+  })) passed++; else failed++;
+
+  if (test('passes on the real repository', () => {
+    const result = runValidator('validate-no-personal-paths');
+    assert.strictEqual(result.code, 0, `Should pass, got stderr: ${result.stderr}`);
   })) passed++; else failed++;
 
   // Summary

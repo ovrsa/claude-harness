@@ -1,0 +1,425 @@
+{
+  "evaluated_at": "2026-05-20T10:25:19Z",
+  "mode": "full",
+  "batch_progress": {
+    "total": 69,
+    "evaluated": 69,
+    "status": "completed"
+  },
+  "skills": {
+    "agent-harness-construction": {
+      "path": "~/.claude/skills/agent-harness-construction/SKILL.md",
+      "verdict": "Keep",
+      "reason": "73 lines; actionable patterns for action space design, observation formatting, and error recovery. Unique focus on agent tool architecture separate from broader agentic-engineering workflow patterns.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "agentic-engineering": {
+      "path": "~/.claude/skills/agentic-engineering/SKILL.md",
+      "verdict": "Keep",
+      "reason": "63 lines; concise framework for eval-first execution, task decomposition, model routing, and cost discipline. Complements agent-harness-construction (tool design) and continuous-agent-loop (loop patterns). Non-overlapping scopes.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "coding-standards": {
+      "path": "~/.claude/skills/coding-standards/SKILL.md",
+      "verdict": "Keep",
+      "reason": "530 lines; comprehensive language-specific guidance for TS/JS, React, APIs, testing, perf. Directly imported by CLAUDE.md rules. Central to development workflow.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "search-first": {
+      "path": "~/.claude/skills/search-first/SKILL.md",
+      "verdict": "Keep",
+      "reason": "161 lines; systematic research-before-coding workflow integrating npm, PyPI, MCP, GitHub. Actionable entry points prevent unnecessary custom code.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "security-review": {
+      "path": "~/.claude/skills/security-review/SKILL.md",
+      "verdict": "Keep",
+      "reason": "495 lines; comprehensive checklist spanning secrets, input validation, SQL injection, auth/authz, XSS, CSRF, rate limiting, blockchain, deps. Distinct from security-scan which audits Claude Code config.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "security-scan": {
+      "path": "~/.claude/skills/security-scan/SKILL.md",
+      "verdict": "Keep",
+      "reason": "165 lines; audits .claude/ config via AgentShield. Distinct from security-review which covers application code security.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "service-blueprint-swimlane": {
+      "path": "~/.claude/skills/service-blueprint-swimlane/SKILL.md",
+      "verdict": "Keep",
+      "reason": "120 lines; multi-actor service blueprints via draw.io swimlanes. Distinct from simple-er-diagram (Mermaid for data models). Focuses on business/system responsibility matrices.",
+      "mtime": "2026-04-22T08:26:05Z"
+    },
+    "similarity-search-patterns": {
+      "path": "~/.claude/skills/similarity-search-patterns/SKILL.md",
+      "verdict": "Keep",
+      "reason": "560 lines; production templates for Pinecone, Qdrant, pgvector, Weaviate with hybrid search. Complete working code.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "simple-er-diagram": {
+      "path": "~/.claude/skills/simple-er-diagram/SKILL.md",
+      "verdict": "Keep",
+      "reason": "235 lines; Mermaid flowchart approach for ER/data-model diagrams. Conversation-friendly alternative to formal erDiagram syntax.",
+      "mtime": "2026-05-20T09:39:38Z"
+    },
+    "strategic-compact": {
+      "path": "~/.claude/skills/strategic-compact/SKILL.md",
+      "verdict": "Keep",
+      "reason": "103 lines; manual context compaction at logical task boundaries. Includes hook setup and decision table.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "configure-ecc": {
+      "path": "~/.claude/skills/configure-ecc/SKILL.md",
+      "verdict": "Keep",
+      "reason": "326 lines; interactive installer for ECC with path verification, cross-reference checking, optimization. Essential bootstrap for ECC adoption.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "content-engine": {
+      "path": "~/.claude/skills/content-engine/SKILL.md",
+      "verdict": "Keep",
+      "reason": "88 lines; platform-native content adaptation (X, LinkedIn, TikTok, YouTube, newsletters). Distinct from article-writing (long-form single voice).",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "content-hash-cache-pattern": {
+      "path": "~/.claude/skills/content-hash-cache-pattern/SKILL.md",
+      "verdict": "Keep",
+      "reason": "161 lines; SHA-256 content-hash caching pattern with service layer separation. Complete Python implementation.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "supabase-postgres-best-practices": {
+      "path": "~/.claude/skills/supabase-postgres-best-practices/SKILL.md",
+      "verdict": "Keep",
+      "reason": "64 lines; curated Supabase Postgres optimization rules organized by priority (query, connection, security, schema, concurrency, monitoring).",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "superpowers-tdd": {
+      "path": "~/.claude/skills/superpowers-tdd/SKILL.md",
+      "verdict": "Keep",
+      "reason": "45 lines; disciplined implementation pattern post-plan (RED-GREEN-REFACTOR with checkpoints and dual-pass review). Complements tdd-workflow with implementation discipline.",
+      "mtime": "2026-05-15T03:10:24Z"
+    },
+    "systematic-debugging": {
+      "path": "~/.claude/skills/systematic-debugging/SKILL.md",
+      "verdict": "Keep",
+      "reason": "66 lines; core debugging discipline (root cause before fix) with multi-component checklist. Critical gate preventing symptom-chasing.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "tdd-workflow": {
+      "path": "~/.claude/skills/tdd-workflow/SKILL.md",
+      "verdict": "Keep",
+      "reason": "410 lines; comprehensive TDD with unit/integration/E2E templates (Jest, Playwright), mocking, coverage. Distinct from superpowers-tdd (implementation discipline).",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "vector-index-tuning": {
+      "path": "~/.claude/skills/vector-index-tuning/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Actionable reference for HNSW/quantization tuning with concrete Python templates and Qdrant examples. No overlap with broad patterns skills; highly specialized for vector database optimization.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "verification-loop": {
+      "path": "~/.claude/skills/verification-loop/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Concise verification workflow covering build, types, lint, tests, security, and diff review. Complements broader lifecycle skills without duplication; focused on reusable verification checklist.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "visa-doc-translate": {
+      "path": "~/.claude/skills/visa-doc-translate/SKILL.md",
+      "verdict": "Retire",
+      "reason": "Highly specialized single-use-case skill (visa translation workflow). Not reusable across projects; better served by one-off documentation or a project-specific template. Superseded by general OCR/PDF generation patterns in broader skill library.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "writing-skills": {
+      "path": "~/.claude/skills/writing-skills/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Comprehensive skill creation guide with TDD methodology, CSO optimization, and rationalization bulletproofing. Unique value for skill author workflow; no overlap with content-writing skills or CLAUDE.md lifecycle rules.",
+      "mtime": "2026-04-22T08:26:05Z"
+    },
+    "continuous-learning-v2": {
+      "path": "~/.claude/skills/continuous-learning-v2/SKILL.md",
+      "verdict": "Keep",
+      "reason": "v2.1 adds project-scoped instincts and promotion workflow, addressing cross-project contamination in v1. Substantially supersedes continuous-learning but both retained for backward compatibility. No further consolidation needed given explicit version distinction.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "continuous-learning": {
+      "path": "~/.claude/skills/continuous-learning/SKILL.md",
+      "verdict": "Keep (deprecated)",
+      "reason": "Frontmatter updated 2026-05-20 with status=deprecated and superseded_by=continuous-learning-v2. Kept as reference for v1 users.",
+      "mtime": "2026-05-20T10:21:06Z"
+    },
+    "cost-aware-llm-pipeline": {
+      "path": "~/.claude/skills/cost-aware-llm-pipeline/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Actionable pipeline patterns combining model routing, immutable cost tracking, retry logic, and prompt caching. Pricing data current (2025-2026). Unique production-focused optimization patterns not covered by broader design skills.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "database-migrations": {
+      "path": "~/.claude/skills/database-migrations/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Comprehensive zero-downtime migration patterns covering PostgreSQL, MySQL, Prisma, Drizzle, Django, and golang-migrate with expand-contract, concurrent indexing, and batching strategies. Core infrastructure skill with multi-ORM coverage.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "api-design": {
+      "path": "~/.claude/skills/api-design/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Complete REST API reference with status codes, pagination, filtering, authentication, rate limiting, and versioning. Includes TypeScript/Python/Go examples. Complements backend-patterns without overlap; focused specifically on API contract design.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "deep-research": {
+      "path": "~/.claude/skills/deep-research/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Workflow for multi-source research via firecrawl/exa MCPs, synthesizing findings with inline citations. Actionable steps and quality rules (every claim sourced, recency matters, no hallucination) provide distinct value over generic research patterns.",
+      "mtime": "2026-04-22T08:26:05Z"
+    },
+    "deployment-patterns": {
+      "path": "~/.claude/skills/deployment-patterns/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Production deployment patterns covering rolling/blue-green/canary strategies, multi-stage Dockerfiles, GitHub Actions CI/CD, health checks, and rollback procedures. Unique focus on deployment orchestration and environment configuration validation.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "design-system": {
+      "path": "~/.claude/skills/design-system/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Focused skill for design system generation and visual auditing (10-dimension scoring: color, typography, spacing, component consistency, responsive, dark mode, animation, accessibility, density, polish). Complements frontend-patterns with specific DS workflow.",
+      "mtime": "2026-04-22T08:26:05Z"
+    },
+    "dispatching-parallel-agents": {
+      "path": "~/.claude/skills/dispatching-parallel-agents/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Specialized technique for parallel agent dispatch on independent problem domains with focused scopes and constraints. Includes decision flowchart and integration checklist. Unique value for multi-agent coordination without broader design duplication.",
+      "mtime": "2026-04-22T08:26:05Z"
+    },
+    "docker-patterns": {
+      "path": "~/.claude/skills/docker-patterns/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Docker Compose and multi-stage Dockerfile patterns for development and production, including service discovery, volume strategies, security hardening, and debugging. Distinct from deployment-patterns; focused on containerization specifics.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "article-writing": {
+      "path": "~/.claude/skills/article-writing/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Long-form content workflow with voice capture, banned patterns (filler, hype, vague claims), and structure guidance (technical guides, essays, newsletters). Distinct from writing-skills (which covers skill authoring); focused on external-facing content quality.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "autonomous-loops": {
+      "path": "~/.claude/skills/autonomous-loops/SKILL.md",
+      "verdict": "Keep",
+      "reason": "Comprehensive loop pattern spectrum from sequential pipelines through RFC-driven DAG orchestration (Ralphinho), with concrete examples and decision matrices. Despite deprecated 'continuous-agent-loop' alias, content remains authoritative reference for loop architecture selection.",
+      "mtime": "2026-05-20T10:25:06Z"
+    },
+    "dx-diagram-skill": {
+      "path": "~/.claude/skills/dx-diagram-skill/SKILL.md",
+      "verdict": "Keep",
+      "reason": "DX-specific skill for swimlane diagrams, C4 architecture, sequence flows, and prioritization\u2014with business-analysis awareness and implementation-critical artifacts. No overlap with broader design or pattern skills; domain-specific for DX initiatives.",
+      "mtime": "2026-04-22T08:13:15Z"
+    },
+    "backend-patterns": {
+      "path": "~/.claude/skills/backend-patterns/SKILL.md",
+      "verdict": "Keep",
+      "reason": "598 lines; comprehensive Node.js/Express/Next.js patterns (repository, service layer, middleware, DB optimization, caching, auth, rate limiting, queues, logging). Complements api-design without duplication.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "browser-verification-harness": {
+      "path": "~/.claude/skills/browser-verification-harness/SKILL.md",
+      "verdict": "Keep",
+      "reason": "213 lines; AI-specific verification harness \u2014 accessibility tree as primary interface, structured observations, harness engineering principles. Clean separation from generic e2e-testing once merged.",
+      "mtime": "2026-05-20T10:23:56Z"
+    },
+    "embedding-strategies": {
+      "path": "~/.claude/skills/embedding-strategies/SKILL.md",
+      "verdict": "Keep",
+      "reason": "608 lines; production embedding guide (voyage/OpenAI/local model comparison, chunking templates, domain pipelines, evaluation metrics). Distinct from hybrid-search-implementation which focuses on fusion.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "enterprise-agent-ops": {
+      "path": "~/.claude/skills/enterprise-agent-ops/SKILL.md",
+      "verdict": "Improve",
+      "reason": "50-line skeleton with operational domains but no concrete patterns or code. Expand with baseline control templates (immutable artifacts, secret injection, timeout budgets), observability dashboards (Prometheus/ELK), incident runbooks, and integration examples for PM2/systemd. Target 150\u2013200 lines.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "eval-harness": {
+      "path": "~/.claude/skills/eval-harness/SKILL.md",
+      "verdict": "Keep",
+      "reason": "270-line eval-driven development framework with capability/regression eval templates, grader types, pass@k metrics. Unique to agent development; complements eval-batch for execution.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "find-skills": {
+      "path": "~/.claude/skills/find-skills/SKILL.md",
+      "verdict": "Keep",
+      "reason": "133 lines; tool discovery for 'npx skills find' and skills.sh ecosystem. Lightweight utility landing pad for third-party packages.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "foundation-models-on-device": {
+      "path": "~/.claude/skills/foundation-models-on-device/SKILL.md",
+      "verdict": "Keep",
+      "reason": "243 lines; Apple FoundationModels for iOS 26+ on-device LLM (availability check, basic session, @Generable, tool calling, snapshot streaming). Niche but unique, no overlap with cloud LLM skills.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "frontend-design": {
+      "path": "~/.claude/skills/frontend-design/SKILL.md",
+      "verdict": "Keep",
+      "reason": "42 lines; design philosophy for distinctive UI aesthetics. Complements frontend-patterns (code) and frontend-slides (presentations). Brief but unique conceptual guidance.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "frontend-patterns": {
+      "path": "~/.claude/skills/frontend-patterns/SKILL.md",
+      "verdict": "Keep",
+      "reason": "642 lines; React/Next.js patterns (composition, hooks, state mgmt, perf, forms, error boundaries, animations, a11y). Code-heavy core utility.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "frontend-slides": {
+      "path": "~/.claude/skills/frontend-slides/SKILL.md",
+      "verdict": "Keep",
+      "reason": "184 lines; zero-dependency HTML slides from scratch or PPT conversion, visual style exploration, viewport-fit enforcement, a11y. Distinct scope from other frontend skills.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "git-workflow": {
+      "path": "~/.claude/skills/git-workflow/SKILL.md",
+      "verdict": "Keep",
+      "reason": "751 lines; comprehensive Git reference (branching strategies, commit conventions, merge vs rebase, PRs, conflicts, releases, hooks, anti-patterns). Core infrastructure skill.",
+      "mtime": "2026-04-22T08:26:06Z"
+    },
+    "clickhouse-io": {
+      "path": "~/.claude/skills/clickhouse-io/SKILL.md",
+      "verdict": "Keep",
+      "reason": "439 lines; ClickHouse-specific patterns (MergeTree variants, materialized views, time-series/funnel/cohort queries, ETL/CDC). Distinct from generic sql-optimization-patterns.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "hybrid-search-implementation": {
+      "path": "~/.claude/skills/hybrid-search-implementation/SKILL.md",
+      "verdict": "Keep",
+      "reason": "570 lines; RAG search fusion (RRF/linear/cross-encoder), pgvector+FTS, Elasticsearch dense+BM25, async pipelines. Distinct from embedding-strategies and similarity-search-patterns.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "investor-materials": {
+      "path": "~/.claude/skills/investor-materials/SKILL.md",
+      "verdict": "Keep",
+      "reason": "96 lines; fundraising assets workflow (pitch deck, one-pager, financial model, accelerator app) with consistency-across-docs golden rule. Pairs with investor-outreach.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "investor-outreach": {
+      "path": "~/.claude/skills/investor-outreach/SKILL.md",
+      "verdict": "Keep",
+      "reason": "76 lines; outreach writing guide (cold email, follow-up cadence, warm intro, post-meeting update). Distinct from investor-materials (documents).",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "iterative-retrieval": {
+      "path": "~/.claude/skills/iterative-retrieval/SKILL.md",
+      "verdict": "Keep",
+      "reason": "211 lines; 4-phase multi-agent context retrieval loop with relevance scoring. Solves subagent context problem; unique to agent orchestration.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "linear-project-overview-md": {
+      "path": "~/.claude/skills/linear-project-overview-md/SKILL.md",
+      "verdict": "Keep",
+      "reason": "95 lines; Japanese-context workflow for project overviews from Linear issues + repo docs with fixed MD template. Niche but actionable.",
+      "mtime": "2026-04-22T08:26:05Z"
+    },
+    "market-research": {
+      "path": "~/.claude/skills/market-research/SKILL.md",
+      "verdict": "Keep",
+      "reason": "76 lines; clear research modes (investor diligence, competitive analysis, market sizing, vendor research) with quality gates. Evergreen content.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "mcp-server-patterns": {
+      "path": "~/.claude/skills/mcp-server-patterns/SKILL.md",
+      "verdict": "Update",
+      "reason": "71 lines; references @modelcontextprotocol/sdk methods (registerTool/tool) that vary by version without pinning. Add tested SDK version (e.g., '0.7.0+'), date, and current API patterns. Frontmatter already says 'Use Context7 or official MCP docs' \u2014 formalize that into a 'Verify against' section.",
+      "mtime": "2026-04-22T08:26:05Z"
+    },
+    "mr-description": {
+      "path": "~/.claude/skills/mr-description/SKILL.md",
+      "verdict": "Keep",
+      "reason": "116 lines; focused MR description workflow with Japanese audience guidance. Complements mr-split (which splits MRs).",
+      "mtime": "2026-04-22T08:26:05Z"
+    },
+    "code-review-workflow": {
+      "path": "~/.claude/skills/code-review-workflow/SKILL.md",
+      "verdict": "Keep",
+      "reason": "170 lines; two-sided review workflow with behavioral patterns (avoid gratitude, push back, verify before implementing). Unique response philosophy.",
+      "mtime": "2026-04-22T08:26:05Z"
+    },
+    "mr-split": {
+      "path": "~/.claude/skills/mr-split/SKILL.md",
+      "verdict": "Keep",
+      "reason": "209 lines; large-change MR split workflow with worktree automation tied to Linear tickets. Highly specific and irreplaceable.",
+      "mtime": "2026-04-22T08:26:05Z"
+    },
+    "nutrient-document-processing": {
+      "path": "~/.claude/skills/nutrient-document-processing/SKILL.md",
+      "verdict": "Keep",
+      "reason": "166 lines; Nutrient DWS API reference with working curl examples and MCP server setup organized by operation type. Current and actionable.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "plankton-code-quality": {
+      "path": "~/.claude/skills/plankton-code-quality/SKILL.md",
+      "verdict": "Keep",
+      "reason": "240 lines; three-phase write-time enforcement architecture (auto-format, collect violations, subprocess with tiered model routing). Documents conflicts and integration with ECC.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "post-commit-asset-capture": {
+      "path": "~/.claude/skills/post-commit-asset-capture/SKILL.md",
+      "verdict": "Improve",
+      "reason": "39-line skill too thin. Has classification logic (task-specific/project docs/workflow candidate) and promotion criteria (3x repeat, stable, clear I/O) but no examples or edge cases. Expand with 2\u20133 worked examples of each classification path, or alternatively absorb into CLAUDE.md as a guideline section.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "postgres-patterns": {
+      "path": "~/.claude/skills/postgres-patterns/SKILL.md",
+      "verdict": "Keep",
+      "reason": "148 lines; PostgreSQL reference (indexing, RLS, UPSERT, cursor pagination, queue processing, anti-pattern detection). Complements sql-optimization-patterns (query tuning) by focusing on schema/indexing.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "pre-plan-research": {
+      "path": "~/.claude/skills/pre-plan-research/SKILL.md",
+      "verdict": "Keep",
+      "reason": "141 lines; thinking-first methodology with 4-step workflow (expert analysis, identify gaps, search only gaps, synthesize). Distinct from deep-research which is a multi-source synthesis workflow.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "project-guidelines-example": {
+      "path": "~/.claude/skills/project-guidelines-example/SKILL.md",
+      "verdict": "Keep",
+      "reason": "350 lines; template/example for project-specific skills based on Zenith app. Value is as a reference template for new project skills; properly labeled 'example'.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "coding-agent-lifecycle-guardrails": {
+      "path": "~/.claude/skills/coding-agent-lifecycle-guardrails/SKILL.md",
+      "verdict": "Keep",
+      "reason": "31 lines; codifies 11-step lifecycle (research\u2192plan\u2192approval\u2192worktree\u2192TDD\u2192verify\u2192observe\u2192review\u2192capture) and hard guardrails. Complements CLAUDE.md by codifying specific rules.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "prompt-engineering-patterns": {
+      "path": "~/.claude/skills/prompt-engineering-patterns/SKILL.md",
+      "verdict": "Keep",
+      "reason": "481 lines; comprehensive coverage (few-shot, CoT, structured outputs with Pydantic, optimization, templates, system prompts, RAG integration, caching). Working code examples.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "python-patterns": {
+      "path": "~/.claude/skills/python-patterns/SKILL.md",
+      "verdict": "Keep",
+      "reason": "750 lines; comprehensive Python idioms (readability, EAFP, type hints, error handling, context managers, generators, dataclasses, decorators, concurrency, memory, tooling, anti-patterns). Pairs with python-testing.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "python-testing": {
+      "path": "~/.claude/skills/python-testing/SKILL.md",
+      "verdict": "Keep",
+      "reason": "817 lines; pytest/TDD guide (fixtures, parametrization, markers, mocking, async, exceptions, CI config). Clean separation from python-patterns (code).",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "rag-implementation": {
+      "path": "~/.claude/skills/rag-implementation/SKILL.md",
+      "verdict": "Keep",
+      "reason": "571 lines; comprehensive RAG (vector DBs, embeddings, retrieval strategies, reranking, HyDE, hybrid search, parent-document, chunking, eval metrics). 2026-current model references.",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "ralphinho-rfc-pipeline": {
+      "path": "~/.claude/skills/ralphinho-rfc-pipeline/SKILL.md",
+      "verdict": "Keep",
+      "reason": "68 lines; RFC-driven multi-agent orchestration (unit specs, complexity tiers, quality pipeline, merge queue, recovery). Distinct from coding-agent-lifecycle-guardrails (single-agent flow).",
+      "mtime": "2026-05-15T00:11:17Z"
+    },
+    "regex-vs-llm-structured-text": {
+      "path": "~/.claude/skills/regex-vs-llm-structured-text/SKILL.md",
+      "verdict": "Keep",
+      "reason": "221 lines; decision tree + three-phase hybrid pipeline (regex \u2192 confidence \u2192 LLM for edge cases). Working Python code, real-world metrics (~95% regex success, ~5% LLM). Cost-aware.",
+      "mtime": "2026-05-15T00:11:17Z"
+    }
+  }
+}

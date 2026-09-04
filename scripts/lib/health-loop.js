@@ -29,9 +29,18 @@ function getCandidateKey(candidate) {
   return '';
 }
 
+/**
+ * 'telemetry' means the harness measured it; 'artifact' means the agent
+ * declared it in a *-summary.md. The prefixes name the substrate the
+ * measurement came from -- `telemetry:` was SQLite, `runs:` and `transcript:`
+ * are the JSON logs that replaced it -- but all three are measurements, so
+ * they classify the same way.
+ */
+const MEASURED_SOURCE_PREFIXES = ['telemetry:', 'runs:', 'transcript:'];
+
 function getCandidateProvenance(candidate) {
   const source = String(candidate && candidate.source || '').trim().toLowerCase();
-  return source.startsWith('telemetry:') ? 'telemetry' : 'artifact';
+  return MEASURED_SOURCE_PREFIXES.some(prefix => source.startsWith(prefix)) ? 'telemetry' : 'artifact';
 }
 
 function loadHealthCandidates(registryPath, options = {}) {

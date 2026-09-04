@@ -11,7 +11,6 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const SCRIPT = path.join(__dirname, '..', '..', 'scripts', 'task-queue.js');
-const SESSION_TRACE_PATH = path.join(__dirname, '..', '..', 'scripts', 'lib', 'session-trace');
 
 function test(name, fn) {
   try {
@@ -58,14 +57,9 @@ function readNdjson(filePath) {
     .map(line => JSON.parse(line));
 }
 
-function readTaskRun(homeDir, taskId) {
-  const dbPath = path.join(homeDir, '.claude', 'telemetry', 'telemetry.db');
-  const { createDatabase } = require(SESSION_TRACE_PATH);
-  const db = createDatabase(dbPath);
-  const row = db.prepare('SELECT * FROM task_runs WHERE task_id = ?').get(taskId);
-  db.close();
-  return row;
-}
+// readTaskRun is gone with the task_runs table (2026-08-20). Nothing read that
+// table: the queue's own tasks/index.json is the state, and every assertion
+// below already checks it.
 
 function initGitRepo(repo) {
   fs.mkdirSync(repo, { recursive: true });
@@ -315,11 +309,7 @@ function runTests() {
       assert.strictEqual(index.tasks[0].status, 'running');
       assert.strictEqual(index.tasks[0].current_run_id, 'run-001');
 
-      const row = readTaskRun(home, 'task-run');
-      assert.ok(row, 'task_runs row should exist');
-      assert.strictEqual(row.run_id, 'run-001');
-      assert.strictEqual(row.status, 'running');
-      assert.strictEqual(row.objective, 'Run task');
+      assert.strictEqual(index.tasks[0].title, 'Run task');
     } finally {
       cleanup(dir);
     }
@@ -368,9 +358,6 @@ function runTests() {
       assert.ok(meta.base_commit);
       assert.strictEqual(meta.isolation.mode, 'shared-clone');
 
-      const row = readTaskRun(home, 'task-done');
-      assert.strictEqual(row.run_id, 'run-done');
-      assert.strictEqual(row.status, 'done');
     } finally {
       cleanup(dir);
     }
@@ -1150,9 +1137,6 @@ function runTests() {
       const index = readJson(path.join(home, '.claude', 'tasks', 'index.json'));
       assert.strictEqual(index.tasks[0].status, 'done');
       assert.strictEqual(index.tasks[0].current_run_id, 'run-reconcile');
-      const row = readTaskRun(home, 'task-reconcile');
-      assert.strictEqual(row.run_id, 'run-reconcile');
-      assert.strictEqual(row.status, 'done');
       const events = readNdjson(path.join(home, '.claude', 'runs', 'run-reconcile', 'logs', 'events.ndjson'));
       assert.ok(events.some(event => event.type === 'run_reconciled' && event.status === 'done'));
     } finally {

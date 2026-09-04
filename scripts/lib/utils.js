@@ -37,9 +37,6 @@ function getSessionsDir() {
 /**
  * Get the learned skills directory
  */
-function getLearnedSkillsDir() {
-  return path.join(getClaudeDir(), 'skills', 'learned');
-}
 
 /**
  * Get the temp directory (cross-platform)
@@ -542,7 +539,6 @@ module.exports = {
   getHomeDir,
   getClaudeDir,
   getSessionsDir,
-  getLearnedSkillsDir,
   getTempDir,
   ensureDir,
 

@@ -20,11 +20,13 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 
 | Hook | Matcher | Behavior | Exit Code |
 |------|---------|----------|-----------|
-| **Dev server blocker** | `Bash` | Blocks `npm run dev` etc. outside tmux — ensures log access | 2 (blocks) |
-| **Tmux reminder** | `Bash` | Suggests tmux for long-running commands (npm test, cargo build, docker) | 0 (warns) |
-| **Git push reminder** | `Bash` | Reminds to review changes before `git push` | 0 (warns) |
+| **Telemetry capture** | `*` | Records tool invocation telemetry in the local SQLite memory plane (async) | 0 (never blocks) |
+| **Git push guard** | `Bash` | Blocks `git push` when the resolved target is `main`/`master`, including a bare `git push` with no refspec | 2 (blocks) |
 | **Doc file warning** | `Write` | Warns about non-standard `.md`/`.txt` files (allows README, CLAUDE, CONTRIBUTING, CHANGELOG, LICENSE, SKILL, docs/, skills/); cross-platform path handling | 0 (warns) |
 | **Strategic compact** | `Edit\|Write` | Suggests manual `/compact` at logical intervals (every ~50 tool calls) | 0 (warns) |
+| **Continuous learning observe** | `*` | Captures tool-use observations for continuous learning (async) | 0 (never blocks) |
+| **Lifecycle pre-edit** | `Edit\|Write` | Advisory only: warns when a linked worktree has no recent pipeline run evidence | 0 (warns) |
+| **Lifecycle pre-commit** | `Bash` (on `git commit`) | Advisory only: warns about missing or incomplete verification/review/observation evidence; captures guardrail candidates | 0 (warns) |
 
 ### PermissionRequest Hooks
 
@@ -36,12 +38,14 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 
 | Hook | Matcher | What It Does |
 |------|---------|-------------|
+| **Telemetry capture** | `*` | Records tool completion telemetry in the local SQLite memory plane (async) |
 | **PR logger** | `Bash` | Logs PR URL and review command after `gh pr create` |
 | **Build analysis** | `Bash` | Background analysis after build commands (async, non-blocking) |
-| **Quality gate** | `Edit\|Write\|MultiEdit` | Runs fast quality checks after edits |
-| **Prettier format** | `Edit` | Auto-formats JS/TS files with Prettier after edits |
-| **TypeScript check** | `Edit` | Runs `tsc --noEmit` after editing `.ts`/`.tsx` files |
-| **console.log warning** | `Edit` | Warns about `console.log` statements in edited files |
+| **Quality gate** | `Edit\|Write` | Runs fast quality checks after edits |
+| **Prettier format** | `Edit\|Write` | Auto-formats JS/TS files with Prettier after edits |
+| **TypeScript check** | `Edit\|Write` | Runs `tsc --noEmit` after editing `.ts`/`.tsx` files |
+| **console.log warning** | `Edit\|Write` | Warns about `console.log` statements in edited files |
+| **Continuous learning observe** | `*` | Captures tool-use results for continuous learning (async) |
 
 ### Lifecycle Hooks
 
@@ -81,38 +85,44 @@ Remove or comment out the hook entry in `hooks.json`. If installed as a plugin, 
 Use environment variables to control hook behavior without editing `hooks.json`:
 
 ```bash
-# minimal | standard | strict (default: standard)
+# minimal | standard (default: standard)
 export ECC_HOOK_PROFILE=standard
 
 # Disable specific hook IDs (comma-separated)
-export ECC_DISABLED_HOOKS="pre:bash:tmux-reminder,post:edit:typecheck"
+export ECC_DISABLED_HOOKS="post:edit:typecheck,post:quality-gate"
 ```
 
 Profiles:
 - `minimal` — keep essential lifecycle and safety hooks only.
 - `standard` — default; balanced quality + safety checks.
-- `strict` — enables additional reminders and stricter guardrails.
+
+The git push guard is wired directly rather than through `run-with-flags.js`, so neither
+`ECC_HOOK_PROFILE` nor `ECC_DISABLED_HOOKS` can switch it off.
+
+A `strict` tier existed until 2026-08-12. It gated exactly two hooks, nothing ever set
+`ECC_HOOK_PROFILE`, and the default is `standard` — so those hooks never ran while this
+table described them as active. `ECC_HOOK_PROFILE=strict` now falls back to `standard`.
 
 ### Artifact-First Continuity
 
-The lifecycle hooks now prefer the local SQLite runtime state over repository task artifacts, and both over raw transcript recall.
+The lifecycle hooks read the repository task artifacts, and fall back to raw transcript recall.
 
 Runtime source of truth:
 
-- `~/.claude/telemetry/telemetry.db`
-- current `run_state`
-- lifecycle telemetry
-- verification and review persistence
-- low-risk tactical memory
+- git (branch, log, diff) — what actually happened
+- the task artifacts on disk (`verification-summary.md` / `review-summary.md` / `observation-summary.md`)
+- `runs/<date>-<slug>/` — the same artifact bodies, captured so they survive `ExitWorktree`
+
+The SQLite plane (`telemetry.db`, `run_state`, lifecycle telemetry) was retired on 2026-08-20.
+It had become write-only, and `run_state` turned out to be a degraded copy of the artifact files:
+every non-empty field it carried was already in the artifacts, which also had two the row lacked.
 
 Expected files for non-trivial work:
 
-- `research.md`
-- `plan.md`
+- `docs/design/YYYY-MM-DD-<slug>.md` (the decisions; written before implementation)
 - `review-summary.md`
 - `verification-summary.md`
-- `observation-summary.md`
-- `progress.md` for multi-session work
+- `observation-summary.md` when behavior changed
 
 Optional sections for promotion-worthy failures:
 
@@ -120,21 +130,13 @@ Optional sections for promotion-worthy failures:
 - `Guardrail Candidates` in `verification-summary.md`
 - `Guardrail Candidates` in `observation-summary.md`
 
-`SessionStart` will surface SQLite-backed runtime state first, then repository artifacts, and `PreCompact` will snapshot their presence into the active session file before context is summarized.
+`SessionStart` surfaces the repository artifacts, and `PreCompact` snapshots their presence into the active session file before context is summarized.
 
-For interrupted or multi-session work, `progress.md` is the human-readable projection of durable session state.
+For interrupted or multi-session work the durable state is git plus the latest `docs/design/` entry.
+The gate evidence is in `runs/<date>-<slug>/`, which survives `ExitWorktree(action: "remove")`.
+**Nothing persists a state summary across a compact** — commit before compacting.
 
-Minimum recommended sections:
-
-- `Current Phase`
-- `Last Completed Step`
-- `Next Action`
-- `Blockers`
-- `Delegated Work`
-- `Latest Checkpoint`
-- `Latest Delegated Handoff`
-
-See `~/.claude/docs/session-resume-state.md` for the canonical session model.
+状態をどの順で読むかは `~/.claude/docs/architecture.md` が正本。
 
 ### Autonomy Policy
 
@@ -145,24 +147,27 @@ The permission boundary is intentionally narrower than the rest of the harness.
 - `hard-deny` is for clearly destructive actions
 - `audit-only` is for low-risk metadata commands that should still leave a trace
 
-See `~/.claude/docs/command-permission-policy.md` for the canonical policy.
+分類の正本は `~/.claude/scripts/lib/permission-resolver.js`。文書ではなくコードが持つ。
 
-### Progress-Aware Guardrails
+### What The Lifecycle Hooks Actually Do
 
-For non-trivial implementation work, lifecycle guardrails now treat `progress.md` as part of the required operating state.
+**Nothing here blocks.** The only blocking hook in the harness is `git-push-guard.js`.
 
-- code edits are blocked if `progress.md` is missing for non-trivial implementation work
-- `progress.md` cannot be moved into an explicit completion state until required completion artifacts are present
-- commits are blocked if `progress.md` still declares active blockers
-- commits warn if `Next Action` still contains active follow-up work
-- behavior-changing commits are blocked if `review-summary.md` is missing or incomplete
-- behavior-changing commits are blocked if `review-summary.md` still has unresolved findings
-- observation-required commits are blocked if `observation-summary.md` is missing or incomplete
-- observation-required commits are blocked if `observation-summary.md` has no concrete evidence source such as `browser`, `logs`, `stderr/stdout`, `trace`, `runtime health`, `metrics`, or `process state`
+- `lifecycle-pre-edit.js` warns when a linked worktree has no recent pipeline run evidence
+- `lifecycle-pre-commit.js` warns about missing or incomplete
+  `verification-summary.md` / `review-summary.md`, checks `observation-summary.md` for a concrete
+  evidence source when it exists, and captures guardrail candidates
+- The weight signal is **whether this is a linked worktree**, not a frontmatter field. It cannot be
+  satisfied by writing a file
 
-Hooks may update only the machine-managed `Latest Checkpoint` and `Latest Delegated Handoff` sections. Operator-owned progress fields remain the human-authored view when they are populated.
+2026-08-17 まで、この節は7項目を「blocked」と書いていた。実際はどれも助言で、しかも
+verify / review / observe の助言は `plan.md` が存在する場合の `else` 節に入っていたので、
+`plan.md` の無い30/42セッションでは一度も出ていなかった。`lifecycle-progress-complete.js`
+（唯一のブロックと書かれていたもの）は `progress.md` を完了状態に書き換える時しか発火せず、
+`progress.md` を作るコードがハーネス内に無かったため一度も発火していない。フックは撤去した。
 
-See `~/.claude/docs/session-resume-state.md` for the durable session schema.
+`plan.md` と `progress.md` も同日に撤去した。経緯は
+`~/.claude/docs/design/2026-08-17-lifecycle-five-steps.md`。
 
 ### Guardrail Candidate Capture
 
@@ -303,10 +308,8 @@ Async hooks run in the background. They cannot block tool execution.
 
 ## Cross-Platform Notes
 
-Hook logic is implemented in Node.js scripts for cross-platform behavior on Windows, macOS, and Linux. A small number of shell wrappers are retained for continuous-learning observer hooks; those wrappers are profile-gated and have Windows-safe fallback behavior.
+Hook logic is implemented in Node.js scripts for cross-platform behavior on Windows, macOS, and Linux.
 
 ## Related
 
-- [rules/common/hooks.md](../rules/common/hooks.md) — Hook architecture guidelines
-- [skills/strategic-compact/](../skills/strategic-compact/) — Strategic compaction skill
 - [scripts/hooks/](../scripts/hooks/) — Hook script implementations

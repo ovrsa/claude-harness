@@ -127,33 +127,14 @@ function runTests() {
     assert.ok(stripAnsi(combined).includes('80%'), 'Should default to 80% confidence');
   })) passed++; else failed++;
 
-  // instincts() tests
-  console.log('\ninstincts():');
-
-  if (test('displays instincts in a box', () => {
-    const output = new SkillCreateOutput('repo');
-    const logs = captureLog(() => output.instincts([
-      { name: 'instinct-1', confidence: 0.95 },
-      { name: 'instinct-2', confidence: 0.7 },
-    ]));
-    const combined = logs.join('\n');
-    assert.ok(combined.includes('instinct-1'), 'Should show instinct name');
-    assert.ok(combined.includes('95%'), 'Should show confidence percentage');
-    assert.ok(combined.includes('70%'), 'Should show second confidence');
-  })) passed++; else failed++;
-
   // output() tests
   console.log('\noutput():');
 
   if (test('displays file paths', () => {
     const output = new SkillCreateOutput('repo');
-    const logs = captureLog(() => output.output(
-      '/path/to/SKILL.md',
-      '/path/to/instincts.yaml'
-    ));
+    const logs = captureLog(() => output.output('/path/to/SKILL.md'));
     const combined = logs.join('\n');
     assert.ok(combined.includes('SKILL.md'), 'Should show skill path');
-    assert.ok(combined.includes('instincts.yaml'), 'Should show instincts path');
     assert.ok(combined.includes('Complete'), 'Should show completion message');
   })) passed++; else failed++;
 
@@ -165,8 +146,8 @@ function runTests() {
     const logs = captureLog(() => output.nextSteps());
     const combined = logs.join('\n');
     assert.ok(combined.includes('Next Steps'), 'Should show Next Steps title');
-    assert.ok(combined.includes('/instinct-import'), 'Should show import command');
-    assert.ok(combined.includes('/evolve'), 'Should show evolve command');
+    assert.ok(combined.includes('SKILL.md'), 'Should point at the skill file');
+    assert.ok(combined.includes('skillOverrides'), 'Should point at the auto-selection gate');
   })) passed++; else failed++;
 
   // footer() tests
@@ -220,23 +201,14 @@ function runTests() {
     assert.ok(combined.includes('Patterns'), 'Should show header');
   })) passed++; else failed++;
 
-  if (test('instincts() with empty array produces box but no entries', () => {
-    const output = new SkillCreateOutput('repo');
-    const logs = captureLog(() => output.instincts([]));
-    const combined = logs.join('\n');
-    assert.ok(combined.includes('Instincts'), 'Should show box title');
-  })) passed++; else failed++;
-
   // Box drawing crash fix (regression test)
   console.log('\nbox() crash prevention:');
 
   if (test('box does not crash on title longer than width', () => {
-    const output = new SkillCreateOutput('repo', { width: 20 });
-    // The instincts() method calls box() internally with a title
-    // that could exceed the narrow width
-    const logs = captureLog(() => output.instincts([
-      { name: 'a-very-long-instinct-name', confidence: 0.9 },
-    ]));
+    const output = new SkillCreateOutput('repo', { width: 10 });
+    // 入れ物は instincts() から nextSteps() へ移した（2026-08-18 に学習ループごと撤去）。
+    // 守っているのは box() の描画で、instincts という題材ではない。
+    const logs = captureLog(() => output.nextSteps());
     assert.ok(logs.length > 0, 'Should produce output without crash');
   })) passed++; else failed++;
 
@@ -254,9 +226,9 @@ function runTests() {
 
   if (test('top, middle, and bottom lines have equal visual width', () => {
     const output = new SkillCreateOutput('repo', { width: 40 });
-    const logs = captureLog(() => output.instincts([
-      { name: 'test', confidence: 0.9 },
-    ]));
+    const logs = captureLog(() => output.analysisResults({
+      commits: 1, timeRange: 'today', contributors: 1, files: 1,
+    }));
     const combined = logs.join('\n');
     const boxLines = combined.split('\n').filter(l => stripAnsi(l).trim().length > 0);
     // Find lines that start with box-drawing characters
@@ -279,9 +251,11 @@ function runTests() {
 
   if (test('box does not crash when content line exceeds width', () => {
     const output = new SkillCreateOutput('repo', { width: 30 });
-    // Force a very long instinct name that exceeds width
-    const logs = captureLog(() => output.instincts([
-      { name: 'this-is-an-extremely-long-instinct-name-that-clearly-exceeds-width', confidence: 0.9 },
+    // 入れ物を instincts() から patterns() へ移した。守っているのは box() の
+    // padding 計算（Math.max(0, padding)）で、instincts という題材ではない。
+    const logs = captureLog(() => output.patterns([
+      { name: 'this-is-an-extremely-long-pattern-name-that-clearly-exceeds-width',
+        trigger: 'x', confidence: 0.9, evidence: 'y' },
     ]));
     // Math.max(0, padding) should prevent RangeError
     assert.ok(logs.length > 0, 'Should produce output without RangeError');
@@ -377,11 +351,11 @@ function runTests() {
   // ── Round 35: box() width accuracy ──
   console.log('\nbox() width accuracy (Round 35):');
 
-  if (test('box lines in instincts() match the default box width of 60', () => {
+  if (test('box lines match the default box width of 60', () => {
     const output = new SkillCreateOutput('repo');
-    const logs = captureLog(() => output.instincts([
-      { name: 'test-instinct', confidence: 0.85 },
-    ]));
+    const logs = captureLog(() => output.analysisResults({
+      commits: 1, timeRange: 'today', contributors: 1, files: 1,
+    }));
     const combined = logs.join('\n');
     const boxLines = combined.split('\n').filter(l => {
       const s = stripAnsi(l).trim();
@@ -398,16 +372,16 @@ function runTests() {
 
   if (test('box lines with custom width match the requested width', () => {
     const output = new SkillCreateOutput('repo', { width: 40 });
-    const logs = captureLog(() => output.instincts([
-      { name: 'short', confidence: 0.9 },
-    ]));
+    const logs = captureLog(() => output.analysisResults({
+      commits: 1, timeRange: 'today', contributors: 1, files: 1,
+    }));
     const combined = logs.join('\n');
     const boxLines = combined.split('\n').filter(l => {
       const s = stripAnsi(l).trim();
       return s.startsWith('\u256D') || s.startsWith('\u2502') || s.startsWith('\u2570');
     });
     assert.ok(boxLines.length >= 3, 'Should have at least 3 box lines');
-    // instincts() calls box() with no explicit width, so it uses the default 60
+    // box() は明示幅なしで呼ばれるので既定の60になる。this.width とは独立
     // regardless of this.width — verify self-consistency at least
     const firstWidth = stripAnsi(boxLines[0]).length;
     boxLines.forEach((l, i) => {

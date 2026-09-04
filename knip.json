@@ -6,7 +6,8 @@
     "scripts/*.js",
     "scripts/ci/*.js",
     "scripts/hooks/*.js",
-    "tests/**/*.js"
+    "tests/**/*.js",
+    "scripts/provider-adapters/**/*.js"
   ],
   "project": [
     "*.js",
@@ -27,6 +28,10 @@
     "cache/**",
     "backups/**",
     "debug/**",
-    "paste-cache/**"
+    "paste-cache/**",
+    "examples/**",
+    "scripts/codemaps/**",
+    "scripts/hooks/pre-bash-dev-server-block.js",
+    "scripts/hooks/pre-write-doc-warn.js"
   ]
 }

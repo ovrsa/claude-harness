@@ -20,7 +20,7 @@ This is distinct from:
 `/eval` is the primary acceptance gate that ties together:
 
 - `review-summary.md`
-- acceptance criteria from `plan.md`
+- success conditions from the design doc (`docs/design/YYYY-MM-DD-<slug>.md`)
 - residual risks
 - whether additional observation evidence is still required
 
@@ -33,7 +33,7 @@ The flow is:
 
 ## Required behavior
 
-1. Read the approved `plan.md` when it exists.
+1. Read the design doc for this work when it exists.
 2. Read `review-summary.md`.
 3. Confirm `review-summary.md` uses the canonical sections:
    - `Review Scope`
@@ -41,12 +41,12 @@ The flow is:
    - `Residual Risks`
    - `Next Action`
 4. Treat `Findings` as unresolved blockers only.
-5. Treat evaluation as incomplete while `Findings` is not `none`.
+5. Treat evaluation as incomplete while a `CRITICAL:` or `HIGH:` finding remains. `MEDIUM:` and below do not hold the chain.
 6. Confirm `verification-summary.md` exists for implementation and bug-fix work.
 7. If the task changed runtime behavior, UI behavior, or system interaction patterns that tests alone do not fully prove:
    - require `observation-summary.md`
    - require concrete evidence sources in that artifact
-8. Compare the current change against the acceptance criteria in `plan.md`.
+8. Compare the current change against the design doc's success conditions and `Non-goals`.
 9. Move accepted non-blocking concerns to `Residual Risks`, not `Findings`.
 10. Produce an acceptance decision:
     - `ACCEPT`
@@ -92,6 +92,6 @@ Next Action:
 ## Next Handoff
 
 - If `NEEDS WORK`, return to `/receive-review`, `/implement-task`, or `/build-fix` based on the blocker.
-- If `BLOCKED`, return to `/plan-task` or ask for the missing decision.
+- If `BLOCKED`, return to `/grill-me` for the missing decision, then add a new design doc entry.
 - If `ACCEPT` and observe is required, ensure `observation-summary.md` is complete before commit.
 - If `ACCEPT` and observe is not required, proceed to the commit or branch-finishing path requested by the operator.

@@ -8,7 +8,7 @@ Use this command when a task is ready for pipeline-guided execution.
 
 `/execute-plan` is the current local pipeline entrypoint. It coordinates `.claude` preflight/postflight, permission boundaries, telemetry, and the selected execution adapter or discipline pack.
 
-For standard and heavy-risky work, this command should leave run evidence under `.claude/runs/`. Lifecycle hooks currently warn when implementation or commit activity has no recent pipeline evidence; the warning is observational during the staged rollout and does not block by itself.
+For standard and heavy-risky work, this command records run evidence under `.claude/runs/` by calling `task-queue.js add`/`start` before execution begins (see Execution Flow step 4 and "Pipeline Evidence Mechanism" below). Lifecycle hooks currently warn when implementation or commit activity has no recent pipeline evidence; the warning is observational during the staged rollout and does not block by itself.
 
 ## Preconditions
 
@@ -35,11 +35,12 @@ The wrapper may:
 The wrapper must not:
 
 - bypass the pipeline with a competing default execution path
+- invoke `task-queue.js run/retry/watch` or `pipeline-runner.js --execute` merely to record evidence — those spawn a real provider adapter and constitute a competing execution path
 - require heavyweight local artifacts for trivial tasks
 - bypass adapter or discipline readiness checks
 - bypass local permission policy
 - auto-commit, auto-push, create PRs, deploy, or run destructive commands without explicit authorization
-- treat SQLite telemetry as immediate correctness evidence
+- treat a recorded gate (a `runs/` evidence file, a JSONL trace entry) as correctness evidence — a gate records that a check ran, not that the work is right
 
 ## Execution Flow
 
@@ -48,16 +49,27 @@ The wrapper must not:
    - read repo-local `AGENTS.md`
    - classify the track
    - identify permission-sensitive operations
-2. For unclear requirements, use the selected brainstorming or planning discipline.
+2. For unclear requirements, stop and return to `/shape-task` or `/grill-me` before planning. Do not start execution on unclear requirements.
 3. For standard or heavy-risky work, pass through the pipeline plan gate.
-4. For execution, select an adapter or discipline pack; use `subagent-driven-development` when the work is disjoint and the runtime supports it.
-5. Let the pipeline own order, stop conditions, evidence, and handoff while adapters own execution mechanics.
-6. Use local `.claude` evidence surfaces only as needed:
+4. For standard or heavy-risky work only, once the plan gate has passed and execution is about to start, stamp run evidence via the local task queue before touching code. Treat this as best-effort and non-blocking — do not stop the run if it errors.
+   - Compute `task_id` as a stable kebab-case slug of the task title (e.g. `add-user-export-endpoint`).
+   - Run from the repo root:
+     ```bash
+     node ~/.claude/scripts/task-queue.js add --task-id "<task_id>" --title "<short task title>" --order "<one-line restatement of the task objective>"
+     node ~/.claude/scripts/task-queue.js start --task-id "<task_id>" --repo "$(git rev-parse --show-toplevel)"
+     ```
+   - If `add` reports the task already exists (re-entry on the same plan/session), ignore that and still run `start` — `start` is safe to call repeatedly and just opens a new run under the same task.
+   - Never use `task-queue.js run`, `retry`, or `watch`, and never call `pipeline-runner.js` with `--execute`, from this step — see "Pipeline Evidence Mechanism" below.
+   - Note in the postflight report whether this stamp succeeded, and if not, why (e.g. `node` unavailable, not a git repo, `~/.claude` not writable) — report it as a coverage gap, not a blocker.
+   - Skip this step entirely for `trivial` work.
+5. For execution, use `/implement-task` or the runtime's own execution adapter. Do not dispatch subagents unless the operator explicitly asks and the work is disjoint.
+6. Let the pipeline own order, stop conditions, evidence, and handoff while adapters own execution mechanics.
+7. Use local `.claude` evidence surfaces only as needed:
    - `verification-summary.md` when rerunnable evidence should be preserved or local commit gates require it
    - `review-summary.md` when unresolved findings or residual risks need durable capture
    - `observation-summary.md` when runtime, UI, or integration behavior changed
    - token metrics when the runtime exposes usage payloads; record missing usage as coverage gap, not as zero cost
-7. Run thin `.claude` postflight:
+8. Run thin `.claude` postflight:
    - summarize files and behavior changed
    - record verification/observation pointers
    - record guardrail candidates when warranted
@@ -84,9 +96,14 @@ Stop and ask for an explicit decision when:
 
 When the scope is narrower than the full suite, report the reason and the exact evidence used.
 
+## Pipeline Evidence Mechanism
+
+- `/execute-plan` leaves run evidence for standard/heavy-risky work using `node scripts/task-queue.js add` + `start` (Execution Flow step 4). This only stamps `~/.claude/runs/<run_id>/meta.json` and `logs/events.ndjson`; it requires no artifact path, no provider adapter, and executes nothing.
+- `node scripts/task-queue.js run|retry|watch` and `node scripts/pipeline-runner.js --execute ...` (also exposed as `npm run pipeline:runner`) drive a full autonomous, headless pipeline through a provider adapter (`codex` or `claude -p`). That is a separate, heavier mechanism intended for queued/unattended work — `/execute-plan` must not invoke it for its own in-session execution, since doing so would spawn a second, competing execution path.
+
 ## Relationship To Local Commands
 
-- `/plan-task` is the local planning fallback when a local artifact is required.
+- The decisions come from `docs/design/YYYY-MM-DD-<slug>.md`, written by `/docs-build`. `plan.md` was retired on 2026-08-17; there is no planning command.
 - `/implement-task` is the local manual execution fallback.
 - `/review-task` is the local durable findings fallback.
 - `/verify` and `/eval` remain local evidence and acceptance surfaces.

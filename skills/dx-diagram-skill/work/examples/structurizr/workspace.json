@@ -1,0 +1,648 @@
+{
+  "configuration" : { },
+  "description" : "C4 sample focused on system boundaries, responsibilities, and integrations",
+  "documentation" : { },
+  "id" : 1,
+  "lastModifiedDate" : "2026-04-09T08:36:58Z",
+  "model" : {
+    "people" : [ {
+      "description" : "案件を登録し、顧客へ完了連絡を行う",
+      "id" : "1",
+      "name" : "営業担当",
+      "properties" : {
+        "structurizr.dsl.identifier" : "sales"
+      },
+      "relationships" : [ {
+        "description" : "案件を登録する",
+        "destinationId" : "4",
+        "id" : "18",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      }, {
+        "description" : "案件状態を確認する",
+        "destinationId" : "4",
+        "id" : "19",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      }, {
+        "description" : "ブラウザで利用する",
+        "destinationId" : "5",
+        "id" : "25",
+        "sourceId" : "1",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Person"
+    }, {
+      "description" : "例外案件だけを確認し、承認する",
+      "id" : "2",
+      "name" : "例外承認者",
+      "properties" : {
+        "structurizr.dsl.identifier" : "approver"
+      },
+      "relationships" : [ {
+        "description" : "例外案件を承認する",
+        "destinationId" : "4",
+        "id" : "20",
+        "sourceId" : "2",
+        "tags" : "Relationship"
+      }, {
+        "description" : "ブラウザで利用する",
+        "destinationId" : "5",
+        "id" : "26",
+        "sourceId" : "2",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Person"
+    }, {
+      "description" : "例外案件だけを処理し、完了結果を登録する",
+      "id" : "3",
+      "name" : "現場担当",
+      "properties" : {
+        "structurizr.dsl.identifier" : "operator"
+      },
+      "relationships" : [ {
+        "description" : "例外処理の結果を登録する",
+        "destinationId" : "4",
+        "id" : "21",
+        "sourceId" : "3",
+        "tags" : "Relationship"
+      }, {
+        "description" : "ブラウザで利用する",
+        "destinationId" : "5",
+        "id" : "27",
+        "sourceId" : "3",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Person"
+    } ],
+    "softwareSystems" : [ {
+      "containers" : [ {
+        "description" : "営業、承認者、現場担当が案件を登録、確認、承認する画面",
+        "documentation" : { },
+        "id" : "5",
+        "name" : "業務ポータル",
+        "properties" : {
+          "structurizr.dsl.identifier" : "dxPlatform.portal"
+        },
+        "relationships" : [ {
+          "description" : "ログイン時に認証する",
+          "destinationId" : "17",
+          "id" : "28",
+          "sourceId" : "5",
+          "tags" : "Relationship"
+        }, {
+          "description" : "案件を登録・確認する",
+          "destinationId" : "6",
+          "id" : "29",
+          "sourceId" : "5",
+          "tags" : "Relationship"
+        }, {
+          "description" : "例外案件を承認する",
+          "destinationId" : "6",
+          "id" : "30",
+          "sourceId" : "5",
+          "tags" : "Relationship"
+        }, {
+          "description" : "処理結果を登録する",
+          "destinationId" : "6",
+          "id" : "31",
+          "sourceId" : "5",
+          "tags" : "Relationship"
+        }, {
+          "description" : "API を呼び出す",
+          "destinationId" : "7",
+          "id" : "40",
+          "sourceId" : "5",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "Web App"
+      }, {
+        "components" : [ {
+          "description" : "案件登録、承認、結果登録の入口となるAPI",
+          "documentation" : { },
+          "id" : "7",
+          "name" : "案件APIコントローラー",
+          "properties" : {
+            "structurizr.dsl.identifier" : "dxPlatform.workflowApi.apiController"
+          },
+          "relationships" : [ {
+            "description" : "操作権限を確認する",
+            "destinationId" : "8",
+            "id" : "41",
+            "sourceId" : "7",
+            "tags" : "Relationship"
+          }, {
+            "description" : "例外進行を判定する",
+            "destinationId" : "9",
+            "id" : "42",
+            "sourceId" : "7",
+            "tags" : "Relationship"
+          }, {
+            "description" : "状態更新を依頼する",
+            "destinationId" : "10",
+            "id" : "43",
+            "sourceId" : "7",
+            "tags" : "Relationship"
+          }, {
+            "description" : "操作履歴を記録する",
+            "destinationId" : "11",
+            "id" : "44",
+            "sourceId" : "7",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "REST Controller"
+        }, {
+          "description" : "ユーザー権限と操作可能範囲を判定する",
+          "documentation" : { },
+          "id" : "8",
+          "name" : "認可ポリシー",
+          "properties" : {
+            "structurizr.dsl.identifier" : "dxPlatform.workflowApi.authPolicy"
+          },
+          "relationships" : [ {
+            "description" : "権限情報を参照する",
+            "destinationId" : "17",
+            "id" : "45",
+            "sourceId" : "8",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Authorization Component"
+        }, {
+          "description" : "例外案件の承認要否と進行先を決定する",
+          "documentation" : { },
+          "id" : "9",
+          "name" : "例外判断サービス",
+          "properties" : {
+            "structurizr.dsl.identifier" : "dxPlatform.workflowApi.exceptionService"
+          },
+          "relationships" : [ {
+            "description" : "案件状態を参照する",
+            "destinationId" : "14",
+            "id" : "47",
+            "sourceId" : "9",
+            "tags" : "Relationship"
+          }, {
+            "description" : "標準案件処理を依頼する",
+            "destinationId" : "12",
+            "id" : "48",
+            "sourceId" : "9",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Domain Service"
+        }, {
+          "description" : "ERP との状態同期と更新指示を扱う",
+          "documentation" : { },
+          "id" : "10",
+          "name" : "状態同期サービス",
+          "properties" : {
+            "structurizr.dsl.identifier" : "dxPlatform.workflowApi.stateSyncService"
+          },
+          "relationships" : [ {
+            "description" : "案件状態を同期する",
+            "destinationId" : "15",
+            "id" : "49",
+            "sourceId" : "10",
+            "tags" : "Relationship"
+          }, {
+            "description" : "通知送信を依頼する",
+            "destinationId" : "13",
+            "id" : "50",
+            "sourceId" : "10",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Application Service"
+        }, {
+          "description" : "操作履歴と承認履歴を保存する",
+          "documentation" : { },
+          "id" : "11",
+          "name" : "監査ログサービス",
+          "properties" : {
+            "structurizr.dsl.identifier" : "dxPlatform.workflowApi.auditLogService"
+          },
+          "relationships" : [ {
+            "description" : "監査ログを保存する",
+            "destinationId" : "14",
+            "id" : "51",
+            "sourceId" : "11",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Application Service"
+        } ],
+        "description" : "案件状態、例外判断、操作権限を管理する中核API",
+        "documentation" : { },
+        "id" : "6",
+        "name" : "ワークフローAPI",
+        "properties" : {
+          "structurizr.dsl.identifier" : "dxPlatform.workflowApi"
+        },
+        "relationships" : [ {
+          "description" : "案件状態と監査ログを保存する",
+          "destinationId" : "14",
+          "id" : "32",
+          "sourceId" : "6",
+          "tags" : "Relationship"
+        }, {
+          "description" : "標準案件の判定と自動処理を依頼する",
+          "destinationId" : "12",
+          "id" : "33",
+          "sourceId" : "6",
+          "tags" : "Relationship"
+        }, {
+          "description" : "通知送信を依頼する",
+          "destinationId" : "13",
+          "id" : "34",
+          "sourceId" : "6",
+          "tags" : "Relationship"
+        }, {
+          "description" : "案件状態を同期する",
+          "destinationId" : "15",
+          "id" : "35",
+          "sourceId" : "6",
+          "tags" : "Relationship"
+        }, {
+          "description" : "権限情報を参照する",
+          "destinationId" : "17",
+          "id" : "46",
+          "linkedRelationshipId" : "45",
+          "sourceId" : "6"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "Backend API"
+      }, {
+        "description" : "標準案件の判定と自動実行を行う",
+        "documentation" : { },
+        "id" : "12",
+        "name" : "判定・自動化エンジン",
+        "properties" : {
+          "structurizr.dsl.identifier" : "dxPlatform.rulesEngine"
+        },
+        "relationships" : [ {
+          "description" : "判定結果と実行結果を保存する",
+          "destinationId" : "14",
+          "id" : "36",
+          "sourceId" : "12",
+          "tags" : "Relationship"
+        }, {
+          "description" : "標準案件の状態を反映する",
+          "destinationId" : "15",
+          "id" : "37",
+          "sourceId" : "12",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "Rules Engine / Worker"
+      }, {
+        "description" : "完了通知と例外依頼通知を送る",
+        "documentation" : { },
+        "id" : "13",
+        "name" : "通知ジョブ",
+        "properties" : {
+          "structurizr.dsl.identifier" : "dxPlatform.notificationJob"
+        },
+        "relationships" : [ {
+          "description" : "通知対象を参照する",
+          "destinationId" : "14",
+          "id" : "38",
+          "sourceId" : "13",
+          "tags" : "Relationship"
+        }, {
+          "description" : "通知を送信する",
+          "destinationId" : "16",
+          "id" : "39",
+          "sourceId" : "13",
+          "tags" : "Relationship"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "Async Worker"
+      }, {
+        "description" : "案件状態、承認履歴、監査ログを保持する",
+        "documentation" : { },
+        "id" : "14",
+        "name" : "ワークフローDB",
+        "properties" : {
+          "structurizr.dsl.identifier" : "dxPlatform.workflowDb"
+        },
+        "tags" : "Element,Container,Database",
+        "technology" : "PostgreSQL"
+      } ],
+      "description" : "標準案件の自動処理と、例外案件の判断・実行フローを支える中核システム",
+      "documentation" : { },
+      "id" : "4",
+      "name" : "DX案件オーケストレーション基盤",
+      "properties" : {
+        "structurizr.dsl.identifier" : "dxPlatform"
+      },
+      "relationships" : [ {
+        "description" : "案件状態を同期する",
+        "destinationId" : "15",
+        "id" : "22",
+        "sourceId" : "4",
+        "tags" : "Relationship"
+      }, {
+        "description" : "完了通知と依頼通知を送る",
+        "destinationId" : "16",
+        "id" : "23",
+        "sourceId" : "4",
+        "tags" : "Relationship"
+      }, {
+        "description" : "ユーザーを認証する",
+        "destinationId" : "17",
+        "id" : "24",
+        "sourceId" : "4",
+        "tags" : "Relationship"
+      } ],
+      "tags" : "Element,Software System"
+    }, {
+      "description" : "業務状態の正式な記録を保持する外部システム",
+      "documentation" : { },
+      "id" : "15",
+      "name" : "ERP / 基幹システム",
+      "properties" : {
+        "structurizr.dsl.identifier" : "erp"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "メールやチャットで社内外へ通知を送る外部サービス",
+      "documentation" : { },
+      "id" : "16",
+      "name" : "通知サービス",
+      "properties" : {
+        "structurizr.dsl.identifier" : "notify"
+      },
+      "tags" : "Element,Software System,External"
+    }, {
+      "description" : "社内ユーザーの認証と権限確認を提供する外部サービス",
+      "documentation" : { },
+      "id" : "17",
+      "name" : "認証基盤",
+      "properties" : {
+        "structurizr.dsl.identifier" : "idp"
+      },
+      "tags" : "Element,Software System,External"
+    } ]
+  },
+  "name" : "DX Diagram Example",
+  "properties" : {
+    "structurizr.inspection.error" : "37",
+    "structurizr.dsl" : "d29ya3NwYWNlICJEWCBEaWFncmFtIEV4YW1wbGUiICJDNCBzYW1wbGUgZm9jdXNlZCBvbiBzeXN0ZW0gYm91bmRhcmllcywgcmVzcG9uc2liaWxpdGllcywgYW5kIGludGVncmF0aW9ucyIgewogICAgIWlkZW50aWZpZXJzIGhpZXJhcmNoaWNhbAoKICAgIG1vZGVsIHsKICAgICAgICBzYWxlcyA9IHBlcnNvbiAi5Za25qWt5ouF5b2TIiAi5qGI5Lu244KS55m76Yyy44GX44CB6aGn5a6i44G45a6M5LqG6YCj57Wh44KS6KGM44GGIgogICAgICAgIGFwcHJvdmVyID0gcGVyc29uICLkvovlpJbmib/oqo3ogIUiICLkvovlpJbmoYjku7bjgaDjgZHjgpLnorroqo3jgZfjgIHmib/oqo3jgZnjgosiCiAgICAgICAgb3BlcmF0b3IgPSBwZXJzb24gIuePvuWgtOaLheW9kyIgIuS+i+WkluahiOS7tuOBoOOBkeOCkuWHpueQhuOBl+OAgeWujOS6hue1kOaenOOCkueZu+mMsuOBmeOCiyIKCiAgICAgICAgZHhQbGF0Zm9ybSA9IHNvZnR3YXJlU3lzdGVtICJEWOahiOS7tuOCquODvOOCseOCueODiOODrOODvOOCt+ODp+ODs+WfuuebpCIgIuaomea6luahiOS7tuOBruiHquWLleWHpueQhuOBqOOAgeS+i+WkluahiOS7tuOBruWIpOaWreODu+Wun+ihjOODleODreODvOOCkuaUr+OBiOOCi+S4reaguOOCt+OCueODhuODoCIgewogICAgICAgICAgICBwb3J0YWwgPSBjb250YWluZXIgIualreWLmeODneODvOOCv+ODqyIgIuWWtualreOAgeaJv+iqjeiAheOAgeePvuWgtOaLheW9k+OBjOahiOS7tuOCkueZu+mMsuOAgeeiuuiqjeOAgeaJv+iqjeOBmeOCi+eUu+mdoiIgIldlYiBBcHAiCiAgICAgICAgICAgIHdvcmtmbG93QXBpID0gY29udGFpbmVyICLjg6/jg7zjgq/jg5Xjg63jg7xBUEkiICLmoYjku7bnirbmhYvjgIHkvovlpJbliKTmlq3jgIHmk43kvZzmqKnpmZDjgpLnrqHnkIbjgZnjgovkuK3moLhBUEkiICJCYWNrZW5kIEFQSSIgewogICAgICAgICAgICAgICAgYXBpQ29udHJvbGxlciA9IGNvbXBvbmVudCAi5qGI5Lu2QVBJ44Kz44Oz44OI44Ot44O844Op44O8IiAi5qGI5Lu255m76Yyy44CB5om/6KqN44CB57WQ5p6c55m76Yyy44Gu5YWl5Y+j44Go44Gq44KLQVBJIiAiUkVTVCBDb250cm9sbGVyIgogICAgICAgICAgICAgICAgYXV0aFBvbGljeSA9IGNvbXBvbmVudCAi6KqN5Y+v44Od44Oq44K344O8IiAi44Om44O844K244O85qip6ZmQ44Go5pON5L2c5Y+v6IO956+E5Zuy44KS5Yik5a6a44GZ44KLIiAiQXV0aG9yaXphdGlvbiBDb21wb25lbnQiCiAgICAgICAgICAgICAgICBleGNlcHRpb25TZXJ2aWNlID0gY29tcG9uZW50ICLkvovlpJbliKTmlq3jgrXjg7zjg5PjgrkiICLkvovlpJbmoYjku7bjga7mib/oqo3opoHlkKbjgajpgLLooYzlhYjjgpLmsbrlrprjgZnjgosiICJEb21haW4gU2VydmljZSIKICAgICAgICAgICAgICAgIHN0YXRlU3luY1NlcnZpY2UgPSBjb21wb25lbnQgIueKtuaFi+WQjOacn+OCteODvOODk+OCuSIgIkVSUCDjgajjga7nirbmhYvlkIzmnJ/jgajmm7TmlrDmjIfnpLrjgpLmibHjgYYiICJBcHBsaWNhdGlvbiBTZXJ2aWNlIgogICAgICAgICAgICAgICAgYXVkaXRMb2dTZXJ2aWNlID0gY29tcG9uZW50ICLnm6Pmn7vjg63jgrDjgrXjg7zjg5PjgrkiICLmk43kvZzlsaXmrbTjgajmib/oqo3lsaXmrbTjgpLkv53lrZjjgZnjgosiICJBcHBsaWNhdGlvbiBTZXJ2aWNlIgogICAgICAgICAgICB9CiAgICAgICAgICAgIHJ1bGVzRW5naW5lID0gY29udGFpbmVyICLliKTlrprjg7voh6rli5XljJbjgqjjg7Pjgrjjg7MiICLmqJnmupbmoYjku7bjga7liKTlrprjgajoh6rli5Xlrp/ooYzjgpLooYzjgYYiICJSdWxlcyBFbmdpbmUgLyBXb3JrZXIiCiAgICAgICAgICAgIG5vdGlmaWNhdGlvbkpvYiA9IGNvbnRhaW5lciAi6YCa55+l44K444On44OWIiAi5a6M5LqG6YCa55+l44Go5L6L5aSW5L6d6aC86YCa55+l44KS6YCB44KLIiAiQXN5bmMgV29ya2VyIgogICAgICAgICAgICB3b3JrZmxvd0RiID0gY29udGFpbmVyICLjg6/jg7zjgq/jg5Xjg63jg7xEQiIgIuahiOS7tueKtuaFi+OAgeaJv+iqjeWxpeattOOAgeebo+afu+ODreOCsOOCkuS/neaMgeOBmeOCiyIgIlBvc3RncmVTUUwiIHsKICAgICAgICAgICAgICAgIHRhZ3MgIkRhdGFiYXNlIgogICAgICAgICAgICB9CiAgICAgICAgfQoKICAgICAgICBlcnAgPSBzb2Z0d2FyZVN5c3RlbSAiRVJQIC8g5Z+65bm544K344K544OG44OgIiAi5qWt5YuZ54q25oWL44Gu5q2j5byP44Gq6KiY6Yyy44KS5L+d5oyB44GZ44KL5aSW6YOo44K344K544OG44OgIiB7CiAgICAgICAgICAgIHRhZ3MgIkV4dGVybmFsIgogICAgICAgIH0KICAgICAgICBub3RpZnkgPSBzb2Z0d2FyZVN5c3RlbSAi6YCa55+l44K144O844OT44K5IiAi44Oh44O844Or44KE44OB44Oj44OD44OI44Gn56S+5YaF5aSW44G46YCa55+l44KS6YCB44KL5aSW6YOo44K144O844OT44K5IiB7CiAgICAgICAgICAgIHRhZ3MgIkV4dGVybmFsIgogICAgICAgIH0KICAgICAgICBpZHAgPSBzb2Z0d2FyZVN5c3RlbSAi6KqN6Ki85Z+655ukIiAi56S+5YaF44Om44O844K244O844Gu6KqN6Ki844Go5qip6ZmQ56K66KqN44KS5o+Q5L6b44GZ44KL5aSW6YOo44K144O844OT44K5IiB7CiAgICAgICAgICAgIHRhZ3MgIkV4dGVybmFsIgogICAgICAgIH0KCiAgICAgICAgc2FsZXMgLT4gZHhQbGF0Zm9ybSAi5qGI5Lu244KS55m76Yyy44GZ44KLIgogICAgICAgIHNhbGVzIC0+IGR4UGxhdGZvcm0gIuahiOS7tueKtuaFi+OCkueiuuiqjeOBmeOCiyIKICAgICAgICBhcHByb3ZlciAtPiBkeFBsYXRmb3JtICLkvovlpJbmoYjku7bjgpLmib/oqo3jgZnjgosiCiAgICAgICAgb3BlcmF0b3IgLT4gZHhQbGF0Zm9ybSAi5L6L5aSW5Yem55CG44Gu57WQ5p6c44KS55m76Yyy44GZ44KLIgoKICAgICAgICBkeFBsYXRmb3JtIC0+IGVycCAi5qGI5Lu254q25oWL44KS5ZCM5pyf44GZ44KLIgogICAgICAgIGR4UGxhdGZvcm0gLT4gbm90aWZ5ICLlrozkuobpgJrnn6Xjgajkvp3poLzpgJrnn6XjgpLpgIHjgosiCiAgICAgICAgZHhQbGF0Zm9ybSAtPiBpZHAgIuODpuODvOOCtuODvOOCkuiqjeiovOOBmeOCiyIKCiAgICAgICAgc2FsZXMgLT4gZHhQbGF0Zm9ybS5wb3J0YWwgIuODluODqeOCpuOCtuOBp+WIqeeUqOOBmeOCiyIKICAgICAgICBhcHByb3ZlciAtPiBkeFBsYXRmb3JtLnBvcnRhbCAi44OW44Op44Km44K244Gn5Yip55So44GZ44KLIgogICAgICAgIG9wZXJhdG9yIC0+IGR4UGxhdGZvcm0ucG9ydGFsICLjg5bjg6njgqbjgrbjgafliKnnlKjjgZnjgosiCgogICAgICAgIGR4UGxhdGZvcm0ucG9ydGFsIC0+IGlkcCAi44Ot44Kw44Kk44Oz5pmC44Gr6KqN6Ki844GZ44KLIgogICAgICAgIGR4UGxhdGZvcm0ucG9ydGFsIC0+IGR4UGxhdGZvcm0ud29ya2Zsb3dBcGkgIuahiOS7tuOCkueZu+mMsuODu+eiuuiqjeOBmeOCiyIKICAgICAgICBkeFBsYXRmb3JtLnBvcnRhbCAtPiBkeFBsYXRmb3JtLndvcmtmbG93QXBpICLkvovlpJbmoYjku7bjgpLmib/oqo3jgZnjgosiCiAgICAgICAgZHhQbGF0Zm9ybS5wb3J0YWwgLT4gZHhQbGF0Zm9ybS53b3JrZmxvd0FwaSAi5Yem55CG57WQ5p6c44KS55m76Yyy44GZ44KLIgoKICAgICAgICBkeFBsYXRmb3JtLndvcmtmbG93QXBpIC0+IGR4UGxhdGZvcm0ud29ya2Zsb3dEYiAi5qGI5Lu254q25oWL44Go55uj5p+744Ot44Kw44KS5L+d5a2Y44GZ44KLIgogICAgICAgIGR4UGxhdGZvcm0ud29ya2Zsb3dBcGkgLT4gZHhQbGF0Zm9ybS5ydWxlc0VuZ2luZSAi5qiZ5rqW5qGI5Lu244Gu5Yik5a6a44Go6Ieq5YuV5Yem55CG44KS5L6d6aC844GZ44KLIgogICAgICAgIGR4UGxhdGZvcm0ud29ya2Zsb3dBcGkgLT4gZHhQbGF0Zm9ybS5ub3RpZmljYXRpb25Kb2IgIumAmuefpemAgeS/oeOCkuS+nemgvOOBmeOCiyIKICAgICAgICBkeFBsYXRmb3JtLndvcmtmbG93QXBpIC0+IGVycCAi5qGI5Lu254q25oWL44KS5ZCM5pyf44GZ44KLIgoKICAgICAgICBkeFBsYXRmb3JtLnJ1bGVzRW5naW5lIC0+IGR4UGxhdGZvcm0ud29ya2Zsb3dEYiAi5Yik5a6a57WQ5p6c44Go5a6f6KGM57WQ5p6c44KS5L+d5a2Y44GZ44KLIgogICAgICAgIGR4UGxhdGZvcm0ucnVsZXNFbmdpbmUgLT4gZXJwICLmqJnmupbmoYjku7bjga7nirbmhYvjgpLlj43mmKDjgZnjgosiCgogICAgICAgIGR4UGxhdGZvcm0ubm90aWZpY2F0aW9uSm9iIC0+IGR4UGxhdGZvcm0ud29ya2Zsb3dEYiAi6YCa55+l5a++6LGh44KS5Y+C54Wn44GZ44KLIgogICAgICAgIGR4UGxhdGZvcm0ubm90aWZpY2F0aW9uSm9iIC0+IG5vdGlmeSAi6YCa55+l44KS6YCB5L+h44GZ44KLIgoKICAgICAgICBkeFBsYXRmb3JtLnBvcnRhbCAtPiBkeFBsYXRmb3JtLndvcmtmbG93QXBpLmFwaUNvbnRyb2xsZXIgIkFQSSDjgpLlkbzjgbPlh7rjgZkiCiAgICAgICAgZHhQbGF0Zm9ybS53b3JrZmxvd0FwaS5hcGlDb250cm9sbGVyIC0+IGR4UGxhdGZvcm0ud29ya2Zsb3dBcGkuYXV0aFBvbGljeSAi5pON5L2c5qip6ZmQ44KS56K66KqN44GZ44KLIgogICAgICAgIGR4UGxhdGZvcm0ud29ya2Zsb3dBcGkuYXBpQ29udHJvbGxlciAtPiBkeFBsYXRmb3JtLndvcmtmbG93QXBpLmV4Y2VwdGlvblNlcnZpY2UgIuS+i+WklumAsuihjOOCkuWIpOWumuOBmeOCiyIKICAgICAgICBkeFBsYXRmb3JtLndvcmtmbG93QXBpLmFwaUNvbnRyb2xsZXIgLT4gZHhQbGF0Zm9ybS53b3JrZmxvd0FwaS5zdGF0ZVN5bmNTZXJ2aWNlICLnirbmhYvmm7TmlrDjgpLkvp3poLzjgZnjgosiCiAgICAgICAgZHhQbGF0Zm9ybS53b3JrZmxvd0FwaS5hcGlDb250cm9sbGVyIC0+IGR4UGxhdGZvcm0ud29ya2Zsb3dBcGkuYXVkaXRMb2dTZXJ2aWNlICLmk43kvZzlsaXmrbTjgpLoqJjpjLLjgZnjgosiCgogICAgICAgIGR4UGxhdGZvcm0ud29ya2Zsb3dBcGkuYXV0aFBvbGljeSAtPiBpZHAgIuaoqemZkOaDheWgseOCkuWPgueFp+OBmeOCiyIKICAgICAgICBkeFBsYXRmb3JtLndvcmtmbG93QXBpLmV4Y2VwdGlvblNlcnZpY2UgLT4gZHhQbGF0Zm9ybS53b3JrZmxvd0RiICLmoYjku7bnirbmhYvjgpLlj4LnhafjgZnjgosiCiAgICAgICAgZHhQbGF0Zm9ybS53b3JrZmxvd0FwaS5leGNlcHRpb25TZXJ2aWNlIC0+IGR4UGxhdGZvcm0ucnVsZXNFbmdpbmUgIuaomea6luahiOS7tuWHpueQhuOCkuS+nemgvOOBmeOCiyIKICAgICAgICBkeFBsYXRmb3JtLndvcmtmbG93QXBpLnN0YXRlU3luY1NlcnZpY2UgLT4gZXJwICLmoYjku7bnirbmhYvjgpLlkIzmnJ/jgZnjgosiCiAgICAgICAgZHhQbGF0Zm9ybS53b3JrZmxvd0FwaS5zdGF0ZVN5bmNTZXJ2aWNlIC0+IGR4UGxhdGZvcm0ubm90aWZpY2F0aW9uSm9iICLpgJrnn6XpgIHkv6HjgpLkvp3poLzjgZnjgosiCiAgICAgICAgZHhQbGF0Zm9ybS53b3JrZmxvd0FwaS5hdWRpdExvZ1NlcnZpY2UgLT4gZHhQbGF0Zm9ybS53b3JrZmxvd0RiICLnm6Pmn7vjg63jgrDjgpLkv53lrZjjgZnjgosiCiAgICB9CgogICAgdmlld3MgewogICAgICAgIHN5c3RlbUNvbnRleHQgZHhQbGF0Zm9ybSAiY29udGV4dCIgewogICAgICAgICAgICBpbmNsdWRlICoKICAgICAgICAgICAgYXV0b0xheW91dCBscgogICAgICAgICAgICB0aXRsZSAiU3lzdGVtIENvbnRleHQgLSBEWOahiOS7tuOCquODvOOCseOCueODiOODrOODvOOCt+ODp+ODs+WfuuebpCIKICAgICAgICB9CgogICAgICAgIGNvbnRhaW5lciBkeFBsYXRmb3JtICJjb250YWluZXJzIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgICAgICBhdXRvTGF5b3V0IGxyCiAgICAgICAgICAgIHRpdGxlICJDb250YWluZXIgRGlhZ3JhbSAtIERY5qGI5Lu244Kq44O844Kx44K544OI44Os44O844K344On44Oz5Z+655ukIgogICAgICAgIH0KCiAgICAgICAgY29tcG9uZW50IGR4UGxhdGZvcm0ud29ya2Zsb3dBcGkgIndvcmtmbG93QXBpQ29tcG9uZW50cyIgewogICAgICAgICAgICBpbmNsdWRlICoKICAgICAgICAgICAgYXV0b0xheW91dCBscgogICAgICAgICAgICB0aXRsZSAiQ29tcG9uZW50IERpYWdyYW0gLSDjg6/jg7zjgq/jg5Xjg63jg7xBUEkiCiAgICAgICAgfQoKICAgICAgICB0aGVtZSBkZWZhdWx0CiAgICB9Cn0=",
+    "structurizr.inspection.info" : "0",
+    "structurizr.inspection.ignore" : "0",
+    "structurizr.inspection.warning" : "0"
+  },
+  "views" : {
+    "componentViews" : [ {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "containerId" : "6",
+      "elements" : [ {
+        "id" : "5",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "7",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "8",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "9",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "10",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "11",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "12",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "13",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "14",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "15",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "17",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "key" : "workflowApiComponents",
+      "name" : "Component View: DX案件オーケストレーション基盤 - ワークフローAPI",
+      "order" : 3,
+      "relationships" : [ {
+        "id" : "28"
+      }, {
+        "id" : "36"
+      }, {
+        "id" : "37"
+      }, {
+        "id" : "38"
+      }, {
+        "id" : "40"
+      }, {
+        "id" : "41"
+      }, {
+        "id" : "42"
+      }, {
+        "id" : "43"
+      }, {
+        "id" : "44"
+      }, {
+        "id" : "45"
+      }, {
+        "id" : "47"
+      }, {
+        "id" : "48"
+      }, {
+        "id" : "49"
+      }, {
+        "id" : "50"
+      }, {
+        "id" : "51"
+      } ],
+      "title" : "Component Diagram - ワークフローAPI"
+    } ],
+    "configuration" : {
+      "styles" : { },
+      "terminology" : { },
+      "themes" : [ "https://static.structurizr.com/themes/default/theme.json" ]
+    },
+    "containerViews" : [ {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "2",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "3",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "5",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "6",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "12",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "13",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "14",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "15",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "16",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "17",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalSoftwareSystemBoundariesVisible" : false,
+      "key" : "containers",
+      "name" : "Container View: DX案件オーケストレーション基盤",
+      "order" : 2,
+      "relationships" : [ {
+        "id" : "25"
+      }, {
+        "id" : "26"
+      }, {
+        "id" : "27"
+      }, {
+        "id" : "28"
+      }, {
+        "id" : "29"
+      }, {
+        "id" : "30"
+      }, {
+        "id" : "31"
+      }, {
+        "id" : "32"
+      }, {
+        "id" : "33"
+      }, {
+        "id" : "34"
+      }, {
+        "id" : "35"
+      }, {
+        "id" : "36"
+      }, {
+        "id" : "37"
+      }, {
+        "id" : "38"
+      }, {
+        "id" : "39"
+      }, {
+        "id" : "46"
+      } ],
+      "softwareSystemId" : "4",
+      "title" : "Container Diagram - DX案件オーケストレーション基盤"
+    } ],
+    "systemContextViews" : [ {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "2",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "3",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "4",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "15",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "16",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "17",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "enterpriseBoundaryVisible" : true,
+      "key" : "context",
+      "name" : "System Context View: DX案件オーケストレーション基盤",
+      "order" : 1,
+      "relationships" : [ {
+        "id" : "18"
+      }, {
+        "id" : "19"
+      }, {
+        "id" : "20"
+      }, {
+        "id" : "21"
+      }, {
+        "id" : "22"
+      }, {
+        "id" : "23"
+      }, {
+        "id" : "24"
+      } ],
+      "softwareSystemId" : "4",
+      "title" : "System Context - DX案件オーケストレーション基盤"
+    } ]
+  }
+}

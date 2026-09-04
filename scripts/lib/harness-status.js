@@ -7,13 +7,22 @@ const { spawnSync } = require('child_process');
 const {
   findTaskArtifacts,
   buildLifecycleState,
-  parseProgressState,
 } = require('./task-artifacts');
 const { findLatestPipelineEvidence } = require('./pipeline-evidence');
+const { latestRunForRepo } = require('./run-log');
 
 const STATUS_READY = 'READY';
 const STATUS_NEEDS_ACTION = 'NEEDS_ACTION';
 const STATUS_BLOCKED = 'BLOCKED';
+
+function readJsonFile(filePath) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 function runGit(repoRoot, args) {
   const result = spawnSync('git', args, {
@@ -63,15 +72,8 @@ function summarizeLifecycle(repoRoot) {
     return {
       present: false,
       currentStepId: 'missing',
-      nextRequiredAction: 'create plan.md',
-      blocked: ['missing plan.md'],
-      sessionState: {
-        currentPhase: '',
-        lastCompletedStep: '',
-        nextAction: '',
-        blockers: [],
-        delegatedWork: [],
-      },
+      nextRequiredAction: 'record the decisions in docs/design/ (/docs-build)',
+      blocked: [],
       chain: [],
       raw: null,
     };
@@ -83,7 +85,6 @@ function summarizeLifecycle(repoRoot) {
     currentStepId: state.currentStepId,
     nextRequiredAction: state.nextRequiredAction,
     blocked: state.blocked || [],
-    sessionState: state.sessionState || {},
     chain: state.chain || [],
     raw: state,
   };
@@ -155,90 +156,56 @@ function summarizePipeline(repoRoot, options = {}) {
   };
 }
 
+/**
+ * The latest run record for this repository, and the next action it recorded.
+ *
+ * Was a `sqlite3 -json` subprocess reading run_state.next_action. That column
+ * was filled *from* progress.md, retired 2026-08-17, so every row written since
+ * is empty -- the last non-empty one is dated 2026-08-17T06:55. The subprocess
+ * also interpolated repoRoot into the SQL and needed sqlite3 on PATH.
+ *
+ * review-summary.md's "## Next Action" is written by hand, is current, and
+ * survives worktree removal in evidence/review.json.
+ */
 function summarizeRuntime(repoRoot, options = {}) {
-  const dbPath = options.telemetryDbPath || (
-    options.homeDir ? path.join(options.homeDir, '.claude', 'telemetry', 'telemetry.db') : ''
-  );
-  if (!dbPath || !fs.existsSync(dbPath)) {
-    return { present: false, state: null, error: '' };
-  }
-
   try {
-    const result = spawnSync('sqlite3', [
-      '-json',
-      dbPath,
-      `
-        SELECT
-          rs.run_id AS runId,
-          rs.session_id AS sessionId,
-          rs.repo_root AS repoRoot,
-          rs.current_phase AS currentPhase,
-          rs.current_step AS currentStep,
-          rs.next_action AS nextAction,
-          rs.blockers_json AS blockersJson,
-          rs.delegated_work_json AS delegatedWorkJson,
-          rs.artifact_blocked_json AS artifactBlockedJson,
-          sr.final_status AS finalStatus,
-          sr.started_at AS startedAt,
-          sr.ended_at AS endedAt
-        FROM run_state rs
-        JOIN session_runs sr ON sr.run_id = rs.run_id
-        WHERE rs.repo_root = '${String(repoRoot).replace(/'/g, "''")}'
-        ORDER BY rs.updated_at DESC
-        LIMIT 1;
-      `,
-    ], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
+    const run = latestRunForRepo({
+      repoRoot,
+      runsDir: options.runsDir,
+      homeDir: options.homeDir,
     });
-    if (result.status !== 0) {
-      return { present: false, state: null, error: 'sqlite3 unavailable or telemetry unreadable' };
-    }
-    const rows = JSON.parse(result.stdout || '[]');
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return { present: false, state: null, error: '' };
-    }
-    const row = rows[0];
-    const parseArray = value => {
-      try {
-        const parsed = JSON.parse(value || '[]');
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
+    if (!run) return { present: false, state: null, error: '' };
+
+    const evidence = readJsonFile(path.join(run.path, 'evidence', 'review.json'));
+    const reviewState = (evidence && evidence.state) || {};
+
+    return {
+      present: true,
+      error: '',
+      state: {
+        runId: run.runId,
+        repoRoot: run.repoRoot,
+        branch: run.branch,
+        sessionIds: run.sessionIds,
+        startedAt: run.startedAt,
+        updatedAt: run.updatedAt,
+        nextAction: String(reviewState.nextAction || '').trim(),
+        residualRisks: Array.isArray(reviewState.residualRisks) ? reviewState.residualRisks : [],
+        gates: {
+          verification: run.verification,
+          review: run.review,
+          observation: run.observation,
+        },
+      },
     };
-    const state = {
-      runId: row.runId || '',
-      sessionId: row.sessionId || '',
-      repoRoot: row.repoRoot || '',
-      currentPhase: row.currentPhase || '',
-      currentStep: row.currentStep || '',
-      nextAction: row.nextAction || '',
-      blockers: parseArray(row.blockersJson),
-      delegatedWork: parseArray(row.delegatedWorkJson),
-      artifactBlocked: parseArray(row.artifactBlockedJson),
-      finalStatus: row.finalStatus || '',
-      startedAt: row.startedAt || '',
-      endedAt: row.endedAt || '',
-    };
-    if (!state) {
-      return { present: false, state: null, error: '' };
-    }
-    return { present: true, state, error: '' };
   } catch (error) {
     return { present: false, state: null, error: error.message };
   }
 }
 
-function readProgressNextAction(repoRoot) {
-  const progressPath = path.join(repoRoot, 'progress.md');
-  if (!fs.existsSync(progressPath)) return '';
-  try {
-    const state = parseProgressState(fs.readFileSync(progressPath, 'utf8'));
-    return String(state.nextAction || '').trim();
-  } catch {
-    return '';
-  }
+function readRuntimeNextAction(summary) {
+  if (!summary.runtime.present || !summary.runtime.state) return '';
+  return String(summary.runtime.state.nextAction || '').trim();
 }
 
 function firstTaskLabel(tasks) {
@@ -251,6 +218,7 @@ function buildRecommendation(summary) {
   const secondaryActions = [];
   let status = STATUS_READY;
   let recommendedAction = 'Continue with the next planned harness improvement.';
+  let usedRuntimeNextAction = false;
 
   if (summary.repo.remote === 'missing') {
     secondaryActions.push('Git remote is missing; configure and push only when off-machine backup or collaboration is needed.');
@@ -266,6 +234,10 @@ function buildRecommendation(summary) {
   } else if (summary.lifecycle.blocked.length > 0) {
     status = STATUS_BLOCKED;
     recommendedAction = `Resolve lifecycle blocker: ${summary.lifecycle.blocked[0]}.`;
+  } else if (!summary.lifecycle.present) {
+    // 成果物ゼロを READY と呼ぶと、何も検証していないことが緑に見える。
+    status = STATUS_NEEDS_ACTION;
+    recommendedAction = summary.lifecycle.nextRequiredAction;
   } else if (summary.taskQueue.blocked.length > 0) {
     status = STATUS_BLOCKED;
     recommendedAction = `Inspect blocked task ${firstTaskLabel(summary.taskQueue.blocked)} before starting new work.`;
@@ -273,14 +245,16 @@ function buildRecommendation(summary) {
     status = STATUS_NEEDS_ACTION;
     recommendedAction = `Inspect running task ${firstTaskLabel(summary.taskQueue.running)} and reconcile its latest run state before starting new work.`;
   } else {
-    const nextAction = readProgressNextAction(summary.repo.root);
+    const nextAction = readRuntimeNextAction(summary);
     const lifecycleNext = summary.lifecycle.nextRequiredAction && summary.lifecycle.nextRequiredAction !== 'none'
       ? summary.lifecycle.nextRequiredAction
       : '';
     recommendedAction = nextAction || lifecycleNext || recommendedAction;
+    usedRuntimeNextAction = Boolean(nextAction);
   }
 
-  if (summary.runtime.present && summary.runtime.state && summary.runtime.state.nextAction) {
+  // 一次で使った場合は二次に出さない（同じ文字列が2回出ると別の示唆に見える）
+  if (!usedRuntimeNextAction && summary.runtime.present && summary.runtime.state && summary.runtime.state.nextAction) {
     secondaryActions.push(`Latest runtime checkpoint suggests: ${summary.runtime.state.nextAction}`);
   }
 
@@ -301,7 +275,7 @@ function summarizeHarnessStatus(options = {}) {
     lifecycle: summarizeLifecycle(repoRoot),
     pipeline: summarizePipeline(repoRoot, { homeDir }),
     taskQueue: summarizeTaskQueue({ homeDir, claudeDir }),
-    runtime: summarizeRuntime(repoRoot, { homeDir, telemetryDbPath: options.telemetryDbPath }),
+    runtime: summarizeRuntime(repoRoot, { homeDir, runsDir: options.runsDir }),
   };
 
   return {
@@ -335,8 +309,6 @@ function formatHarnessStatus(summary) {
     `- current_step=${summary.lifecycle.currentStepId}`,
     `- next_required_action=${formatValue(summary.lifecycle.nextRequiredAction)}`,
     `- blockers=${formatValue(summary.lifecycle.blocked)}`,
-    `- current_phase=${formatValue(summary.lifecycle.sessionState.currentPhase)}`,
-    `- last_completed_step=${formatValue(summary.lifecycle.sessionState.lastCompletedStep)}`,
     '',
     'Pipeline:',
     `- latest_run=${latestRun}`,
@@ -365,12 +337,7 @@ function formatHarnessStatus(summary) {
 }
 
 module.exports = {
-  STATUS_READY,
-  STATUS_NEEDS_ACTION,
-  STATUS_BLOCKED,
   summarizeHarnessStatus,
   formatHarnessStatus,
-  summarizeRepo,
-  summarizeLifecycle,
   summarizeTaskQueue,
 };

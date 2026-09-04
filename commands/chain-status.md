@@ -10,8 +10,7 @@ Use this command when you need to know where the current task is in the lifecycl
 
 1. Read the repository task artifacts:
    - `research.md`
-   - `plan.md`
-   - `progress.md`
+   - `docs/design/` の最新の1枚
    - `verification-summary.md`
    - `review-summary.md`
    - `observation-summary.md`
@@ -37,8 +36,7 @@ Use this command when you need to know where the current task is in the lifecycl
 ```text
 Lifecycle chain:
 - research: complete | research.md present
-- plan: complete | plan.md approved
-- progress: complete | progress.md current_phase=...
+- design: complete | docs/design/<slug>.md present
 - implementation: active | execute approved plan in small TDD batches
 - verification: pending | write verification-summary.md with rerunnable command evidence
 

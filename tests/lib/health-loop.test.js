@@ -18,10 +18,6 @@ const {
   summarizeCurrentHealth,
   formatHealthStatus,
 } = require('../../scripts/lib/health-loop');
-const {
-  createDatabase,
-  recordSessionEvent,
-} = require('../../scripts/lib/session-trace');
 
 function test(name, fn) {
   try {
@@ -45,6 +41,35 @@ function cleanup(dir) {
 
 function writeRegistry(registryPath, rows) {
   fs.writeFileSync(registryPath, rows.map(row => JSON.stringify(row)).join('\n') + '\n', 'utf8');
+}
+
+/**
+ * A run record holding one genuine resume failure, plus an empty transcript
+ * directory. Both paths must be sandboxed: telemetry-health reads runs/ and the
+ * transcripts, so passing only one lets the suite read the developer's real
+ * history and assert against whatever happens to be there.
+ */
+function seedJsonLogs(dir) {
+  const runsDir = path.join(dir, 'runs');
+  const transcriptDir = path.join(dir, 'projects');
+  const runDir = path.join(runsDir, '2026-04-17-health');
+  fs.mkdirSync(path.join(runDir, 'logs'), { recursive: true });
+  fs.mkdirSync(transcriptDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, 'meta.json'),
+    `${JSON.stringify({ run_id: '2026-04-17-health', started_at: '2026-04-17T00:00:00.000Z' })}\n`
+  );
+  fs.writeFileSync(
+    path.join(runDir, 'logs', 'events.ndjson'),
+    `${JSON.stringify({
+      occurred_at: '2026-04-17T00:00:00.000Z',
+      type: 'session_started',
+      session_id: 'session-health',
+      resume_expected: true,
+      resume_success: false,
+    })}\n`
+  );
+  return { runsDir, transcriptDir };
 }
 
 function runTests() {
@@ -81,7 +106,6 @@ function runTests() {
   if (test('optionally merges telemetry-derived candidates', () => {
     const dir = createTempDir();
     try {
-      const dbPath = path.join(dir, 'telemetry.db');
       const registryPath = path.join(dir, 'guardrail-candidates.jsonl');
       writeRegistry(registryPath, [{
         candidate_key: 'registry::candidate',
@@ -90,25 +114,17 @@ function runTests() {
         captured_at: '2026-04-15T00:00:00.000Z',
       }]);
 
-      recordSessionEvent({
-        sessionId: 'session-telemetry',
-        runId: 'run-telemetry',
-        occurredAt: '2026-04-17T00:00:00.000Z',
-        eventType: 'session_started',
-        status: 'started',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { resume_success: false },
-      }, { dbPath });
+      const jsonLogs = seedJsonLogs(dir);
 
       const rows = loadHealthCandidates(registryPath, {
         includeTelemetry: true,
-        dbPath,
+        ...jsonLogs,
       });
-      assert.strictEqual(rows.length, 3);
+      // plan_missing_or_skipped was retired 2026-08-19, and the two bridge
+      // observability detectors 2026-08-20 (see telemetry-health.js).
+      assert.strictEqual(rows.length, 2);
       assert.ok(rows.some(row => row.failure_pattern === 'manual_registry_pattern'));
       assert.ok(rows.some(row => row.failure_pattern === 'resume_failed'));
-      assert.ok(rows.some(row => row.failure_pattern === 'plan_missing_or_skipped'));
     } finally {
       cleanup(dir);
     }
@@ -218,7 +234,6 @@ function runTests() {
   if (test('returns summarized health from registry and telemetry', () => {
     const dir = createTempDir();
     try {
-      const dbPath = path.join(dir, 'telemetry.db');
       const registryPath = path.join(dir, 'guardrail-candidates.jsonl');
       writeRegistry(registryPath, [{
         candidate_key: 'registry::candidate',
@@ -227,27 +242,16 @@ function runTests() {
         captured_at: '2026-04-15T00:00:00.000Z',
       }]);
 
-      recordSessionEvent({
-        sessionId: 'session-health',
-        runId: 'run-health',
-        occurredAt: '2026-04-17T00:00:00.000Z',
-        eventType: 'session_started',
-        status: 'started',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: { resume_success: false },
-      }, { dbPath });
-
       const summary = summarizeCurrentHealth({
         registryPath,
-        dbPath,
+        ...seedJsonLogs(dir),
       });
-      assert.strictEqual(summary.totalEntries, 3);
+      assert.strictEqual(summary.totalEntries, 2);
       assert.ok(summary.totalGroups >= 2);
 
       const formatted = formatHealthStatus(summary, { limit: 2 });
       assert.ok(formatted.includes('Health Status'));
-      assert.ok(formatted.includes('total_entries=3'));
+      assert.ok(formatted.includes('total_entries=2'));
       assert.ok(formatted.includes('Top groups:'));
       assert.ok(formatted.includes('provenance='));
     } finally {
@@ -255,77 +259,22 @@ function runTests() {
     }
   })) passed++; else failed++;
 
-  if (test('projects manual bridge observability limits into telemetry candidates', () => {
+  // The two bridge observability detectors were retired 2026-08-20 rather than
+  // moved to JSON. bridge_mode='manual' was never recorded once in the whole
+  // telemetry history, and the companion branch needed plan_present=1 (retired
+  // 2026-08-17) plus zero tool_executions -- which Phase 1 made permanently
+  // true, so it fired on runs where all three gates were present.
+
+  if (test('telemetry candidates carry their provenance', () => {
     const dir = createTempDir();
     try {
-      const dbPath = path.join(dir, 'telemetry.db');
-      recordSessionEvent({
-        sessionId: 'session-manual-bridge',
-        runId: 'run-manual-bridge',
-        occurredAt: '2026-04-17T02:00:00.000Z',
-        eventType: 'session_started',
-        status: 'started',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: {
-          bridge_mode: 'manual',
-          runtime: 'codex',
-          resume_success: true,
-        },
-      }, { dbPath });
-
-      const db = createDatabase(dbPath);
-      db.prepare(`
-        UPDATE session_runs
-        SET plan_present = 1, verify_present = 1, review_present = 1, final_status = 'completed_clean'
-        WHERE run_id = 'run-manual-bridge'
-      `).run();
-      db.close();
-
       const summary = summarizeCurrentHealth({
         registryPath: path.join(dir, 'guardrail-candidates.jsonl'),
-        dbPath,
+        ...seedJsonLogs(dir),
       });
-      assert.ok(summary.groups.some(group => group.failure_pattern === 'manual_bridge_session_level_only'));
-
+      assert.ok(summary.groups.some(group => group.failure_pattern === 'resume_failed'));
       const formatted = formatHealthStatus(summary, { limit: 5 });
-      assert.ok(formatted.includes('manual_bridge_session_level_only'));
       assert.ok(formatted.includes('provenance=telemetry'));
-    } finally {
-      cleanup(dir);
-    }
-  })) passed++; else failed++;
-
-  if (test('projects session-level observability gaps when clean runs have no tool telemetry', () => {
-    const dir = createTempDir();
-    try {
-      const dbPath = path.join(dir, 'telemetry.db');
-      recordSessionEvent({
-        sessionId: 'session-clean-no-tools',
-        runId: 'run-clean-no-tools',
-        occurredAt: '2026-04-17T03:00:00.000Z',
-        eventType: 'session_started',
-        status: 'resumed',
-        repoRoot: '/tmp/repo',
-        cwd: '/tmp/repo',
-        metadata: {
-          resume_success: true,
-        },
-      }, { dbPath });
-
-      const db = createDatabase(dbPath);
-      db.prepare(`
-        UPDATE session_runs
-        SET plan_present = 1, verify_present = 1, review_present = 1, final_status = 'completed_clean'
-        WHERE run_id = 'run-clean-no-tools'
-      `).run();
-      db.close();
-
-      const summary = summarizeCurrentHealth({
-        registryPath: path.join(dir, 'guardrail-candidates.jsonl'),
-        dbPath,
-      });
-      assert.ok(summary.groups.some(group => group.failure_pattern === 'session_level_observability_only'));
     } finally {
       cleanup(dir);
     }

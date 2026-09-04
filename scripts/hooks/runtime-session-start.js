@@ -1,58 +1,48 @@
 #!/usr/bin/env node
 'use strict';
 
-const { getRuntimeKind, getRuntimeSessionId } = require('../lib/utils');
-const { getRepoRoot, buildArtifactContext } = require('../lib/task-artifacts');
-const {
-  recordSessionEvent,
-  recordLifecycleSnapshot,
-  getRunId,
-  getLatestRunState,
-  formatResumeState,
-} = require('../lib/session-trace');
+const { getRuntimeSessionId } = require('../lib/utils');
+const { getRepoRoot } = require('../lib/task-artifacts');
+const { recordSessionStart, resolveRunSlug, resolveBranch } = require('../lib/run-record');
+const { resolveResumeState } = require('../lib/run-log');
+const { recordLifecycleGates } = require('../lib/lifecycle-record');
 
 function main() {
-  const runtime = getRuntimeKind();
   const sessionId = getRuntimeSessionId() || undefined;
-  const runId = getRunId(sessionId);
   const repoRoot = getRepoRoot(process.cwd());
-  const artifactContext = buildArtifactContext(repoRoot);
-  const persistedState = repoRoot
-    ? (getLatestRunState({ repoRoot }) || getLatestRunState())
-    : getLatestRunState();
 
-  if (persistedState) {
-    process.stdout.write(`${formatResumeState(persistedState)}\n`);
-  } else if (artifactContext) {
-    process.stdout.write(`${artifactContext}\n`);
+  // Previously `getLatestRunState({ repoRoot }) || getLatestRunState()`. The
+  // fallback was the cross-repository read that session-start.js had already
+  // removed as a contract violation: with no row for this repository it reached
+  // for whichever repository was touched last. resolveResumeState is scoped to
+  // one repository with no fallback, so the bug goes with the table.
+  // Not conditional on repoRoot: resolveResumeState handles an empty repoRoot
+  // itself, and a null here would only be safe because the guard below happens
+  // to test the same condition.
+  const resume = resolveResumeState({ repoRoot });
+
+  if (resume.context) {
+    process.stdout.write(`${resume.context}\n`);
   }
 
-  recordSessionEvent({
-    sessionId,
-    runId,
-    eventType: 'session_started',
-    status: persistedState ? 'resumed' : (artifactContext ? 'artifact_resumed' : 'started'),
-    repoRoot: repoRoot || '',
-    cwd: process.cwd(),
-    taskPhase: persistedState?.currentPhase || '',
-    metadata: {
-      runtime,
-      bridge_mode: 'manual',
-      resume_success: Boolean(persistedState || artifactContext),
-      resume_source: persistedState ? 'sqlite' : (artifactContext ? 'artifacts' : 'none'),
-    },
-    createdBy: 'runtime-session-start',
-  });
-
   if (repoRoot) {
-    recordLifecycleSnapshot({
-      sessionId,
-      runId,
-      repoRoot,
-      cwd: process.cwd(),
-      includeArtifactContextLoaded: true,
-      createdBy: 'runtime-session-start',
-    });
+    try {
+      const branch = resolveBranch(repoRoot);
+      const runId = resolveRunSlug({ repoRoot, branch, sessionId });
+      recordLifecycleGates({ repoRoot, runId, sessionId, branch, cwd: process.cwd() });
+      recordSessionStart({
+        repoRoot,
+        runId,
+        sessionId,
+        branch,
+        resumeExpected: resume.expected,
+        resumeSuccess: resume.success,
+        resumeReason: resume.reason,
+        resumeSource: resume.source,
+      });
+    } catch {
+      // Recording must never keep a session from starting.
+    }
   }
 }
 

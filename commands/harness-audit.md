@@ -46,8 +46,8 @@ Harness Audit (repo): 52/70
 - Cost Efficiency: 4/10
 
 Top 3 Actions:
-1) Add cost tracking hook in scripts/hooks/cost-tracker.js
-2) Add pass@k docs and templates in skills/eval-harness/SKILL.md
+1) Report token usage from the transcripts via scripts/lib/transcript-log.js
+2) Add pass@k docs and templates under templates/
 3) Add command parity for /harness-audit in .opencode/commands/
 ```
 

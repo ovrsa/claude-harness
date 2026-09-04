@@ -1,5 +1,7 @@
 'use strict';
 
+const { OPAQUE_COMMANDS, splitShellSegments, tokenize, commandNameOf } = require('./shell-split');
+
 const PERMISSION_MODES = new Set(['readonly', 'edit', 'full']);
 
 const BLOCKED_ACTION_PATTERNS = [
@@ -27,13 +29,51 @@ const SAFE_READONLY_BASH = [
   /^\s*git\s+(status|diff|log|show|rev-parse|branch)\b/,
 ];
 
-const DANGEROUS_BASH = [
-  { label: 'destructive rm', pattern: /\brm\s+-rf\b/ },
-  { label: 'git reset hard', pattern: /\bgit\s+reset\s+--hard\b/ },
-  { label: 'git clean force', pattern: /\bgit\s+clean\s+-fd\b/ },
-  { label: 'force push', pattern: /\bgit\s+push\b.*--force\b/ },
-  { label: 'world-writable chmod', pattern: /\bchmod\s+-R\s+777\b/ },
+// 危険判定はフラグ解析で行う。文字列パターンだと大小文字と並び順に依存し、
+// rm -Rf（BSD rm で有効）や git push -f が抜ける。
+const DANGEROUS_COMMANDS = [
+  { label: 'destructive rm', matches: (name, flags) =>
+      name === 'rm' && hasFlag(flags, 'r', 'recursive') && hasFlag(flags, 'f', 'force') },
+  { label: 'git reset hard', matches: (name, flags, tokens) =>
+      name === 'git' && subcommandIs(tokens, 'reset') && hasFlag(flags, null, 'hard') },
+  { label: 'git clean force', matches: (name, flags, tokens) =>
+      name === 'git' && subcommandIs(tokens, 'clean') && hasFlag(flags, 'f', 'force') },
+  { label: 'force push', matches: (name, flags, tokens) =>
+      name === 'git' && subcommandIs(tokens, 'push') &&
+      (hasFlag(flags, 'f', 'force') || hasFlag(flags, null, 'force-with-lease')) },
+  { label: 'world-writable chmod', matches: (name, flags, tokens) =>
+      name === 'chmod' && hasFlag(flags, 'r', 'recursive') &&
+      tokens.some(token => /^0?777$/.test(token) || /a\+rwx/i.test(token)) },
+  { label: 'find with side effects', matches: (name, _flags, tokens) =>
+      name === 'find' && tokens.some(token => /^-(?:exec|execdir|ok|okdir|fls|fprintf?)$/i.test(token)) },
 ];
+
+// 読み取り専用として自動許可してよいのは、副作用フラグを持たない場合だけ。
+const UNSAFE_FLAGS_FOR_SAFE_COMMANDS = {
+  find: /^-(?:delete|exec|execdir|ok|okdir|fls|fprintf?)$/i,
+};
+
+function flagsOf(tokens) {
+  return tokens.filter(token => token.startsWith('-')).map(token => token.toLowerCase());
+}
+
+// 短縮フラグは束ねられる（-rf）ので、束ねの中の文字も見る。
+function hasFlag(flags, shortFlag, longFlag) {
+  return flags.some(flag => {
+    if (longFlag && flag === `--${longFlag}`) return true;
+    if (!shortFlag) return false;
+    if (flag.startsWith('--')) return false;
+    return flag.slice(1).includes(shortFlag);
+  });
+}
+
+function subcommandIs(tokens, name) {
+  for (const token of tokens.slice(1)) {
+    if (token.startsWith('-')) continue;
+    return token.toLowerCase() === name;
+  }
+  return false;
+}
 
 const AUDIT_ONLY_BASH = [
   /^\s*ps(?:\s|$)/,
@@ -86,11 +126,60 @@ function makeBashDecision(policyClass, behavior, message, options = {}) {
   };
 }
 
+// セグメント1つの分類。'dangerous' | 'safe' | 'audit' | 'unknown' を返す。
+function classifySegment(segment) {
+  const tokens = tokenize(segment);
+  if (tokens.length === 0) return { kind: 'safe', labels: [] };
+
+  const name = commandNameOf(tokens);
+  const flags = flagsOf(tokens);
+
+  // 引数の中身が実行されるコマンドは、何が動くか静的に読めない
+  if (OPAQUE_COMMANDS.has(name)) return { kind: 'unknown', labels: [] };
+
+  const labels = DANGEROUS_COMMANDS
+    .filter(entry => entry.matches(name, flags, tokens))
+    .map(entry => entry.label);
+  if (labels.length > 0) return { kind: 'dangerous', labels };
+
+  if (SAFE_READONLY_BASH.some(pattern => pattern.test(segment))) {
+    const unsafeFlag = UNSAFE_FLAGS_FOR_SAFE_COMMANDS[name];
+    if (unsafeFlag && tokens.some(token => unsafeFlag.test(token))) {
+      return { kind: 'unknown', labels: [] };
+    }
+    return { kind: 'safe', labels: [] };
+  }
+
+  if (AUDIT_ONLY_BASH.some(pattern => pattern.test(segment))) {
+    return { kind: 'audit', labels: [] };
+  }
+
+  return { kind: 'unknown', labels: [] };
+}
+
+// 判定はセグメント単位で行い、最も厳しい結果を採る。
+// 先頭トークンだけを見ると `git status && rm -Rf ~` が auto-allow を通る。
 function classifyBashPermission(command) {
   const value = String(command || '');
   if (!value.trim()) return null;
 
-  const dangerous = DANGEROUS_BASH.filter(entry => entry.pattern.test(value)).map(entry => entry.label);
+  const { segments, analyzable } = splitShellSegments(value);
+
+  if (!analyzable) {
+    return makeBashDecision(
+      'ask-with-justification',
+      'ask',
+      'Command contains constructs that cannot be analysed statically.',
+      {
+        permissionMode: 'edit',
+        reasons: ['unanalysable shell construct requires approval'],
+      }
+    );
+  }
+
+  const results = segments.map(classifySegment);
+  const dangerous = [...new Set(results.flatMap(result => result.labels))];
+
   if (dangerous.length > 0) {
     return makeBashDecision(
       'hard-deny',
@@ -105,7 +194,7 @@ function classifyBashPermission(command) {
     );
   }
 
-  if (SAFE_READONLY_BASH.some(pattern => pattern.test(value))) {
+  if (results.every(result => result.kind === 'safe')) {
     return makeBashDecision(
       'auto-allow',
       'allow',
@@ -114,7 +203,7 @@ function classifyBashPermission(command) {
     );
   }
 
-  if (AUDIT_ONLY_BASH.some(pattern => pattern.test(value))) {
+  if (results.every(result => result.kind === 'safe' || result.kind === 'audit')) {
     return makeBashDecision(
       'audit-only',
       'allow',
@@ -213,11 +302,6 @@ function resolvePermission(options = {}) {
 }
 
 module.exports = {
-  BLOCKED_ACTION_PATTERNS,
-  AUDIT_ONLY_BASH,
-  DANGEROUS_BASH,
-  PERMISSION_MODES,
-  SAFE_READONLY_BASH,
   classifyBashPermission,
   detectBlockedActions,
   resolvePermission,

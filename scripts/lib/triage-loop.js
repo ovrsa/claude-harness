@@ -4,8 +4,6 @@ const { summarizeCurrentHealth } = require('./health-loop');
 
 const HIGH_PRIORITY_PATTERNS = new Set([
   'resume_failed',
-  'plan_missing_or_skipped',
-  'verification_missing_before_completion',
 ]);
 
 function getLatestEntryField(group, field) {
@@ -24,11 +22,7 @@ function buildSuggestedTask(group) {
   switch (String(group.failure_pattern || '').trim()) {
     case 'resume_failed':
       return 'improve session resume and artifact rehydration';
-    case 'plan_missing_or_skipped':
-      return 'enforce approved plan before execution';
-    case 'verification_missing_before_completion':
-      return 'enforce verification before completion';
-    case 'high_human_intervention_run':
+    case 'high_session_turn_count':
       return 'clarify task and recovery guidance before execution';
     default:
       return 'review the recurring pattern and choose the narrowest durable fix';

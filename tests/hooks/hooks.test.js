@@ -2,7 +2,15 @@
  * Tests for hook scripts
  *
  * Run with: node tests/hooks/hooks.test.js
- * Baseline-aware classification: node tests/hooks/hooks.test.js --allow-known-baseline
+ *
+ * There is no failure-exemption list. A failure here fails the suite.
+ *
+ * Until 2026-08-10 this file carried a baseline-allowlist map plus an opt-in flag that
+ * reclassified listed failures as expected. It hid five entries behind a zero-unexpected-failures
+ * line, so run-all.js printed a green summary while three environment-dependent tests were
+ * actually failing (and two entries had been stale for long enough that nobody noticed).
+ * Fix the test or fix the code. scripts/ci/audit-harness-contract.js now fails if the
+ * allowlist comes back.
  */
 
 const assert = require('assert');
@@ -11,13 +19,9 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
 
-const KNOWN_BASELINE_FAILURES = new Map([
-  ['injects real session content', 'session-start now prefers repository artifacts over raw previous-session injection in more cases than this legacy expectation assumes'],
-  ['script references use CLAUDE_PLUGIN_ROOT variable (except SessionStart fallback)', 'local install still carries a legacy permission-request path shape that this validation treats as out-of-policy'],
-  ['plugin.json does NOT have explicit hooks declaration', 'local ECC install in this environment does not expose the plugin manifest shape expected by this validator'],
-  ['excludes session files older than 7 days', 'session-start age filtering and session file selection behavior still differs from this legacy boundary expectation'],
-  ['injects newest session when multiple recent sessions exist', 'session-start recent-session ordering behavior still differs from this legacy newest-session expectation'],
-]);
+// runs/ は git 追跡なので、テストが実リポジトリの run 記録に
+// フィクスチャを混ぜないようにする（scripts/lib/run-record.js）。
+process.env.CLAUDE_DISABLE_RUN_RECORD = '1';
 
 const failedTests = [];
 
@@ -30,12 +34,7 @@ function test(name, fn) {
   } catch (err) {
     console.log(`  ✗ ${name}`);
     console.log(`    Error: ${err.message}`);
-    failedTests.push({
-      name,
-      message: err.message,
-      knownBaseline: KNOWN_BASELINE_FAILURES.has(name),
-      baselineReason: KNOWN_BASELINE_FAILURES.get(name) || '',
-    });
+    failedTests.push({ name, message: err.message });
     return false;
   }
 }
@@ -49,12 +48,7 @@ async function asyncTest(name, fn) {
   } catch (err) {
     console.log(`  ✗ ${name}`);
     console.log(`    Error: ${err.message}`);
-    failedTests.push({
-      name,
-      message: err.message,
-      knownBaseline: KNOWN_BASELINE_FAILURES.has(name),
-      baselineReason: KNOWN_BASELINE_FAILURES.get(name) || '',
-    });
+    failedTests.push({ name, message: err.message });
     return false;
   }
 }
@@ -125,6 +119,67 @@ function cleanupTestDir(testDir) {
   fs.rmSync(testDir, { recursive: true, force: true });
 }
 
+// ライフサイクル助言の重み判定は linked worktree かどうかで決まるので、
+// standard / heavy-risky 相当の状況を作るテストは実際に worktree を作る。
+// 返すパスは `git worktree add` が作るので、事前に mkdir してはいけない。
+function createLinkedWorktree(testDir, name = 'repo') {
+  const { execFileSync } = require('child_process');
+  const base = path.join(testDir, 'base');
+  const worktree = path.join(testDir, name);
+  fs.mkdirSync(base, { recursive: true });
+  const git = (args, cwd) => execFileSync('git', args, { cwd, stdio: 'ignore' });
+  git(['init'], base);
+  git(['-c', 'user.email=t@example.com', '-c', 'user.name=t',
+    'commit', '--allow-empty', '-m', 'init'], base);
+  git(['worktree', 'add', worktree, '-b', 'lifecycle-test'], base);
+  return worktree;
+}
+
+// pre-compact.js reads the repository found at cwd and appends its artifact snapshot to the
+// active session file; subagent-stop.js appends to the same file. Launched through runScript they
+// inherited the test process's cwd, so they read THIS repository and the assertions below turned
+// on whichever lifecycle artifacts happened to be sitting in it. Give them a throwaway repository
+// instead. It has to be a real git repo, not a bare directory, or getRepoRoot returns null and the
+// checkpoint branch under test never executes.
+// Until 2026-08-17 these hooks also wrote progress.md into that repository, so the same mistake
+// corrupted real session state rather than merely making the test depend on it.
+let sandboxRepoDir = null;
+function getSandboxRepo() {
+  if (!sandboxRepoDir) {
+    sandboxRepoDir = path.join(os.tmpdir(), `hooks-progress-sandbox-${Date.now()}`);
+    fs.mkdirSync(sandboxRepoDir, { recursive: true });
+    require('child_process').execFileSync('git', ['init'], { cwd: sandboxRepoDir, stdio: 'ignore' });
+  }
+  return sandboxRepoDir;
+}
+
+function cleanupSandboxRepo() {
+  if (!sandboxRepoDir) return;
+  fs.rmSync(sandboxRepoDir, { recursive: true, force: true });
+  sandboxRepoDir = null;
+}
+
+// session-start.js reads BOTH $HOME (session files, learned skills, run records under
+// ~/.claude/runs) and the cwd's repository (the lifecycle artifacts). Isolating only $HOME leaves
+// the real repo as cwd, so the artifact branch wins and the session-injection assertions below
+// never exercise what they claim.
+// The repo has to be an empty git repo, not just any directory, so the outcome does not depend
+// on whether the temp dir happens to sit under some ancestor repository.
+function createSessionStartFixture(prefix) {
+  const testDir = path.join(os.tmpdir(), `${prefix}-${Date.now()}`);
+  const isoHome = path.join(testDir, 'home');
+  const repoDir = path.join(testDir, 'repo');
+  fs.mkdirSync(path.join(isoHome, '.claude', 'sessions'), { recursive: true });
+  fs.mkdirSync(path.join(isoHome, '.claude', 'skills', 'learned'), { recursive: true });
+  fs.mkdirSync(repoDir, { recursive: true });
+  require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+  return {
+    isoHome,
+    repoDir,
+    cleanup: () => fs.rmSync(testDir, { recursive: true, force: true }),
+  };
+}
+
 function writeCompleteVerification(repoDir, scope = 'lifecycle guard behavior') {
   fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
     '# Verification Summary',
@@ -144,21 +199,47 @@ function writeCompleteVerification(repoDir, scope = 'lifecycle guard behavior') 
   ].join('\n'));
 }
 
-function writeCompleteReview(repoDir, scope = 'lifecycle guard behavior') {
+// Every section the template defines, because the parser requires all ten as of
+// 2026-08-21. Three copies of this fixture used to live inline further down; a
+// fixture that omits sections stops isolating the condition its assertion names.
+// `findings` and `nextAction` are overridable so a test that targets one defect
+// (an unresolved HIGH, a finding without a severity prefix) keeps every other
+// section intact and the assertion stays about that defect alone.
+function writeCompleteReview(repoDir, scope = 'lifecycle guard behavior', options = {}) {
+  const findings = options.findings || ['- none'];
+  const nextAction = options.nextAction || 'none';
   fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
     '# Review Summary',
     '',
     '## Review Scope',
     `- ${scope}`,
     '',
+    '## Design Compliance',
+    '- matches the design doc',
+    '',
+    '## Security',
+    '- no decision boundary touched',
+    '',
+    '## Comment Adequacy',
+    '- unchanged',
+    '',
+    '## Code Quality',
+    '- acceptable',
+    '',
+    '## Test Adequacy',
+    '- covered',
+    '',
     '## Findings',
-    '- none',
+    ...findings,
     '',
     '## Residual Risks',
     '- none',
     '',
+    '## Guardrail Candidates',
+    '- none',
+    '',
     '## Next Action',
-    '- none'
+    `- ${nextAction}`
   ].join('\n'));
 }
 
@@ -183,9 +264,6 @@ function writeCompleteObservation(repoDir, scope = 'lifecycle guard behavior') {
 // Test suite
 async function runTests() {
   console.log('\n=== Testing Hook Scripts ===\n');
-  const allowKnownBaseline =
-    process.argv.includes('--allow-known-baseline') ||
-    process.env.ECC_ALLOW_KNOWN_HOOK_BASELINE === '1';
 
   let passed = 0;
   let failed = 0;
@@ -235,17 +313,14 @@ async function runTests() {
   })) passed++; else failed++;
 
   if (await asyncTest('skips template session content', async () => {
-    const isoHome = path.join(os.tmpdir(), `ecc-tpl-start-${Date.now()}`);
-    const sessionsDir = path.join(isoHome, '.claude', 'sessions');
-    fs.mkdirSync(sessionsDir, { recursive: true });
-    fs.mkdirSync(path.join(isoHome, '.claude', 'skills', 'learned'), { recursive: true });
+    const { isoHome, repoDir, cleanup } = createSessionStartFixture('ecc-tpl-start');
 
     // Create a session file with template placeholder
-    const sessionFile = path.join(sessionsDir, '2026-02-11-abcd1234-session.tmp');
+    const sessionFile = path.join(isoHome, '.claude', 'sessions', '2026-02-11-abcd1234-session.tmp');
     fs.writeFileSync(sessionFile, '## Current State\n\n[Session context goes here]\n');
 
     try {
-      const result = await runScript(path.join(scriptsDir, 'session-start.js'), '', {
+      const result = await runScriptInDir(path.join(scriptsDir, 'session-start.js'), repoDir, '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
       assert.strictEqual(result.code, 0);
@@ -255,22 +330,19 @@ async function runTests() {
         'Should not inject template session content'
       );
     } finally {
-      fs.rmSync(isoHome, { recursive: true, force: true });
+      cleanup();
     }
   })) passed++; else failed++;
 
   if (await asyncTest('injects real session content', async () => {
-    const isoHome = path.join(os.tmpdir(), `ecc-real-start-${Date.now()}`);
-    const sessionsDir = path.join(isoHome, '.claude', 'sessions');
-    fs.mkdirSync(sessionsDir, { recursive: true });
-    fs.mkdirSync(path.join(isoHome, '.claude', 'skills', 'learned'), { recursive: true });
+    const { isoHome, repoDir, cleanup } = createSessionStartFixture('ecc-real-start');
 
     // Create a real session file
-    const sessionFile = path.join(sessionsDir, '2026-02-11-efgh5678-session.tmp');
+    const sessionFile = path.join(isoHome, '.claude', 'sessions', '2026-02-11-efgh5678-session.tmp');
     fs.writeFileSync(sessionFile, '# Real Session\n\nI worked on authentication refactor.\n');
 
     try {
-      const result = await runScript(path.join(scriptsDir, 'session-start.js'), '', {
+      const result = await runScriptInDir(path.join(scriptsDir, 'session-start.js'), repoDir, '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
       assert.strictEqual(result.code, 0);
@@ -283,11 +355,11 @@ async function runTests() {
         'Should include session content text'
       );
     } finally {
-      fs.rmSync(isoHome, { recursive: true, force: true });
+      cleanup();
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('prefers repository session state over raw previous session summaries', async () => {
+  if (await asyncTest('prefers repository artifact state over raw previous session summaries', async () => {
     const testDir = createTestDir();
     const repoDir = path.join(testDir, 'repo');
     const isoHome = path.join(testDir, 'home');
@@ -299,145 +371,51 @@ async function runTests() {
 
     try {
       require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Session restore test',
-        'status: approved',
-        'observe_required: false',
-        '---',
+      // Was plan.md + progress.md, both retired 2026-08-17 and out of the scan
+      // since 2026-08-20. The gate artifacts are what the chain reads now.
+      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
+        '# Verification Summary',
         '',
-        '# Plan: Session restore test',
+        '## Scope',
+        '- the lifecycle helpers',
         '',
-        '## Summary',
+        '## Commands Run',
+        '- node tests/run-all.js: pass',
         '',
-        '- restore from artifacts first'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
+        '## Verification Outcome',
+        '- all green',
         '',
-        '## Current Phase',
-        '- Phase 2: tighten lifecycle state',
-        '',
-        '## Last Completed Step',
-        '- Added the approved plan artifact',
-        '',
-        '## Next Action',
-        '- Update task artifact helpers',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- docs-writer: drafted the session spec'
+        '## Assessment',
+        '- acceptable',
       ].join('\n'));
 
       const result = await runScriptInDir(path.join(scriptsDir, 'session-start.js'), repoDir, '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
       assert.strictEqual(result.code, 0);
-      assert.ok(result.stdout.includes('current_phase=Phase 2: tighten lifecycle state'),
-        `Expected current phase in stdout, got: ${result.stdout}`);
-      assert.ok(result.stdout.includes('next_action=Update task artifact helpers'),
-        `Expected next action in stdout, got: ${result.stdout}`);
+      assert.ok(result.stdout.includes('Active repository task chain'),
+        `Expected the artifact chain in stdout, got: ${result.stdout}`);
+      assert.ok(result.stdout.includes('current_step=review'),
+        `Expected the open gate in stdout, got: ${result.stdout}`);
       assert.ok(!result.stdout.includes('Previous session summary'),
-        'Artifact-backed session state should take precedence over old session summaries');
+        'Artifact-backed state should take precedence over old session summaries');
+      // The sessions/*.tmp files are not repo-scoped, so the newest belongs to
+      // whichever project was touched last.
+      assert.ok(!result.stdout.includes('This older summary should not win'), result.stdout);
     } finally {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('prefers persisted sqlite runtime state over repository artifact summaries', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    const isoHome = path.join(testDir, 'home');
-    const telemetryDir = path.join(isoHome, '.claude', 'telemetry');
-    const dbPath = path.join(telemetryDir, 'telemetry.db');
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.mkdirSync(path.join(isoHome, '.claude', 'sessions'), { recursive: true });
-    fs.mkdirSync(path.join(isoHome, '.claude', 'skills', 'learned'), { recursive: true });
-    fs.mkdirSync(telemetryDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Session restore DB test',
-        'status: approved',
-        'observe_required: false',
-        '---',
-        '',
-        '# Plan: Session restore DB test',
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 2: artifact fallback',
-        '',
-        '## Last Completed Step',
-        '- Added artifact fallback state',
-        '',
-        '## Next Action',
-        '- Keep using progress.md',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none',
-      ].join('\n'));
-
-      const seed = require('../../scripts/lib/session-trace');
-      seed.recordSessionEvent({
-        sessionId: 'session-db',
-        runId: 'run-db',
-        eventType: 'session_started',
-        status: 'started',
-        repoRoot: repoDir,
-        cwd: repoDir,
-      }, { dbPath });
-      seed.recordLifecycleSnapshot({
-        sessionId: 'session-db',
-        runId: 'run-db',
-        repoRoot: repoDir,
-        cwd: repoDir,
-      }, { dbPath });
-
-      const result = await runScriptInDir(path.join(scriptsDir, 'session-start.js'), repoDir, '', {
-        HOME: isoHome, USERPROFILE: isoHome
-      });
-      assert.strictEqual(result.code, 0);
-      assert.ok(result.stdout.includes('Persisted runtime state:'), `Expected persisted state output, got: ${result.stdout}`);
-      assert.ok(result.stdout.includes('current_phase=Phase 2: artifact fallback'), `Expected sqlite current phase, got: ${result.stdout}`);
-      assert.ok(!result.stdout.includes('Active repository task artifacts:'), 'SQLite state should take precedence over artifact summary');
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('reports learned skills count', async () => {
-    const isoHome = path.join(os.tmpdir(), `ecc-skills-start-${Date.now()}`);
-    const learnedDir = path.join(isoHome, '.claude', 'skills', 'learned');
-    fs.mkdirSync(learnedDir, { recursive: true });
-    fs.mkdirSync(path.join(isoHome, '.claude', 'sessions'), { recursive: true });
-
-    // Create learned skill files
-    fs.writeFileSync(path.join(learnedDir, 'testing-patterns.md'), '# Testing');
-    fs.writeFileSync(path.join(learnedDir, 'debugging.md'), '# Debugging');
-
-    try {
-      const result = await runScript(path.join(scriptsDir, 'session-start.js'), '', {
-        HOME: isoHome, USERPROFILE: isoHome
-      });
-      assert.strictEqual(result.code, 0);
-      assert.ok(
-        result.stderr.includes('2 learned skill(s)'),
-        `Should report 2 learned skills, stderr: ${result.stderr}`
-      );
-    } finally {
-      fs.rmSync(isoHome, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
+  // The SQLite precedence test is gone with run_state (2026-08-20). It asserted
+  // that a persisted row outranked the repository artifacts. Measured with all
+  // three gate artifacts present: every non-empty field the row contributed was
+  // already in buildArtifactContext, which also carried next_required_action
+  // and detail, while current_phase / current_step / next_action were empty
+  // (they came from progress.md, retired 2026-08-17). The row was a degraded
+  // copy of the files, so there is no precedence left to test -- the artifacts
+  // are the only source. The case above ('reads repository task artifacts...')
+  // covers that path.
 
   // check-console-log.js tests
   console.log('\ncheck-console-log.js:');
@@ -511,17 +489,17 @@ async function runTests() {
   console.log('\npre-compact.js:');
 
   if (await asyncTest('runs without error', async () => {
-    const result = await runScript(path.join(scriptsDir, 'pre-compact.js'));
+    const result = await runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo());
     assert.strictEqual(result.code, 0, `Exit code should be 0, got ${result.code}`);
   })) passed++; else failed++;
 
   if (await asyncTest('outputs PreCompact message', async () => {
-    const result = await runScript(path.join(scriptsDir, 'pre-compact.js'));
+    const result = await runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo());
     assert.ok(result.stderr.includes('[PreCompact]'), 'Should output PreCompact message');
   })) passed++; else failed++;
 
   if (await asyncTest('creates compaction log', async () => {
-    await runScript(path.join(scriptsDir, 'pre-compact.js'));
+    await runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo());
     const logFile = path.join(os.homedir(), '.claude', 'sessions', 'compaction-log.txt');
     assert.ok(fs.existsSync(logFile), 'Compaction log should exist');
   })) passed++; else failed++;
@@ -536,7 +514,7 @@ async function runTests() {
     fs.writeFileSync(sessionFile, '# Session: 2026-02-11\n**Started:** 10:00\n');
 
     try {
-      await runScript(path.join(scriptsDir, 'pre-compact.js'), '', {
+      await runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo(), '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
 
@@ -556,7 +534,7 @@ async function runTests() {
     fs.mkdirSync(sessionsDir, { recursive: true });
 
     try {
-      await runScript(path.join(scriptsDir, 'pre-compact.js'), '', {
+      await runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo(), '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
 
@@ -693,11 +671,12 @@ async function runTests() {
     if (fs.existsSync(counterFile)) fs.unlinkSync(counterFile);
   })) passed++; else failed++;
 
-  if (await asyncTest('validates threshold bounds', async () => {
+  if (await asyncTest('invalid threshold disables the suggestion', async () => {
     const sessionId = 'test-bounds-' + Date.now();
     const counterFile = path.join(os.tmpdir(), `claude-tool-count-${sessionId}`);
 
-    // Invalid threshold should fall back to 50
+    // Invalid threshold disables rather than falling back to a count —
+    // no call count is correct across context sizes.
     fs.writeFileSync(counterFile, '49');
 
     const result = await runScript(path.join(scriptsDir, 'suggest-compact.js'), '', {
@@ -706,146 +685,48 @@ async function runTests() {
     });
 
     assert.ok(
-      result.stderr.includes('50 tool calls'),
-      'Should use default threshold (50) for invalid value'
+      !result.stderr.includes('tool calls'),
+      'Should stay silent for invalid threshold'
     );
 
     fs.unlinkSync(counterFile);
   })) passed++; else failed++;
 
+  if (await asyncTest('stays silent when COMPACT_THRESHOLD is unset', async () => {
+    const sessionId = 'test-optout-' + Date.now();
+    const counterFile = path.join(os.tmpdir(), `claude-tool-count-${sessionId}`);
+
+    // 49 -> 50, which used to be the hardcoded default threshold.
+    fs.writeFileSync(counterFile, '49');
+
+    const result = await runScript(path.join(scriptsDir, 'suggest-compact.js'), '', {
+      CLAUDE_SESSION_ID: sessionId,
+      COMPACT_THRESHOLD: ''
+    });
+
+    assert.strictEqual(result.code, 0);
+    assert.ok(
+      !result.stderr.includes('tool calls'),
+      'Count-based suggestion must be opt-in'
+    );
+
+    // Counter still advances so an opt-in session gets accurate counts.
+    const count = parseInt(fs.readFileSync(counterFile, 'utf8').trim(), 10);
+    assert.strictEqual(count, 50, `Counter should still increment, got ${count}`);
+
+    fs.unlinkSync(counterFile);
+  })) passed++; else failed++;
+
   // evaluate-session.js tests
-  console.log('\nevaluate-session.js:');
 
-  if (await asyncTest('runs without error when no transcript', async () => {
-    const result = await runScript(path.join(scriptsDir, 'evaluate-session.js'));
-    assert.strictEqual(result.code, 0, `Exit code should be 0, got ${result.code}`);
-  })) passed++; else failed++;
-
-  if (await asyncTest('skips short sessions', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'transcript.jsonl');
-
-    // Create a short transcript (less than 10 user messages)
-    const transcript = Array(5).fill('{"type":"user","content":"test"}\n').join('');
-    fs.writeFileSync(transcriptPath, transcript);
-
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(path.join(scriptsDir, 'evaluate-session.js'), stdinJson);
-
-    assert.ok(
-      result.stderr.includes('Session too short'),
-      'Should indicate session is too short'
-    );
-
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
-  if (await asyncTest('processes sessions with enough messages', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'transcript.jsonl');
-
-    // Create a longer transcript (more than 10 user messages)
-    const transcript = Array(15).fill('{"type":"user","content":"test"}\n').join('');
-    fs.writeFileSync(transcriptPath, transcript);
-
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(path.join(scriptsDir, 'evaluate-session.js'), stdinJson);
-
-    assert.ok(
-      result.stderr.includes('15 messages'),
-      'Should report message count'
-    );
-
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
-  console.log('\ncost-tracker.js:');
-
-  if (await asyncTest('records runtime token usage to JSONL and SQLite', async () => {
-    const testDir = createTestDir();
-    const stdinJson = JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      usage: {
-        input_tokens: 120,
-        output_tokens: 30
-      }
-    });
-    const result = await runScript(path.join(scriptsDir, 'cost-tracker.js'), stdinJson, {
-      HOME: testDir,
-      CLAUDE_SESSION_ID: 'cost-session-1'
-    });
-
-    assert.strictEqual(result.code, 0);
-    assert.strictEqual(result.stdout, stdinJson);
-
-    const costsPath = path.join(testDir, '.claude', 'metrics', 'costs.jsonl');
-    const row = JSON.parse(fs.readFileSync(costsPath, 'utf8').trim());
-    assert.strictEqual(row.input_tokens, 120);
-    assert.strictEqual(row.output_tokens, 30);
-
-    const trace = require('../../scripts/lib/session-trace');
-    const dbPath = path.join(testDir, '.claude', 'telemetry', 'telemetry.db');
-    const db = trace.createDatabase(dbPath);
-    const event = db.prepare("SELECT status, metadata_json FROM session_events WHERE event_type = 'token_usage_observed'").get();
-    db.close();
-    const metadata = JSON.parse(event.metadata_json);
-    assert.strictEqual(event.status, 'observed');
-    assert.strictEqual(metadata.token_source, 'runtime_payload');
-    assert.strictEqual(metadata.input_tokens, 120);
-    assert.strictEqual(metadata.output_tokens, 30);
-
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
-  if (await asyncTest('records missing token usage without reporting zero tokens', async () => {
-    const testDir = createTestDir();
-    const stdinJson = JSON.stringify({ model: 'unknown' });
-    const result = await runScript(path.join(scriptsDir, 'cost-tracker.js'), stdinJson, {
-      HOME: testDir,
-      CLAUDE_SESSION_ID: 'cost-session-2'
-    });
-
-    assert.strictEqual(result.code, 0);
-    assert.strictEqual(result.stdout, stdinJson);
-
-    const trace = require('../../scripts/lib/session-trace');
-    const dbPath = path.join(testDir, '.claude', 'telemetry', 'telemetry.db');
-    const db = trace.createDatabase(dbPath);
-    const event = db.prepare("SELECT status, metadata_json FROM session_events WHERE event_type = 'token_usage_observed'").get();
-    db.close();
-    const metadata = JSON.parse(event.metadata_json);
-    assert.strictEqual(event.status, 'missing');
-    assert.strictEqual(metadata.token_source, 'missing');
-    assert.strictEqual(metadata.input_tokens, null);
-    assert.strictEqual(metadata.output_tokens, null);
-    assert.strictEqual(metadata.estimated_cost_usd, null);
-
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
+  // cost-tracker.js was retired 2026-08-20. Measured before removal: 3,120
+  // rows written since 2026-05-15, every one with input_tokens=null and
+  // token_source="missing", to both costs.jsonl and session_events. The Stop
+  // payload never carried usage, session_id never resolved past "default",
+  // and the hardcoded price table never produced a number. The transcripts
+  // carry real usage (17,714 turns); see scripts/lib/transcript-log.js.
 
   // evaluate-session.js: whitespace tolerance regression test
-  if (await asyncTest('counts user messages with whitespace in JSON (regression)', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'transcript.jsonl');
-
-    // Create transcript with whitespace around colons (pretty-printed style)
-    const lines = [];
-    for (let i = 0; i < 15; i++) {
-      lines.push('{ "type" : "user", "content": "message ' + i + '" }');
-    }
-    fs.writeFileSync(transcriptPath, lines.join('\n'));
-
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(path.join(scriptsDir, 'evaluate-session.js'), stdinJson);
-
-    assert.ok(
-      result.stderr.includes('15 messages'),
-      'Should count user messages with whitespace in JSON, got: ' + result.stderr.trim()
-    );
-
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
   // session-end.js: content array with null elements regression test
   if (await asyncTest('handles transcript with null content array elements (regression)', async () => {
     const testDir = createTestDir();
@@ -1462,17 +1343,17 @@ async function runTests() {
     cleanupTestDir(testDir);
   })) passed++; else failed++;
 
-  // hooks.json validation
-  console.log('\nhooks.json Validation:');
+  // settings.json hooks validation
+  console.log('\nsettings.json hooks Validation:');
 
-  if (test('hooks.json is valid JSON', () => {
-    const hooksPath = path.join(__dirname, '..', '..', 'hooks', 'hooks.json');
+  if (test('settings.json is valid JSON', () => {
+    const hooksPath = path.join(__dirname, '..', '..', 'settings.json');
     const content = fs.readFileSync(hooksPath, 'utf8');
     JSON.parse(content); // Will throw if invalid
   })) passed++; else failed++;
 
-  if (test('hooks.json has required event types', () => {
-    const hooksPath = path.join(__dirname, '..', '..', 'hooks', 'hooks.json');
+  if (test('settings.json has required hook event types', () => {
+    const hooksPath = path.join(__dirname, '..', '..', 'settings.json');
     const hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
 
     assert.ok(hooks.hooks.PreToolUse, 'Should have PreToolUse hooks');
@@ -1484,7 +1365,7 @@ async function runTests() {
   })) passed++; else failed++;
 
   if (test('all hook commands use node or approved shell wrappers', () => {
-    const hooksPath = path.join(__dirname, '..', '..', 'hooks', 'hooks.json');
+    const hooksPath = path.join(__dirname, '..', '..', 'settings.json');
     const hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
 
     const checkHooks = (hookArray) => {
@@ -1494,12 +1375,19 @@ async function runTests() {
             const isNode = hook.command.startsWith('node');
             const isSkillScript = hook.command.includes('/skills/') && (
               /^(bash|sh)\s/.test(hook.command) ||
-              hook.command.startsWith('${CLAUDE_PLUGIN_ROOT}/skills/')
+              /^\$\{CLAUDE_PLUGIN_ROOT(?::-[^}]*)?\}\/skills\//.test(hook.command)
             );
-            const isHookShellWrapper = /^(bash|sh)\s+["']?\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/hooks\/run-with-flags-shell\.sh/.test(hook.command);
+            // settings.json は ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude} 形式を使う。同じ変数なので両形式を受ける。
+            const isHookShellWrapper = /^(bash|sh)\s+["']?\$\{CLAUDE_PLUGIN_ROOT(?::-[^}]*)?\}\/scripts\/hooks\/run-with-flags-shell\.sh/.test(hook.command);
             const isSessionStartFallback = hook.command.startsWith('bash -lc') && hook.command.includes('run-with-flags.js');
+            // hooks/ 直下の .sh を直に叩くフック（herdr 連携）。run-with-flags を通さないので
+            // プロファイル制御の対象外だが、実体は git 追跡下にあり実行される正当な配線。
+            const isHarnessShellScript = /^(bash|sh)\s+["']?[^"']*\/hooks\/[\w.-]+\.sh["']?/.test(hook.command);
+            // 音を鳴らすだけのオペレータ用フック。スクリプトを持たないので上のどれにも該当しない。
+            const isNotificationSound = /^afplay\s/.test(hook.command);
             assert.ok(
-              isNode || isSkillScript || isHookShellWrapper || isSessionStartFallback,
+              isNode || isSkillScript || isHookShellWrapper || isSessionStartFallback
+                || isHarnessShellScript || isNotificationSound,
               `Hook command should use node or approved shell wrapper: ${hook.command.substring(0, 100)}...`
             );
           }
@@ -1513,7 +1401,7 @@ async function runTests() {
   })) passed++; else failed++;
 
   if (test('script references use CLAUDE_PLUGIN_ROOT variable (except SessionStart fallback)', () => {
-    const hooksPath = path.join(__dirname, '..', '..', 'hooks', 'hooks.json');
+    const hooksPath = path.join(__dirname, '..', '..', 'settings.json');
     const hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
 
     const checkHooks = (hookArray) => {
@@ -1522,7 +1410,8 @@ async function runTests() {
           if (hook.type === 'command' && hook.command.includes('scripts/hooks/')) {
             // Check for the literal string "${CLAUDE_PLUGIN_ROOT}" in the command
             const isSessionStartFallback = hook.command.startsWith('bash -lc') && hook.command.includes('run-with-flags.js');
-            const hasPluginRoot = hook.command.includes('${CLAUDE_PLUGIN_ROOT}') || isSessionStartFallback;
+            // settings.json は ${CLAUDE_PLUGIN_ROOT:-$HOME/.claude} 形式を使う。同じ変数なので両方受ける。
+            const hasPluginRoot = hook.command.includes('${CLAUDE_PLUGIN_ROOT') || isSessionStartFallback;
             assert.ok(
               hasPluginRoot,
               `Script paths should use CLAUDE_PLUGIN_ROOT: ${hook.command.substring(0, 80)}...`
@@ -1541,7 +1430,7 @@ async function runTests() {
   console.log('\nplugin.json Validation:');
 
   if (test('plugin.json does NOT have explicit hooks declaration', () => {
-    // Claude Code automatically loads hooks/hooks.json by convention.
+    // フックは settings.json が正本。hooks/hooks.json は 2026-08-15 に撤去した（二重配線）。
     // Explicitly declaring it in plugin.json causes a duplicate detection error.
     // See: https://github.com/affaan-m/everything-claude-code/issues/103
     const pluginPath = path.join(__dirname, '..', '..', '.claude-plugin', 'plugin.json');
@@ -1549,67 +1438,11 @@ async function runTests() {
 
     assert.ok(
       !plugin.hooks,
-      'plugin.json should NOT have "hooks" field - Claude Code auto-loads hooks/hooks.json'
+      'plugin.json should NOT have "hooks" field - settings.json is the single source'
     );
   })) passed++; else failed++;
 
   // ─── evaluate-session.js tests ───
-  console.log('\nevaluate-session.js:');
-
-  if (await asyncTest('skips when no transcript_path in stdin', async () => {
-    const result = await runScript(path.join(scriptsDir, 'evaluate-session.js'), '{}');
-    assert.strictEqual(result.code, 0, 'Should exit 0 (non-blocking)');
-  })) passed++; else failed++;
-
-  if (await asyncTest('skips when transcript file does not exist', async () => {
-    const stdinJson = JSON.stringify({ transcript_path: '/tmp/nonexistent-transcript-12345.jsonl' });
-    const result = await runScript(path.join(scriptsDir, 'evaluate-session.js'), stdinJson);
-    assert.strictEqual(result.code, 0, 'Should exit 0 when file missing');
-  })) passed++; else failed++;
-
-  if (await asyncTest('skips short sessions (< 10 user messages)', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'short.jsonl');
-    // Only 3 user messages — below the default threshold of 10
-    const lines = [
-      '{"type":"user","content":"msg1"}',
-      '{"type":"user","content":"msg2"}',
-      '{"type":"user","content":"msg3"}',
-    ];
-    fs.writeFileSync(transcriptPath, lines.join('\n'));
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(path.join(scriptsDir, 'evaluate-session.js'), stdinJson);
-    assert.strictEqual(result.code, 0);
-    assert.ok(result.stderr.includes('too short'), 'Should log "too short" message');
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
-  if (await asyncTest('evaluates long sessions (>= 10 user messages)', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'long.jsonl');
-    // 12 user messages — above the default threshold
-    const lines = [];
-    for (let i = 0; i < 12; i++) {
-      lines.push(`{"type":"user","content":"message ${i}"}`);
-    }
-    fs.writeFileSync(transcriptPath, lines.join('\n'));
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(path.join(scriptsDir, 'evaluate-session.js'), stdinJson);
-    assert.strictEqual(result.code, 0);
-    assert.ok(result.stderr.includes('12 messages'), 'Should report message count');
-    assert.ok(result.stderr.includes('evaluate'), 'Should signal evaluation');
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
-  if (await asyncTest('handles malformed stdin JSON (falls back to env var)', async () => {
-    const result = await runScript(
-      path.join(scriptsDir, 'evaluate-session.js'),
-      'not json at all',
-      { CLAUDE_TRANSCRIPT_PATH: '' }
-    );
-    // No valid transcript path from either source → exit 0
-    assert.strictEqual(result.code, 0);
-  })) passed++; else failed++;
 
   // ─── suggest-compact.js tests ───
   console.log('\nsuggest-compact.js:');
@@ -1722,7 +1555,7 @@ async function runTests() {
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('handles COMPACT_THRESHOLD of zero (falls back to 50)', async () => {
+  if (await asyncTest('COMPACT_THRESHOLD of zero disables the suggestion', async () => {
     const sessionId = `test-zero-thresh-${Date.now()}`;
     const counterFile = path.join(os.tmpdir(), `claude-tool-count-${sessionId}`);
     try {
@@ -1732,24 +1565,24 @@ async function runTests() {
         COMPACT_THRESHOLD: '0'
       });
       assert.strictEqual(result.code, 0);
-      assert.ok(result.stderr.includes('50 tool calls reached'), 'Zero threshold should fall back to 50');
+      assert.ok(!result.stderr.includes('tool calls'), 'Zero threshold is the off switch');
     } finally {
       try { fs.unlinkSync(counterFile); } catch { /* ignore */ }
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('handles invalid COMPACT_THRESHOLD (falls back to 50)', async () => {
+  if (await asyncTest('invalid COMPACT_THRESHOLD disables the suggestion', async () => {
     const sessionId = `test-invalid-thresh-${Date.now()}`;
     const counterFile = path.join(os.tmpdir(), `claude-tool-count-${sessionId}`);
     try {
-      // Pre-seed at 49 so next call = 50 (the fallback default)
+      // Pre-seed at 49 so next call = 50, the old hardcoded default
       fs.writeFileSync(counterFile, '49');
       const result = await runScript(path.join(scriptsDir, 'suggest-compact.js'), '', {
         CLAUDE_SESSION_ID: sessionId,
         COMPACT_THRESHOLD: 'not-a-number'
       });
       assert.strictEqual(result.code, 0);
-      assert.ok(result.stderr.includes('50 tool calls reached'), 'Should use default threshold of 50');
+      assert.ok(!result.stderr.includes('tool calls'), 'Invalid threshold must not resurrect a count');
     } finally {
       try { fs.unlinkSync(counterFile); } catch { /* ignore */ }
     }
@@ -1829,138 +1662,6 @@ async function runTests() {
   })) passed++; else failed++;
 
   // ─── Round 23: Bug fixes & high-priority gap coverage ───
-
-  // Helper: create a patched evaluate-session.js wrapper that resolves
-  // require('../lib/utils') to the real utils.js and uses a custom config path
-  const realUtilsPath = path.resolve(__dirname, '..', '..', 'scripts', 'lib', 'utils.js');
-  function createEvalWrapper(testDir, configPath) {
-    const wrapperScript = path.join(testDir, 'eval-wrapper.js');
-    let src = fs.readFileSync(path.join(scriptsDir, 'evaluate-session.js'), 'utf8');
-    // Patch require to use absolute path (the temp dir doesn't have ../lib/utils)
-    src = src.replace(
-      /require\('\.\.\/lib\/utils'\)/,
-      `require(${JSON.stringify(realUtilsPath)})`
-    );
-    // Patch config file path to point to our test config
-    src = src.replace(
-      /const configFile = path\.join\(scriptDir.*?config\.json'\);/,
-      `const configFile = ${JSON.stringify(configPath)};`
-    );
-    fs.writeFileSync(wrapperScript, src);
-    return wrapperScript;
-  }
-
-  console.log('\nRound 23: evaluate-session.js (config & nullish coalescing):');
-
-  if (await asyncTest('respects min_session_length=0 from config (nullish coalescing)', async () => {
-    // This tests the ?? fix: min_session_length=0 should mean "evaluate ALL sessions"
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'short.jsonl');
-    // Only 2 user messages — normally below the default threshold of 10
-    const lines = [
-      '{"type":"user","content":"msg1"}',
-      '{"type":"user","content":"msg2"}',
-    ];
-    fs.writeFileSync(transcriptPath, lines.join('\n'));
-
-    // Create a config file with min_session_length=0
-    const skillsDir = path.join(testDir, 'skills', 'continuous-learning');
-    fs.mkdirSync(skillsDir, { recursive: true });
-    const configPath = path.join(skillsDir, 'config.json');
-    fs.writeFileSync(configPath, JSON.stringify({
-      min_session_length: 0,
-      learned_skills_path: path.join(testDir, 'learned')
-    }));
-
-    const wrapperScript = createEvalWrapper(testDir, configPath);
-
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(wrapperScript, stdinJson, {
-      HOME: testDir, USERPROFILE: testDir
-    });
-    assert.strictEqual(result.code, 0);
-    // With min_session_length=0, even 2 messages should trigger evaluation
-    assert.ok(
-      result.stderr.includes('2 messages') && result.stderr.includes('evaluate'),
-      'Should evaluate session with min_session_length=0 (not skip as too short)'
-    );
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
-  if (await asyncTest('config with min_session_length=null falls back to default 10', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'short.jsonl');
-    // 5 messages — below default 10
-    const lines = [];
-    for (let i = 0; i < 5; i++) lines.push(`{"type":"user","content":"msg${i}"}`);
-    fs.writeFileSync(transcriptPath, lines.join('\n'));
-
-    const skillsDir = path.join(testDir, 'skills', 'continuous-learning');
-    fs.mkdirSync(skillsDir, { recursive: true });
-    const configPath = path.join(skillsDir, 'config.json');
-    fs.writeFileSync(configPath, JSON.stringify({
-      min_session_length: null,
-      learned_skills_path: path.join(testDir, 'learned')
-    }));
-
-    const wrapperScript = createEvalWrapper(testDir, configPath);
-
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(wrapperScript, stdinJson, {
-      HOME: testDir, USERPROFILE: testDir
-    });
-    assert.strictEqual(result.code, 0);
-    // null ?? 10 === 10, so 5 messages should be "too short"
-    assert.ok(result.stderr.includes('too short'), 'Should fall back to default 10 when null');
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
-  if (await asyncTest('config with custom learned_skills_path creates directory', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'transcript.jsonl');
-    fs.writeFileSync(transcriptPath, '{"type":"user","content":"msg"}');
-
-    const customLearnedDir = path.join(testDir, 'custom-learned-skills');
-    const skillsDir = path.join(testDir, 'skills', 'continuous-learning');
-    fs.mkdirSync(skillsDir, { recursive: true });
-    const configPath = path.join(skillsDir, 'config.json');
-    fs.writeFileSync(configPath, JSON.stringify({
-      learned_skills_path: customLearnedDir
-    }));
-
-    const wrapperScript = createEvalWrapper(testDir, configPath);
-
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    await runScript(wrapperScript, stdinJson, {
-      HOME: testDir, USERPROFILE: testDir
-    });
-    assert.ok(fs.existsSync(customLearnedDir), 'Should create custom learned skills directory');
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
-  if (await asyncTest('handles invalid config JSON gracefully (uses defaults)', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'transcript.jsonl');
-    const lines = [];
-    for (let i = 0; i < 5; i++) lines.push(`{"type":"user","content":"msg${i}"}`);
-    fs.writeFileSync(transcriptPath, lines.join('\n'));
-
-    const skillsDir = path.join(testDir, 'skills', 'continuous-learning');
-    fs.mkdirSync(skillsDir, { recursive: true });
-    const configPath = path.join(skillsDir, 'config.json');
-    fs.writeFileSync(configPath, 'not valid json!!!');
-
-    const wrapperScript = createEvalWrapper(testDir, configPath);
-
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(wrapperScript, stdinJson, {
-      HOME: testDir, USERPROFILE: testDir
-    });
-    assert.strictEqual(result.code, 0);
-    // Should log parse failure and fall back to default 10 → 5 msgs too short
-    assert.ok(result.stderr.includes('too short'), 'Should use defaults when config is invalid JSON');
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
 
   console.log('\nRound 23: session-end.js (update existing file path):');
 
@@ -2071,7 +1772,7 @@ async function runTests() {
     fs.writeFileSync(otherTmpFile, 'some other data\n');
 
     try {
-      await runScript(path.join(scriptsDir, 'pre-compact.js'), '', {
+      await runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo(), '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
 
@@ -2091,7 +1792,7 @@ async function runTests() {
     fs.mkdirSync(sessionsDir, { recursive: true });
 
     try {
-      const result = await runScript(path.join(scriptsDir, 'pre-compact.js'), '', {
+      const result = await runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo(), '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
       assert.strictEqual(result.code, 0, 'Should exit 0 with no session files');
@@ -2646,101 +2347,6 @@ async function runTests() {
     cleanupTestDir(testDir);
   })) passed++; else failed++;
 
-  // ── Round 38: evaluate-session.js tilde expansion & missing config ──
-  console.log('\nRound 38: evaluate-session.js (tilde expansion & missing config):');
-
-  if (await asyncTest('expands ~ in learned_skills_path to home directory', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'transcript.jsonl');
-    // 1 user message — below threshold, but we only need to verify directory creation
-    fs.writeFileSync(transcriptPath, '{"type":"user","content":"msg"}');
-
-    const skillsDir = path.join(testDir, 'skills', 'continuous-learning');
-    fs.mkdirSync(skillsDir, { recursive: true });
-    const configPath = path.join(skillsDir, 'config.json');
-    // Use ~ prefix — should expand to the HOME dir we set
-    fs.writeFileSync(configPath, JSON.stringify({
-      learned_skills_path: '~/test-tilde-skills'
-    }));
-
-    const wrapperScript = createEvalWrapper(testDir, configPath);
-
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(wrapperScript, stdinJson, {
-      HOME: testDir, USERPROFILE: testDir
-    });
-    assert.strictEqual(result.code, 0);
-    // ~ should expand to os.homedir() which during the script run is the real home
-    // The script creates the directory via ensureDir — check that it attempted to
-    // create a directory starting with the home dir, not a literal ~/
-    // Verify the literal ~/test-tilde-skills was NOT created
-    assert.ok(
-      !fs.existsSync(path.join(testDir, '~', 'test-tilde-skills')),
-      'Should NOT create literal ~/test-tilde-skills directory'
-    );
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
-  if (await asyncTest('does NOT expand ~ in middle of learned_skills_path', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'transcript.jsonl');
-    fs.writeFileSync(transcriptPath, '{"type":"user","content":"msg"}');
-
-    const midTildeDir = path.join(testDir, 'some~path', 'skills');
-    const skillsDir = path.join(testDir, 'skills', 'continuous-learning');
-    fs.mkdirSync(skillsDir, { recursive: true });
-    const configPath = path.join(skillsDir, 'config.json');
-    // Path with ~ in the middle — should NOT be expanded
-    fs.writeFileSync(configPath, JSON.stringify({
-      learned_skills_path: midTildeDir
-    }));
-
-    const wrapperScript = createEvalWrapper(testDir, configPath);
-
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(wrapperScript, stdinJson, {
-      HOME: testDir, USERPROFILE: testDir
-    });
-    assert.strictEqual(result.code, 0);
-    // The directory with ~ in the middle should be created as-is
-    assert.ok(
-      fs.existsSync(midTildeDir),
-      'Should create directory with ~ in middle of path unchanged'
-    );
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
-  if (await asyncTest('uses defaults when config file does not exist', async () => {
-    const testDir = createTestDir();
-    const transcriptPath = path.join(testDir, 'transcript.jsonl');
-    // 5 user messages — below default threshold of 10
-    const lines = [];
-    for (let i = 0; i < 5; i++) lines.push(`{"type":"user","content":"msg${i}"}`);
-    fs.writeFileSync(transcriptPath, lines.join('\n'));
-
-    // Point config to a non-existent file
-    const configPath = path.join(testDir, 'nonexistent', 'config.json');
-    const wrapperScript = createEvalWrapper(testDir, configPath);
-
-    const stdinJson = JSON.stringify({ transcript_path: transcriptPath });
-    const result = await runScript(wrapperScript, stdinJson, {
-      HOME: testDir, USERPROFILE: testDir
-    });
-    assert.strictEqual(result.code, 0);
-    // With no config file, default min_session_length=10 applies
-    // 5 messages should be "too short"
-    assert.ok(
-      result.stderr.includes('too short'),
-      'Should use default threshold (10) when config file missing'
-    );
-    // No error messages about missing config
-    assert.ok(
-      !result.stderr.includes('Failed to parse config'),
-      'Should NOT log config parse error for missing file'
-    );
-    cleanupTestDir(testDir);
-  })) passed++; else failed++;
-
   // Round 41: pre-compact.js (multiple session files)
   console.log('\nRound 41: pre-compact.js (multiple session files):');
 
@@ -2759,7 +2365,7 @@ async function runTests() {
     fs.writeFileSync(newerSession, '# Newer Session\n');
 
     try {
-      const result = await runScript(path.join(scriptsDir, 'pre-compact.js'), '', {
+      const result = await runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo(), '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
       assert.strictEqual(result.code, 0);
@@ -2953,7 +2559,7 @@ async function runTests() {
 
     try {
       const promises = Array(3).fill(null).map(() =>
-        runScript(path.join(scriptsDir, 'pre-compact.js'), '', {
+        runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo(), '', {
           HOME: isoHome, USERPROFILE: isoHome
         })
       );
@@ -3025,10 +2631,8 @@ async function runTests() {
   console.log('\nRound 55: session-start.js (maxAge 7-day boundary):');
 
   if (await asyncTest('excludes session files older than 7 days', async () => {
-    const isoHome = path.join(os.tmpdir(), `ecc-start-7day-${Date.now()}`);
+    const { isoHome, repoDir, cleanup } = createSessionStartFixture('ecc-start-7day');
     const sessionsDir = path.join(isoHome, '.claude', 'sessions');
-    fs.mkdirSync(sessionsDir, { recursive: true });
-    fs.mkdirSync(path.join(isoHome, '.claude', 'skills', 'learned'), { recursive: true });
 
     // Create session file 6.9 days old (should be INCLUDED by maxAge:7)
     const recentFile = path.join(sessionsDir, '2026-02-06-recent69-session.tmp');
@@ -3043,7 +2647,7 @@ async function runTests() {
     fs.utimesSync(oldFile, eightDaysAgo, eightDaysAgo);
 
     try {
-      const result = await runScript(path.join(scriptsDir, 'session-start.js'), '', {
+      const result = await runScriptInDir(path.join(scriptsDir, 'session-start.js'), repoDir, '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
       assert.strictEqual(result.code, 0);
@@ -3054,17 +2658,15 @@ async function runTests() {
       assert.ok(!result.stdout.includes('OLD CONTENT SHOULD NOT APPEAR'),
         'Should NOT inject the 8-day-old session content');
     } finally {
-      fs.rmSync(isoHome, { recursive: true, force: true });
+      cleanup();
     }
   })) passed++; else failed++;
 
   console.log('\nRound 55: session-start.js (newest session selection):');
 
   if (await asyncTest('injects newest session when multiple recent sessions exist', async () => {
-    const isoHome = path.join(os.tmpdir(), `ecc-start-multi-${Date.now()}`);
+    const { isoHome, repoDir, cleanup } = createSessionStartFixture('ecc-start-multi');
     const sessionsDir = path.join(isoHome, '.claude', 'sessions');
-    fs.mkdirSync(sessionsDir, { recursive: true });
-    fs.mkdirSync(path.join(isoHome, '.claude', 'skills', 'learned'), { recursive: true });
 
     const now = Date.now();
 
@@ -3079,7 +2681,7 @@ async function runTests() {
     fs.utimesSync(newerSession, new Date(now - 1 * 86400000), new Date(now - 1 * 86400000));
 
     try {
-      const result = await runScript(path.join(scriptsDir, 'session-start.js'), '', {
+      const result = await runScriptInDir(path.join(scriptsDir, 'session-start.js'), repoDir, '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
       assert.strictEqual(result.code, 0);
@@ -3089,7 +2691,7 @@ async function runTests() {
       assert.ok(result.stdout.includes('NEWER_CONTEXT_MARKER'),
         'Should inject the newest session content');
     } finally {
-      fs.rmSync(isoHome, { recursive: true, force: true });
+      cleanup();
     }
   })) passed++; else failed++;
 
@@ -3230,7 +2832,7 @@ async function runTests() {
     fs.chmodSync(sessionFile, 0o444);
 
     try {
-      const result = await runScript(path.join(scriptsDir, 'pre-compact.js'), '', {
+      const result = await runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo(), '', {
         HOME: isoHome, USERPROFILE: isoHome
       });
       // Should exit 0 — hooks must not block the user (catch at lines 45-47)
@@ -3491,7 +3093,7 @@ async function runTests() {
     }
     // HOME=/dev/null makes ensureDir(sessionsDir) throw ENOTDIR,
     // which propagates to main().catch — the top-level error boundary
-    const result = await runScript(path.join(scriptsDir, 'pre-compact.js'), '', {
+    const result = await runScriptInDir(path.join(scriptsDir, 'pre-compact.js'), getSandboxRepo(), '', {
       HOME: '/dev/null',
       USERPROFILE: '/dev/null'
     });
@@ -3521,25 +3123,6 @@ async function runTests() {
       `stderr should contain [SessionEnd] Error:, got: ${result.stderr}`);
   })) passed++; else failed++;
 
-  // ── Round 76: evaluate-session.js main().catch handler ──
-  console.log('\nRound 76: evaluate-session.js (main catch — unrecoverable error):');
-
-  if (await asyncTest('evaluate-session exits 0 with error message when HOME is non-directory', async () => {
-    if (process.platform === 'win32') {
-      console.log('    (skipped — /dev/null not available on Windows)');
-      return;
-    }
-    // HOME=/dev/null makes ensureDir(learnedSkillsPath) throw ENOTDIR,
-    // which propagates to main().catch — the top-level error boundary
-    const result = await runScript(path.join(scriptsDir, 'evaluate-session.js'), '{}', {
-      HOME: '/dev/null',
-      USERPROFILE: '/dev/null'
-    });
-    assert.strictEqual(result.code, 0,
-      `Should exit 0 (don't block on errors), got ${result.code}`);
-    assert.ok(result.stderr.includes('[ContinuousLearning] Error:'),
-      `stderr should contain [ContinuousLearning] Error:, got: ${result.stderr}`);
-  })) passed++; else failed++;
 
   // ── Round 76: suggest-compact.js main().catch handler ──
   console.log('\nRound 76: suggest-compact.js (main catch — double-failure):');
@@ -3602,22 +3185,21 @@ async function runTests() {
   // ── Round 81: suggest-compact threshold upper bound, session-end non-string content ──
   console.log('\nRound 81: suggest-compact.js (COMPACT_THRESHOLD > 10000):');
 
-  if (await asyncTest('COMPACT_THRESHOLD exceeding 10000 falls back to default 50', async () => {
-    // suggest-compact.js line 31: rawThreshold <= 10000 ? rawThreshold : 50
+  if (await asyncTest('COMPACT_THRESHOLD exceeding 10000 disables the suggestion', async () => {
     // Values > 10000 are positive and finite but fail the upper-bound check.
-    // Existing tests cover 0, negative, NaN — this covers the > 10000 boundary.
+    // Out of range disables rather than falling back to a count, because no
+    // fixed call count is correct across context sizes.
     const result = await runScript(path.join(scriptsDir, 'suggest-compact.js'), '', {
       COMPACT_THRESHOLD: '20000'
     });
     assert.strictEqual(result.code, 0, 'Should exit 0');
-    // The script logs the threshold it chose — should fall back to 50
-    // Look for the fallback value in stderr (log output)
+    assert.ok(!result.stderr.includes('tool calls'),
+      'Out-of-range threshold must not produce a suggestion');
     const compactSource = fs.readFileSync(path.join(scriptsDir, 'suggest-compact.js'), 'utf8');
-    // The condition at line 31: rawThreshold <= 10000 ? rawThreshold : 50
     assert.ok(compactSource.includes('<= 10000'),
       'Source should have <= 10000 upper bound check');
-    assert.ok(compactSource.includes(': 50'),
-      'Source should fall back to 50 when threshold exceeds 10000');
+    assert.ok(compactSource.includes(': 0'),
+      'Source should disable (threshold 0) when the value is out of range');
   })) passed++; else failed++;
 
   console.log('\nRound 81: session-end.js (user entry with non-string non-array content):');
@@ -4082,7 +3664,7 @@ Some random content without the expected ### Context to Load section
         last_assistant_message: 'Finished authority docs and left one follow-up for tests.',
         next_action: 'Run hook tests'
       });
-      const result = await runScript(path.join(scriptsDir, 'subagent-stop.js'), input, {
+      const result = await runScriptInDir(path.join(scriptsDir, 'subagent-stop.js'), getSandboxRepo(), input, {
         HOME: isoHome, USERPROFILE: isoHome
       });
       assert.strictEqual(result.code, 0, 'Should exit 0');
@@ -4105,24 +3687,6 @@ Some random content without the expected ### Context to Load section
     const repoDir = path.join(isoHome, 'repo');
     fs.mkdirSync(repoDir, { recursive: true });
     require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-    fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-      '# Progress',
-      '',
-      '## Current Phase',
-      '- Phase 2: durable session state',
-      '',
-      '## Last Completed Step',
-      '- Added session restore rules',
-      '',
-      '## Next Action',
-      '- Coordinate review handoff',
-      '',
-      '## Blockers',
-      '- none',
-      '',
-      '## Delegated Work',
-      '- none'
-    ].join('\n'));
 
     try {
       const input = JSON.stringify({
@@ -4132,7 +3696,7 @@ Some random content without the expected ### Context to Load section
         summary: 'Added parser coverage for progress.md state.',
         open_risks: 'Need smoke coverage for interrupted sessions',
         next_action: 'Run smoke checks',
-        files_touched: ['docs/session-resume-state.md', 'docs/harness-structure-and-ownership.md'],
+        files_touched: ['SESSION.md', 'HARNESS.md'],
         verification_run: ['node smoke-harness-lifecycle.js']
       });
       const result = await runScriptInDir(path.join(scriptsDir, 'subagent-stop.js'), repoDir, input, {
@@ -4140,16 +3704,13 @@ Some random content without the expected ### Context to Load section
       });
       assert.strictEqual(result.code, 0, 'Should exit 0');
       const content = fs.readFileSync(sessionFile, 'utf8');
-      const progress = fs.readFileSync(path.join(repoDir, 'progress.md'), 'utf8');
       assert.ok(content.includes('goal=Harden session restore contract'), 'Should include goal');
       assert.ok(content.includes('open_risks=Need smoke coverage for interrupted sessions'), 'Should include open risks');
       assert.ok(content.includes('next_action=Run smoke checks'), 'Should include next action');
-      assert.ok(content.includes('files_touched=docs/session-resume-state.md, docs/harness-structure-and-ownership.md'), 'Should include files touched');
+      assert.ok(content.includes('files_touched=SESSION.md, HARNESS.md'), 'Should include files touched');
       assert.ok(content.includes('verification_run=node smoke-harness-lifecycle.js'), 'Should include verification run');
-      assert.ok(progress.includes('## Latest Delegated Handoff'), 'Should write delegated handoff section into progress.md');
-      assert.ok(progress.includes('agent=worker-1'), 'Should persist handoff agent in progress.md');
-      assert.ok(progress.includes('next_action=Run smoke checks'), 'Should persist handoff next action in progress.md');
-      assert.ok(progress.includes('event=subagent-stop'), 'Should refresh latest checkpoint from subagent-stop');
+      // handoff はセッションファイルへの追記としてのみ残る（progress.md は撤去済み）。
+      assert.ok(!fs.existsSync(path.join(repoDir, 'progress.md')), 'Should not recreate progress.md');
     } finally {
       fs.rmSync(isoHome, { recursive: true, force: true });
     }
@@ -4158,197 +3719,16 @@ Some random content without the expected ### Context to Load section
   // pre-compact.js richer snapshot tests
   console.log('\npre-compact.js (artifact lifecycle state):');
 
-  if (await asyncTest('writes lifecycle state summary derived from task artifacts', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    const isoHome = path.join(testDir, 'home');
-    const sessionsDir = path.join(isoHome, '.claude', 'sessions');
-    fs.mkdirSync(repoDir, { recursive: true });
-    fs.mkdirSync(sessionsDir, { recursive: true });
-    fs.writeFileSync(path.join(sessionsDir, '2026-04-10-main-session.tmp'), '# Session\n');
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Artifact lifecycle test',
-        'status: approved',
-        'observe_required: true',
-        '---',
-        '',
-        '# Plan: Artifact lifecycle test',
-        '',
-        '## Summary',
-        '',
-        '- verify artifact state'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 3: checkpoint semantics',
-        '',
-        '## Last Completed Step',
-        '- Added session-aware plan',
-        '',
-        '## Next Action',
-        '- Extend smoke checks',
-        '',
-        '## Blockers',
-        '- waiting on verification',
-        '',
-        '## Delegated Work',
-        '- worker-1: drafted the handoff contract'
-      ].join('\n'));
-
-      const result = await runScriptInDir(
-        path.join(scriptsDir, 'pre-compact.js'),
-        repoDir,
-        '',
-        { HOME: isoHome, USERPROFILE: isoHome }
-      );
-      assert.strictEqual(result.code, 0, 'Should exit 0');
-      const content = fs.readFileSync(path.join(sessionsDir, '2026-04-10-main-session.tmp'), 'utf8');
-      const progress = fs.readFileSync(path.join(repoDir, 'progress.md'), 'utf8');
-      assert.ok(content.includes('### Lifecycle State'), 'Should include lifecycle state section');
-      assert.ok(content.includes('plan_status=approved'), 'Should include plan status');
-      assert.ok(content.includes('progress_present=true'), 'Should include progress presence');
-      assert.ok(content.includes('### Session State'), 'Should include session state section');
-      assert.ok(content.includes('current_phase=Phase 3: checkpoint semantics'), 'Should include current phase');
-      assert.ok(content.includes('next_action=Extend smoke checks'), 'Should include next action');
-      assert.ok(content.includes('blockers=waiting on verification'), 'Should include blockers');
-      assert.ok(content.includes('blocked=missing verification-summary.md, missing review-summary.md, missing observation-summary.md'),
-        `Expected blocked reasons, got: ${content}`);
-      assert.ok(progress.includes('## Latest Checkpoint'), 'Should update latest checkpoint section in progress.md');
-      assert.ok(progress.includes('event=pre-compact'), 'Should record pre-compact checkpoint event');
-      assert.ok(progress.includes('suggested_next_action=Extend smoke checks'), 'Should record suggested next action in progress.md');
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
   // lifecycle guardrail tests
   console.log('\nlifecycle guardrails:');
 
-  if (await asyncTest('lifecycle-pre-edit blocks non-trivial code edits without progress.md', async () => {
+  if (await asyncTest('lifecycle-pre-edit warns when a linked worktree has no pipeline evidence', async () => {
     const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Edit guard progress test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: false',
-        '---',
-        '',
-        '# Plan: Edit guard progress test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
-      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
-      );
-      assert.strictEqual(result.code, 2, `Expected exit 2, got ${result.code}`);
-      assert.ok(result.stderr.includes('progress.md'), `Expected progress guidance, got: ${result.stderr}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-pre-edit allows non-trivial code edits when progress.md has minimum schema', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Edit guard allow test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: false',
-        '---',
-        '',
-        '# Plan: Edit guard allow test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 2: implementation',
-        '',
-        '## Last Completed Step',
-        '- Approved the plan',
-        '',
-        '## Next Action',
-        '- Edit lifecycle guardrails',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
-      );
-      assert.strictEqual(result.code, 0, `Expected exit 0, got ${result.code}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-pre-edit warns when non-trivial code edit has no pipeline evidence', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
     const homeDir = path.join(testDir, 'home');
-    fs.mkdirSync(repoDir, { recursive: true });
     fs.mkdirSync(homeDir, { recursive: true });
+    const repoDir = createLinkedWorktree(testDir);
 
     try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Pipeline evidence warning test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: false',
-        '---',
-        '',
-        '# Plan: Pipeline evidence warning test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 2: implementation',
-        '',
-        '## Last Completed Step',
-        '- Approved the plan',
-        '',
-        '## Next Action',
-        '- Edit lifecycle guardrails',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
       fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
 
       const result = await runScriptInDir(
@@ -4364,701 +3744,11 @@ Some random content without the expected ### Context to Load section
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('lifecycle-pre-edit blocks worktree-required edits when plan evidence is incomplete', async () => {
+  if (await asyncTest('lifecycle-pre-commit advises when review-summary.md is missing in a linked worktree', async () => {
     const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
+    const repoDir = createLinkedWorktree(testDir);
 
     try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Edit guard implementation-ready test',
-        'status: approved',
-        'task_type: non_trivial',
-        'worktree_required: true',
-        'observe_required: false',
-        '---',
-        '',
-        '# Plan: Edit guard implementation-ready test',
-        '',
-        '## Summary',
-        '- edit the code'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 2: implementation',
-        '',
-        '## Last Completed Step',
-        '- Approved the plan',
-        '',
-        '## Next Action',
-        '- Edit lifecycle guardrails',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
-      );
-      assert.strictEqual(result.code, 2, `Expected exit 2, got ${result.code}`);
-      assert.ok(result.stderr.includes('not implementation-ready'), `Expected implementation-ready guidance, got: ${result.stderr}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-pre-edit blocks worktree-required edits in the main worktree', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Edit guard worktree enforcement test',
-        'status: approved',
-        'task_type: non_trivial',
-        'worktree_required: true',
-        'observe_required: false',
-        '---',
-        '',
-        '# Plan: Edit guard worktree enforcement test',
-        '',
-        '## Summary',
-        '- edit the code',
-        '',
-        '## Acceptance Criteria',
-        '- the guard blocks main worktree implementation edits',
-        '',
-        '## Touched Files',
-        '- example.js',
-        '',
-        '## Behavior Spec',
-        '- Given an approved worktree-required plan',
-        '- When an implementation file is edited in the main worktree',
-        '- Then the edit is blocked',
-        '- normal: linked worktree edits continue',
-        '- boundary: documentation-only edits bypass this code-file hook',
-        '- abnormal: main worktree implementation edits fail',
-        '',
-        '## Verify',
-        '- node tests/hooks/hooks.test.js --allow-known-baseline',
-        '',
-        '## Test Evidence Plan',
-        '- RED command: node tests/hooks/hooks.test.js --allow-known-baseline',
-        '- expected failure: main worktree edit is not blocked',
-        '- GREEN command: node tests/hooks/hooks.test.js --allow-known-baseline',
-        '',
-        '## Evaluate',
-        '- review hook enforcement',
-        '',
-        '## Observe',
-        '- required: no',
-        '',
-        '## Execution Todo',
-        '- [ ] add worktree enforcement'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 2: implementation',
-        '',
-        '## Last Completed Step',
-        '- Approved the plan',
-        '',
-        '## Next Action',
-        '- Edit lifecycle guardrails',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
-      );
-      assert.strictEqual(result.code, 2, `Expected exit 2, got ${result.code}`);
-      assert.ok(result.stderr.includes('requires an isolated worktree'), `Expected worktree guidance, got: ${result.stderr}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-pre-edit accepts hook-managed fallback state when operator next action is blank', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Edit guard checkpoint fallback test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: false',
-        '---',
-        '',
-        '# Plan: Edit guard checkpoint fallback test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
-      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 2: durable session state',
-        '',
-        '## Last Completed Step',
-        '- ',
-        '',
-        '## Next Action',
-        '- ',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none',
-        '',
-        '## Latest Checkpoint',
-        '- updated_at=2026-04-14 18:40:00',
-        '- event=pre-compact',
-        '- current_phase=Phase 2: durable session state',
-        '- last_completed_step=Captured state before compaction',
-        '- suggested_next_action=Resume guardrail implementation',
-        '- blockers=none',
-        '- delegated_work=none',
-        '',
-        '## Latest Delegated Handoff',
-        '- none'
-      ].join('\n'));
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
-      );
-      assert.strictEqual(result.code, 0, `Expected fallback continuity to allow edit, got ${result.code}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-pre-edit blocks when progress.md still looks like planning state', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Edit guard planning state test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: false',
-        '---',
-        '',
-        '# Plan: Edit guard planning state test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Planning and approval',
-        '',
-        '## Last Completed Step',
-        '- Approved the plan',
-        '',
-        '## Next Action',
-        '- Start implementing lifecycle guardrails',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
-      );
-      assert.strictEqual(result.code, 2, `Expected planning-state block, got ${result.code}`);
-      assert.ok(result.stderr.includes('still looks like planning state'), `Expected planning-state guidance, got: ${result.stderr}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-pre-edit allows ambiguous progress wording to avoid false positives', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Edit guard ambiguous wording test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: false',
-        '---',
-        '',
-        '# Plan: Edit guard ambiguous wording test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 2: plan continuity hardening',
-        '',
-        '## Last Completed Step',
-        '- Tightened guardrail heuristics',
-        '',
-        '## Next Action',
-        '- Keep refining lifecycle wording',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'example.js'), 'console.log("ok");\n');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } })
-      );
-      assert.strictEqual(result.code, 0, `Expected ambiguous wording to allow edit, got ${result.code}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-progress-complete blocks completion-state progress updates when verification-summary.md is missing', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Completion guard verification test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: false',
-        'review_required: false',
-        '---',
-        '',
-        '# Plan: Completion guard verification test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 4: verification',
-        '',
-        '## Last Completed Step',
-        '- Completed implementation',
-        '',
-        '## Next Action',
-        '- Run verification',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-
-      const nextProgress = [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Ready to commit',
-        '',
-        '## Last Completed Step',
-        '- Finished lifecycle verification',
-        '',
-        '## Next Action',
-        '- none',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-progress-complete.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'progress.md'), content: nextProgress } })
-      );
-      assert.strictEqual(result.code, 2, `Expected completion-state block, got ${result.code}`);
-      assert.ok(result.stderr.includes('verification-summary.md'), `Expected verification guidance, got: ${result.stderr}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-progress-complete blocks completion-state progress updates when required review or observation artifacts are incomplete', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Completion guard review-observe test',
-        'status: approved',
-        'task_type: non_trivial',
-        'review_required: true',
-        'observe_required: true',
-        '---',
-        '',
-        '# Plan: Completion guard review-observe test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 4: review',
-        '',
-        '## Last Completed Step',
-        '- Completed verification',
-        '',
-        '## Next Action',
-        '- Finish review and observe',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
-        '# Verification Summary',
-        '',
-        '## Scope',
-        '- completion guard coverage',
-        '',
-        '## Commands Run',
-        '- node .claude/tests/hooks/hooks.test.js --allow-known-baseline',
-        '',
-        '## Verification Outcome',
-        '- verification artifacts exist',
-        '',
-        '## Assessment',
-        '- verification is complete'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
-        '# Review Summary',
-        '',
-        '## Review Scope',
-        '- completion guard behavior',
-        '',
-        '## Findings',
-        '- HIGH: review is still unresolved',
-        '',
-        '## Residual Risks',
-        '- none',
-        '',
-        '## Next Action',
-        '- Resolve findings'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
-        '# Observation Summary',
-        '',
-        '## Behavior Checked',
-        '- completion guard behavior',
-        '',
-        '## Method',
-        '- manual check',
-        '',
-        '## Evidence',
-        '- looks good',
-        '',
-        '## Remaining Uncertainty',
-        '- none'
-      ].join('\n'));
-
-      const nextProgress = [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Ready to finish',
-        '',
-        '## Last Completed Step',
-        '- Finished review and observation',
-        '',
-        '## Next Action',
-        '- none',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-progress-complete.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'progress.md'), content: nextProgress } })
-      );
-      assert.strictEqual(result.code, 2, `Expected review/observe block, got ${result.code}`);
-      assert.ok(result.stderr.includes('review-summary.md'), `Expected review guidance, got: ${result.stderr}`);
-      assert.ok(result.stderr.includes('observation-summary.md'), `Expected observation guidance, got: ${result.stderr}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-progress-complete allows completion-state progress updates when required artifacts are complete', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Completion guard allow test',
-        'status: approved',
-        'task_type: non_trivial',
-        'review_required: true',
-        'observe_required: true',
-        '---',
-        '',
-        '# Plan: Completion guard allow test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 4: observe',
-        '',
-        '## Last Completed Step',
-        '- Completed review and verification',
-        '',
-        '## Next Action',
-        '- Wrap up the task',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
-        '# Verification Summary',
-        '',
-        '## Scope',
-        '- completion guard allow coverage',
-        '',
-        '## Commands Run',
-        '- node .claude/tests/hooks/hooks.test.js --allow-known-baseline',
-        '',
-        '## Verification Outcome',
-        '- pass',
-        '',
-        '## Assessment',
-        '- verification is complete'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
-        '# Review Summary',
-        '',
-        '## Review Scope',
-        '- completion guard allow behavior',
-        '',
-        '## Findings',
-        '- none',
-        '',
-        '## Residual Risks',
-        '- none',
-        '',
-        '## Next Action',
-        '- none'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
-        '# Observation Summary',
-        '',
-        '## Behavior Checked',
-        '- completion guard allow behavior',
-        '',
-        '## Method',
-        '- stderr: targeted execution of lifecycle-progress-complete',
-        '',
-        '## Evidence',
-        '- stderr: no block is emitted when required artifacts are complete',
-        '',
-        '## Remaining Uncertainty',
-        '- none'
-      ].join('\n'));
-
-      const nextProgress = [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Ready to commit',
-        '',
-        '## Last Completed Step',
-        '- Finished lifecycle verification',
-        '',
-        '## Next Action',
-        '- none',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-progress-complete.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'progress.md'), content: nextProgress } })
-      );
-      assert.strictEqual(result.code, 0, `Expected completion-state update to allow, got ${result.code}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-progress-complete ignores non-completion progress updates and ambiguous wording', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Completion guard ambiguity test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: false',
-        'review_required: false',
-        '---',
-        '',
-        '# Plan: Completion guard ambiguity test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 2: implementation',
-        '',
-        '## Last Completed Step',
-        '- Approved the plan',
-        '',
-        '## Next Action',
-        '- Keep implementing',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-
-      const ambiguousProgress = [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 3: completion hardening',
-        '',
-        '## Last Completed Step',
-        '- Tightened hook messaging',
-        '',
-        '## Next Action',
-        '- Keep refining wording',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-progress-complete.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'progress.md'), content: ambiguousProgress } })
-      );
-      assert.strictEqual(result.code, 0, `Expected ambiguous/non-completion update to allow, got ${result.code}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-pre-commit blocks when review-summary.md is missing for behavior-changing work', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Commit guard warning test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: true',
-        '---',
-        '',
-        '# Plan: Commit guard warning test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 4: verification',
-        '',
-        '## Last Completed Step',
-        '- Wrote verification artifacts',
-        '',
-        '## Next Action',
-        '- Review diff and commit',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
       writeCompleteVerification(repoDir, 'review-required commit guard behavior');
 
       const result = await runScriptInDir(
@@ -5066,129 +3756,20 @@ Some random content without the expected ### Context to Load section
         repoDir,
         JSON.stringify({ tool_input: { command: 'git commit -m "test"' } })
       );
-      assert.strictEqual(result.code, 2, `Expected exit 2, got ${result.code}`);
+      assert.strictEqual(result.code, 0, `Expected advisory exit 0, got ${result.code}`);
       assert.ok(result.stderr.includes('review-summary.md'), `Expected review guidance, got: ${result.stderr}`);
     } finally {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('lifecycle-pre-commit warns when progress.md still has a next action after review, verification, and observation pass', async () => {
+  if (await asyncTest('lifecycle-pre-commit warns when a linked worktree has no pipeline evidence', async () => {
     const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Commit guard warning test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: true',
-        '---',
-        '',
-        '# Plan: Commit guard warning test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 4: verification',
-        '',
-        '## Last Completed Step',
-        '- Wrote review and verification artifacts',
-        '',
-        '## Next Action',
-        '- Review diff and commit',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
-        '# Review Summary',
-        '',
-        '## Review Scope',
-        '- lifecycle guard behavior',
-        '',
-        '## Findings',
-        '- none',
-        '',
-        '## Residual Risks',
-        '- none',
-        '',
-        '## Next Action',
-        '- Run verification and commit'
-      ].join('\n'));
-      writeCompleteVerification(repoDir, 'next-action warning commit guard behavior');
-      fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
-        '# Observation Summary',
-        '',
-        '## Behavior Checked',
-        '- commit guard warning path',
-        '',
-        '## Method',
-        '- stderr: hook test fixture captured lifecycle-pre-commit output',
-        '',
-        '## Evidence',
-        '- stderr: warning emitted when Next Action stayed active',
-        '',
-        '## Remaining Uncertainty',
-        '- none'
-      ].join('\n'));
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { command: 'git commit -m "test"' } })
-      );
-      assert.strictEqual(result.code, 0, `Expected exit 0, got ${result.code}`);
-      assert.ok(result.stderr.includes('Next Action'), `Expected next action warning, got: ${result.stderr}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-pre-commit warns when approved non-trivial work has no pipeline evidence', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
     const homeDir = path.join(testDir, 'home');
-    fs.mkdirSync(repoDir, { recursive: true });
     fs.mkdirSync(homeDir, { recursive: true });
+    const repoDir = createLinkedWorktree(testDir);
 
     try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Pipeline evidence commit warning test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: true',
-        '---',
-        '',
-        '# Plan: Pipeline evidence commit warning test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- verified',
-        '',
-        '## Last Completed Step',
-        '- Completed review, verification, and observation',
-        '',
-        '## Next Action',
-        '- none',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
       writeCompleteReview(repoDir, 'pipeline evidence commit warning behavior');
       writeCompleteVerification(repoDir, 'pipeline evidence commit warning behavior');
       writeCompleteObservation(repoDir, 'pipeline evidence commit warning behavior');
@@ -5206,7 +3787,7 @@ Some random content without the expected ### Context to Load section
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('lifecycle-pre-commit blocks observation summaries without concrete evidence sources', async () => {
+  if (await asyncTest('lifecycle-pre-commit advises on observation summaries without concrete evidence sources', async () => {
     const testDir = createTestDir();
     const repoDir = path.join(testDir, 'repo');
     fs.mkdirSync(repoDir, { recursive: true });
@@ -5241,21 +3822,7 @@ Some random content without the expected ### Context to Load section
         '## Delegated Work',
         '- none'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
-        '# Review Summary',
-        '',
-        '## Review Scope',
-        '- observation gate behavior',
-        '',
-        '## Findings',
-        '- none',
-        '',
-        '## Residual Risks',
-        '- none',
-        '',
-        '## Next Action',
-        '- Run verification and commit'
-      ].join('\n'));
+      writeCompleteReview(repoDir, 'observation gate behavior', { nextAction: 'Run verification and commit' });
       writeCompleteVerification(repoDir, 'observation evidence commit guard behavior');
       fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
         '# Observation Summary',
@@ -5278,14 +3845,14 @@ Some random content without the expected ### Context to Load section
         repoDir,
         JSON.stringify({ tool_input: { command: 'git commit -m "test"' } })
       );
-      assert.strictEqual(result.code, 2, `Expected concrete evidence enforcement to block, got ${result.code}`);
-      assert.ok(result.stderr.includes('Concrete evidence source required'), `Expected concrete evidence guidance, got: ${result.stderr}`);
+      assert.strictEqual(result.code, 0, `Expected concrete evidence enforcement to advise, got ${result.code}`);
+      assert.ok(result.stderr.includes('concrete evidence source required'), `Expected concrete evidence guidance, got: ${result.stderr}`);
     } finally {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('lifecycle-pre-commit blocks when review-summary.md still has unresolved findings', async () => {
+  if (await asyncTest('lifecycle-pre-commit advises when review-summary.md still has unresolved findings', async () => {
     const testDir = createTestDir();
     const repoDir = path.join(testDir, 'repo');
     fs.mkdirSync(repoDir, { recursive: true });
@@ -5320,21 +3887,10 @@ Some random content without the expected ### Context to Load section
         '## Delegated Work',
         '- none'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
-        '# Review Summary',
-        '',
-        '## Review Scope',
-        '- lifecycle guard behavior',
-        '',
-        '## Findings',
-        '- HIGH: review summary still contains unresolved behavior risk',
-        '',
-        '## Residual Risks',
-        '- none',
-        '',
-        '## Next Action',
-        '- Resolve findings and rerun review'
-      ].join('\n'));
+      writeCompleteReview(repoDir, 'lifecycle guard behavior', {
+        findings: ['- HIGH: review summary still contains unresolved behavior risk'],
+        nextAction: 'Resolve findings and rerun review',
+      });
       writeCompleteVerification(repoDir, 'unresolved review findings commit guard behavior');
       fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
         '# Observation Summary',
@@ -5357,7 +3913,7 @@ Some random content without the expected ### Context to Load section
         repoDir,
         JSON.stringify({ tool_input: { command: 'git commit -m "test"' } })
       );
-      assert.strictEqual(result.code, 2, `Expected unresolved findings to block, got ${result.code}`);
+      assert.strictEqual(result.code, 0, `Expected unresolved findings to advise, got ${result.code}`);
       assert.ok(result.stderr.includes('unresolved findings'), `Expected unresolved findings guidance, got: ${result.stderr}`);
       assert.ok(result.stderr.includes('HIGH'), `Expected severity preview, got: ${result.stderr}`);
     } finally {
@@ -5365,7 +3921,7 @@ Some random content without the expected ### Context to Load section
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('lifecycle-pre-commit blocks when review findings are missing severity prefixes', async () => {
+  if (await asyncTest('lifecycle-pre-commit advises when review findings are missing severity prefixes', async () => {
     const testDir = createTestDir();
     const repoDir = path.join(testDir, 'repo');
     fs.mkdirSync(repoDir, { recursive: true });
@@ -5400,21 +3956,10 @@ Some random content without the expected ### Context to Load section
         '## Delegated Work',
         '- none'
       ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
-        '# Review Summary',
-        '',
-        '## Review Scope',
-        '- lifecycle guard behavior',
-        '',
-        '## Findings',
-        '- missing severity prefix here',
-        '',
-        '## Residual Risks',
-        '- none',
-        '',
-        '## Next Action',
-        '- Normalize review findings'
-      ].join('\n'));
+      writeCompleteReview(repoDir, 'lifecycle guard behavior', {
+        findings: ['- missing severity prefix here'],
+        nextAction: 'Normalize review findings',
+      });
       writeCompleteVerification(repoDir, 'review finding format commit guard behavior');
       fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
         '# Observation Summary',
@@ -5437,99 +3982,8 @@ Some random content without the expected ### Context to Load section
         repoDir,
         JSON.stringify({ tool_input: { command: 'git commit -m "test"' } })
       );
-      assert.strictEqual(result.code, 2, `Expected invalid findings format to block, got ${result.code}`);
+      assert.strictEqual(result.code, 0, `Expected invalid findings format to advise, got ${result.code}`);
       assert.ok(result.stderr.includes('severity prefix'), `Expected severity prefix guidance, got: ${result.stderr}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
-
-  if (await asyncTest('lifecycle-pre-commit accepts progress.md when Next Action is explicitly none', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Commit guard explicit none test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: true',
-        '---',
-        '',
-        '# Plan: Commit guard explicit none test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 4: ready to commit',
-        '',
-        '## Last Completed Step',
-        '- Finished lifecycle verification',
-        '',
-        '## Next Action',
-        '- none',
-        '',
-        '## Blockers',
-        '- none',
-        '',
-        '## Delegated Work',
-        '- none',
-        '',
-        '## Latest Checkpoint',
-        '- updated_at=2026-04-14 19:10:00',
-        '- event=pre-compact',
-        '- current_phase=Phase 4: ready to commit',
-        '- last_completed_step=Finished lifecycle verification',
-        '- suggested_next_action=none',
-        '- blockers=none',
-        '- delegated_work=none',
-        '',
-        '## Latest Delegated Handoff',
-        '- none'
-      ].join('\n'));
-      writeCompleteVerification(repoDir, 'explicit none commit guard behavior');
-      fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
-        '# Review Summary',
-        '',
-        '## Review Scope',
-        '- lifecycle guard behavior',
-        '',
-        '## Findings',
-        '- none',
-        '',
-        '## Residual Risks',
-        '- none',
-        '',
-        '## Next Action',
-        '- none'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
-        '# Observation Summary',
-        '',
-        '## Behavior Checked',
-        '- commit-ready guard behavior',
-        '',
-        '## Method',
-        '- stderr: targeted hook execution of lifecycle-pre-commit',
-        '',
-        '## Evidence',
-        '- stderr: explicit none in Next Action should be accepted',
-        '',
-        '## Remaining Uncertainty',
-        '- none'
-      ].join('\n'));
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { command: 'git commit -m "phase1"' } })
-      );
-      assert.strictEqual(result.code, 0, `Expected explicit none to be commit-ready, got ${result.code}`);
-      assert.ok(!result.stderr.includes('Next Action'), `Did not expect Next Action warning for explicit none, got: ${result.stderr}`);
     } finally {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
@@ -5577,7 +4031,7 @@ Some random content without the expected ### Context to Load section
         '- guardrail capture behavior',
         '',
         '## Commands Run',
-        '- node .claude/tests/hooks/hooks.test.js --allow-known-baseline',
+        '- node .claude/tests/hooks/hooks.test.js',
         '',
         '## Verification Outcome',
         '- pending commit guard capture',
@@ -5654,7 +4108,7 @@ Some random content without the expected ### Context to Load section
         '- malformed guardrail candidate behavior',
         '',
         '## Commands Run',
-        '- node .claude/tests/hooks/hooks.test.js --allow-known-baseline',
+        '- node .claude/tests/hooks/hooks.test.js',
         '',
         '## Verification Outcome',
         '- pending malformed capture check',
@@ -5687,97 +4141,24 @@ Some random content without the expected ### Context to Load section
     }
   })) passed++; else failed++;
 
-  if (await asyncTest('lifecycle-pre-commit blocks when progress.md still declares blockers', async () => {
-    const testDir = createTestDir();
-    const repoDir = path.join(testDir, 'repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-
-    try {
-      require('child_process').execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-        '---',
-        'title: Commit guard blocker test',
-        'status: approved',
-        'task_type: non_trivial',
-        'observe_required: false',
-        '---',
-        '',
-        '# Plan: Commit guard blocker test'
-      ].join('\n'));
-      fs.writeFileSync(path.join(repoDir, 'progress.md'), [
-        '# Progress',
-        '',
-        '## Current Phase',
-        '- Phase 4: verification',
-        '',
-        '## Last Completed Step',
-        '- Wrote verification summary',
-        '',
-        '## Next Action',
-        '- none',
-        '',
-        '## Blockers',
-        '- waiting on reviewer sign-off',
-        '',
-        '## Delegated Work',
-        '- none'
-      ].join('\n'));
-      writeCompleteVerification(repoDir, 'blocker commit guard behavior');
-
-      const result = await runScriptInDir(
-        path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
-        repoDir,
-        JSON.stringify({ tool_input: { command: 'git commit -m "test"' } })
-      );
-      assert.strictEqual(result.code, 2, `Expected exit 2, got ${result.code}`);
-      assert.ok(result.stderr.includes('Blockers'), `Expected blocker message, got: ${result.stderr}`);
-    } finally {
-      fs.rmSync(testDir, { recursive: true, force: true });
-    }
-  })) passed++; else failed++;
+  cleanupSandboxRepo();
 
   // Summary
-  const knownBaselineFailures = failedTests.filter(entry => entry.knownBaseline);
-  const unexpectedFailures = failedTests.filter(entry => !entry.knownBaseline);
-  const resolvedBaselineFailures = Array.from(KNOWN_BASELINE_FAILURES.keys())
-    .filter(name => !knownBaselineFailures.some(entry => entry.name === name));
-
   console.log('\n=== Test Results ===');
   console.log(`Passed: ${passed}`);
   console.log(`Failed: ${failed}`);
   console.log(`Total:  ${passed + failed}\n`);
-  console.log(`Known baseline failures: ${knownBaselineFailures.length}`);
-  console.log(`Unexpected failures: ${unexpectedFailures.length}`);
-  console.log(`Resolved baseline failures: ${resolvedBaselineFailures.length}\n`);
 
-  if (knownBaselineFailures.length > 0) {
-    console.log('Known baseline failures:');
-    for (const entry of knownBaselineFailures) {
-      console.log(`- ${entry.name}`);
-      console.log(`  reason: ${entry.baselineReason}`);
-    }
-    console.log('');
-  }
-
-  if (unexpectedFailures.length > 0) {
-    console.log('Unexpected failures:');
-    for (const entry of unexpectedFailures) {
+  if (failedTests.length > 0) {
+    console.log('Failures:');
+    for (const entry of failedTests) {
       console.log(`- ${entry.name}`);
       console.log(`  error: ${entry.message}`);
     }
     console.log('');
   }
 
-  if (resolvedBaselineFailures.length > 0) {
-    console.log('Resolved baseline failures:');
-    for (const name of resolvedBaselineFailures) {
-      console.log(`- ${name}`);
-    }
-    console.log('');
-  }
-
-  const exitWithFailure = allowKnownBaseline ? unexpectedFailures.length > 0 : failed > 0;
-  process.exit(exitWithFailure ? 1 : 0);
+  process.exit(failed > 0 ? 1 : 0);
 }
 
 runTests();

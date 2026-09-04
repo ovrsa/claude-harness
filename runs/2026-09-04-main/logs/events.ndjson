@@ -1,0 +1,10 @@
+{"occurred_at":"2026-09-04T06:15:21.104Z","type":"verification_completed","status":"complete","fingerprint":"verification-summary.md:1788502124763.6492:"}
+{"occurred_at":"2026-09-04T06:15:21.108Z","type":"session_started","status":"resumed","session_id":"codex-session-01a038a9-4044-74f2-a171-dd7f142d6500","resume_expected":true,"resume_success":true,"resume_reason":"","resume_source":"artifacts"}
+{"occurred_at":"2026-09-04T06:16:09.592Z","type":"review_completed","status":"complete","fingerprint":"review-summary.md:1788502562376.5508::0"}
+{"occurred_at":"2026-09-04T06:16:09.592Z","type":"observation_completed","status":"complete","fingerprint":"observation-summary.md:1788502562425.2815:"}
+{"occurred_at":"2026-09-04T06:16:09.674Z","type":"session_started","status":"resumed","session_id":"codex-session-01a038a9-4044-74f2-a171-dd7f142d6500","resume_expected":true,"resume_success":true,"resume_reason":"","resume_source":"artifacts"}
+{"occurred_at":"2026-09-04T06:18:31.892Z","type":"session_started","status":"resumed","session_id":"codex-session-01a038a9-4044-74f2-a171-dd7f142d6500","resume_expected":true,"resume_success":true,"resume_reason":"","resume_source":"artifacts"}
+{"occurred_at":"2026-09-04T07:58:40.805Z","type":"verification_completed","status":"complete","fingerprint":"verification-summary.md:1780638199349.9514:"}
+{"occurred_at":"2026-09-04T07:58:40.805Z","type":"observation_completed","status":"complete","fingerprint":"observation-summary.md:1780638164910.9114:"}
+{"occurred_at":"2026-09-04T07:58:40.805Z","type":"session_started","status":"resumed","session_id":"","resume_expected":true,"resume_success":true,"resume_reason":"","resume_source":"artifacts"}
+{"occurred_at":"2026-09-04T09:08:08.599Z","type":"session_started","status":"started","session_id":"","resume_expected":false,"resume_success":false,"resume_reason":"","resume_source":"none"}

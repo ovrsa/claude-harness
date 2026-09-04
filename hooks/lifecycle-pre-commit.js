@@ -4,7 +4,6 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const {
   parseObservationState,
-  parseProgressState,
   parseReviewState,
   parseVerificationState,
 } = require('../scripts/lib/task-artifacts');
@@ -15,7 +14,6 @@ const {
 const {
   findLatestPipelineEvidence,
   formatMissingPipelineEvidenceWarning,
-  isPipelineEvidenceRequired,
 } = require('../scripts/lib/pipeline-evidence');
 
 function readStdin() {
@@ -39,16 +37,14 @@ function getRepoRoot(dir) {
   }
 }
 
-function parseFrontmatter(md) {
-  const m = md.match(/^---\n([\s\S]*?)\n---/);
-  const out = {};
-  if (!m) return out;
-  for (const line of m[1].split(/\r?\n/)) {
-    const idx = line.indexOf(':');
-    if (idx === -1) continue;
-    out[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+function isLinkedWorktree(repo) {
+  try {
+    const gitDir = execFileSync('git', ['-C', repo, 'rev-parse', '--git-dir'], { encoding: 'utf8' }).trim();
+    const commonDir = execFileSync('git', ['-C', repo, 'rev-parse', '--git-common-dir'], { encoding: 'utf8' }).trim();
+    return path.resolve(repo, gitDir) !== path.resolve(repo, commonDir);
+  } catch {
+    return false;
   }
-  return out;
 }
 
 function getGuardrailRegistryPath() {
@@ -90,96 +86,75 @@ function collectGuardrailCandidates(repo) {
   const repo = getRepoRoot(process.cwd());
   if (!repo) process.exit(0);
 
-  const planPath = path.join(repo, 'plan.md');
-  if (!fs.existsSync(planPath)) {
-    console.error('[Lifecycle Guardrail] Missing plan.md. Do not commit without a plan.');
-    process.exit(2);
-  }
-  const plan = fs.readFileSync(planPath, 'utf8');
-  const meta = parseFrontmatter(plan);
-  const reviewRequired = meta.review_required === 'true' || meta.observe_required === 'true';
-  if (meta.status !== 'approved') {
-    console.error('[Lifecycle Guardrail] plan.md is not approved. Do not commit implementation against a draft plan.');
-    process.exit(2);
-  }
-  if (!fs.existsSync(path.join(repo, 'verification-summary.md'))) {
-    console.error('[Lifecycle Guardrail] Missing verification-summary.md. Run verify before commit.');
-    process.exit(2);
-  }
+  // A commit is a checkpoint, not a claim of completion — one task produces many, and each is
+  // still reversible (amend, reset, never push). Everything below advises; the only hard
+  // gate is hooks/git-push-guard.js.
+  //
+  // Every check below is unconditional. A linked worktree is the weight signal, and unlike a
+  // frontmatter field it cannot be satisfied by writing a file.
+  const advisories = [];
+  const heavier = isLinkedWorktree(repo);
+
   const verificationPath = path.join(repo, 'verification-summary.md');
-  const verification = parseVerificationState(fs.readFileSync(verificationPath, 'utf8'));
-  if (!verification.complete) {
-    const details = [];
-    if (verification.missingSections.length > 0) details.push(`Missing sections: ${verification.missingSections.join(', ')}`);
-    if (verification.missingValues.length > 0) details.push(`Empty sections: ${verification.missingValues.join(', ')}`);
-    console.error(`[Lifecycle Guardrail] verification-summary.md is incomplete. ${details.join(' | ')}`);
-    process.exit(2);
-  }
-  if (reviewRequired) {
-    const reviewPath = path.join(repo, 'review-summary.md');
-    if (!fs.existsSync(reviewPath)) {
-      console.error('[Lifecycle Guardrail] Missing review-summary.md for a task that requires review.');
-      process.exit(2);
+  if (!fs.existsSync(verificationPath)) {
+    if (heavier) advisories.push('no verification-summary.md (run /verify)');
+  } else {
+    const verification = parseVerificationState(fs.readFileSync(verificationPath, 'utf8'));
+    if (!verification.complete) {
+      const details = [];
+      if (verification.missingSections.length > 0) details.push(`missing sections: ${verification.missingSections.join(', ')}`);
+      if (verification.missingValues.length > 0) details.push(`empty sections: ${verification.missingValues.join(', ')}`);
+      advisories.push(`verification-summary.md is incomplete (${details.join('; ')})`);
     }
+  }
+
+  const reviewPath = path.join(repo, 'review-summary.md');
+  if (!fs.existsSync(reviewPath)) {
+    if (heavier) advisories.push('no review-summary.md (run /review-task)');
+  } else {
     const review = parseReviewState(fs.readFileSync(reviewPath, 'utf8'));
     if (!review.complete) {
       const details = [];
-      if (review.missingSections.length > 0) details.push(`Missing sections: ${review.missingSections.join(', ')}`);
-      if (review.missingValues.length > 0) details.push(`Empty sections: ${review.missingValues.join(', ')}`);
-      if (review.invalidFindings.length > 0) details.push(`Findings without severity prefix: ${review.invalidFindings.join('; ')}`);
-      console.error(`[Lifecycle Guardrail] review-summary.md is incomplete. ${details.join(' | ')}`);
-      process.exit(2);
+      if (review.missingSections.length > 0) details.push(`missing sections: ${review.missingSections.join(', ')}`);
+      if (review.missingValues.length > 0) details.push(`empty sections: ${review.missingValues.join(', ')}`);
+      if (review.invalidFindings.length > 0) details.push(`findings without severity prefix: ${review.invalidFindings.join('; ')}`);
+      advisories.push(`review-summary.md is incomplete (${details.join('; ')})`);
     }
     if (review.hasBlockingFindings) {
       const findingsPreview = review.blockingFindings
         .slice(0, 3)
         .map(finding => `${finding.severity}: ${finding.message}`)
-        .join(' | ');
-      console.error(`[Lifecycle Guardrail] review-summary.md still has unresolved findings. Move accepted concerns to Residual Risks and clear Findings before commit. ${findingsPreview}`);
-      process.exit(2);
+        .join('; ');
+      advisories.push(`review-summary.md has unresolved findings (${findingsPreview})`);
     }
   }
-  if (meta.observe_required === 'true') {
-    const observationPath = path.join(repo, 'observation-summary.md');
-    if (!fs.existsSync(observationPath)) {
-      console.error('[Lifecycle Guardrail] Missing observation-summary.md for a task that requires observation.');
-      process.exit(2);
+
+  // Absence is flagged once verification-summary.md exists (2026-08-20). Whether behavior
+  // changed still cannot be inferred here, but verification evidence means something was
+  // built, and over-asking is the safe direction for an advisory. This matches
+  // buildLifecycleState: two layers answering the same question differently is how the
+  // lifecycle drifted before.
+  const observationPath = path.join(repo, 'observation-summary.md');
+  if (!fs.existsSync(observationPath)) {
+    if (heavier && fs.existsSync(verificationPath)) {
+      advisories.push('no observation-summary.md (run /observe if behavior changed)');
     }
+  } else {
     const observation = parseObservationState(fs.readFileSync(observationPath, 'utf8'));
     if (!observation.complete) {
       const details = [];
-      if (observation.missingSections.length > 0) details.push(`Missing sections: ${observation.missingSections.join(', ')}`);
-      if (observation.missingValues.length > 0) details.push(`Empty sections: ${observation.missingValues.join(', ')}`);
-      if (!observation.hasConcreteEvidence) details.push('Concrete evidence source required in Method or Evidence (browser, logs, runtime health, stderr/stdout, trace, screenshot, metrics, or process state).');
-      console.error(`[Lifecycle Guardrail] observation-summary.md is incomplete. ${details.join(' | ')}`);
-      process.exit(2);
+      if (observation.missingSections.length > 0) details.push(`missing sections: ${observation.missingSections.join(', ')}`);
+      if (observation.missingValues.length > 0) details.push(`empty sections: ${observation.missingValues.join(', ')}`);
+      if (!observation.hasConcreteEvidence) details.push('concrete evidence source required in Method or Evidence');
+      advisories.push(`observation-summary.md is incomplete (${details.join('; ')})`);
     }
   }
 
-  if (meta.task_type === 'non_trivial' || meta.worktree_required === 'true') {
-    const progressPath = path.join(repo, 'progress.md');
-    if (!fs.existsSync(progressPath)) {
-      console.error('[Lifecycle Guardrail] Missing progress.md. Non-trivial implementation work must keep a durable session log.');
-      process.exit(2);
-    }
-
-    const progress = parseProgressState(fs.readFileSync(progressPath, 'utf8'));
-    if (!progress.currentPhasePresent || !progress.lastCompletedStepPresent || !progress.nextActionPresent) {
-      console.error('[Lifecycle Guardrail] progress.md is incomplete. Fill Current Phase and Last Completed Step, and set Next Action to an active step or `none` before commit.');
-      process.exit(2);
-    }
-
-    if (progress.blockers.length > 0) {
-      console.error(`[Lifecycle Guardrail] Blockers remain in progress.md: ${progress.blockers.join('; ')}`);
-      process.exit(2);
-    }
-
-    if (progress.hasActionableNextAction) {
-      console.error(`[Lifecycle Guardrail] Warning: Next Action in progress.md is still active: ${progress.nextAction}`);
-    }
+  if (advisories.length > 0) {
+    console.error(`[Lifecycle Advisory] ${advisories.join(' | ')}`);
   }
 
-  if (isPipelineEvidenceRequired(meta)) {
+  if (heavier) {
     const evidence = findLatestPipelineEvidence(repo);
     if (!evidence.found) {
       console.error(formatMissingPipelineEvidenceWarning(evidence));

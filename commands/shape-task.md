@@ -36,8 +36,7 @@ It sits before planning and routing. It should prevent unclear discussions from 
 7. Name the suggested artifact, if any.
 8. Define acceptance criteria and evidence needed.
 9. Set review weight.
-10. Decide whether heavy context is present and can be delegated read-only.
-11. Recommend the next step:
+10. Recommend the next step:
     - continue discussion
     - bounded research or sensemaking
     - planning
@@ -93,15 +92,6 @@ Evidence Needed:
 Review Weight:
 - ...
 
-Heavy Context:
-- yes | no
-
-Can Delegate Read-Only:
-- yes | no
-
-Delegation Task:
-- ...
-
 Human Approval Needed:
 - yes | no
 
@@ -111,12 +101,11 @@ Suggested Next Step:
 
 ## Guardrails
 
-- Do not create or update `research.md` or `plan.md` during shaping.
+- Do not create or update `research.md` or any `docs/design/` entry during shaping.
 - Do not treat shaping as approval to implement.
 - Do not force a full spec for every task.
 - Do not delegate before objective, scope, and acceptance are clear.
 - Do not let the agent own purpose, scope expansion, destructive action, credential use, deploy, push, PR creation, or residual-risk acceptance.
-- Delegate only reading, summarization, extraction, or evidence collection when heavy context is present.
 - If the task is only reading, learning, conceptual discussion, strategy shaping, or applying an external document as judgment material, keep it in Sensemaking Flow until the user chooses an actionable improvement.
 
 ## Examples
@@ -149,7 +138,7 @@ Expected direction: `heavy-risky`, required approved plan or design spec, strong
 ## Relationship To Other Commands
 
 - `research-task` creates durable research artifacts only when durable context is needed.
-- `plan-task` creates durable execution plans only after the task is shaped enough to approve.
+- The decisions are recorded by `/docs-build` into `docs/design/YYYY-MM-DD-<slug>.md` once `/grill-me` has settled them; there is no planning command.
 - `execute-plan` runs approved work.
 - `verify` records rerunnable evidence.
 - `eval` judges whether the change is acceptable.

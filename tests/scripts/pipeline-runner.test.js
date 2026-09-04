@@ -11,7 +11,6 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const SCRIPT = path.join(__dirname, '..', '..', 'scripts', 'pipeline-runner.js');
-const SESSION_TRACE_PATH = path.join(__dirname, '..', '..', 'scripts', 'lib', 'session-trace');
 const CODEX_PROVIDER_ADAPTER = path.join(__dirname, '..', '..', 'scripts', 'provider-adapters', 'codex.js');
 
 function test(name, fn) {
@@ -300,21 +299,25 @@ function run(args = [], env = {}) {
   };
 }
 
-function readTelemetryEvents(homeDir) {
-  const dbPath = path.join(homeDir, '.claude', 'telemetry', 'telemetry.db');
-  const { createDatabase } = require(SESSION_TRACE_PATH);
-  const db = createDatabase(dbPath);
-  const rows = db.prepare(`
-    SELECT event_type, status, metadata_json
-    FROM session_events
-    WHERE event_type LIKE 'pipeline_%'
-    ORDER BY id ASC
-  `).all();
-  db.close();
-  return rows.map(row => ({
-    ...row,
-    metadata: JSON.parse(row.metadata_json),
-  }));
+/**
+ * Pipeline events now land in the run record the pipeline already writes,
+ * `runs/<runId>/logs/events.ndjson`. They were session_events rows until
+ * 2026-08-20; the metadata that was nested under metadata_json is now flat on
+ * the event, so assertions read `event.track` rather than `event.metadata.track`.
+ */
+function readTelemetryEvents(homeDir, runId) {
+  const eventsPath = path.join(homeDir, '.claude', 'runs', runId, 'logs', 'events.ndjson');
+  let raw;
+  try {
+    raw = fs.readFileSync(eventsPath, 'utf8');
+  } catch {
+    return [];
+  }
+  return raw
+    .split('\n')
+    .filter(Boolean)
+    .map(line => JSON.parse(line))
+    .filter(event => String(event.type || '').startsWith('pipeline_'));
 }
 
 function runTests() {
@@ -520,16 +523,16 @@ function runTests() {
       ], { HOME: home, CLAUDE_SESSION_ID: 'runner-telemetry' });
 
       assert.strictEqual(result.code, 0);
-      const events = readTelemetryEvents(home);
-      assert.deepStrictEqual(events.map(event => event.event_type), [
+      const events = readTelemetryEvents(home, 'runner-telemetry');
+      assert.deepStrictEqual(events.map(event => event.type), [
         'pipeline_started',
         'pipeline_preflight_completed',
       ]);
-      assert.strictEqual(events[0].metadata.task_id, 'telemetry-task');
+      assert.strictEqual(events[0].task_id, 'telemetry-task');
       assert.strictEqual(events[1].status, 'ready');
-      assert.strictEqual(events[1].metadata.track, 'standard');
-      assert.strictEqual(events[1].metadata.permission.mode, 'edit');
-      assert.strictEqual(events[1].metadata.permission.source, 'track_policy');
+      assert.strictEqual(events[1].track, 'standard');
+      assert.strictEqual(events[1].permission.mode, 'edit');
+      assert.strictEqual(events[1].permission.source, 'track_policy');
     } finally {
       cleanup(dir);
     }
@@ -736,17 +739,17 @@ function runTests() {
       ], { HOME: home, CLAUDE_SESSION_ID: 'runner-execution-telemetry' });
 
       assert.strictEqual(result.code, 0);
-      const events = readTelemetryEvents(home);
-      assert.deepStrictEqual(events.map(event => event.event_type), [
+      const events = readTelemetryEvents(home, 'runner-execution-telemetry');
+      assert.deepStrictEqual(events.map(event => event.type), [
         'pipeline_started',
         'pipeline_preflight_completed',
         'pipeline_execution_started',
         'pipeline_execution_completed',
       ]);
       assert.strictEqual(events[3].status, 'completed');
-      assert.strictEqual(events[3].metadata.task_id, 'execution-telemetry');
-      assert.strictEqual(events[3].metadata.adapter_command, adapter);
-      assert.strictEqual(events[3].metadata.engine_command, undefined);
+      assert.strictEqual(events[3].task_id, 'execution-telemetry');
+      assert.strictEqual(events[3].adapter_command, adapter);
+      assert.strictEqual(events[3].engine_command, undefined);
     } finally {
       cleanup(dir);
     }

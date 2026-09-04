@@ -35,81 +35,66 @@ function main() {
   const repoDir = path.join(tempRoot, 'repo');
   const homeDir = path.join(tempRoot, 'home');
   const sessionsDir = path.join(homeDir, '.claude', 'sessions');
-  fs.mkdirSync(repoDir, { recursive: true });
   fs.mkdirSync(sessionsDir, { recursive: true });
 
   try {
-    execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+    // 助言の重み判定は linked worktree かどうかで決まる。repoDir は
+    // git worktree add が作るので事前に mkdir しない。
+    const baseDir = path.join(tempRoot, 'base');
+    fs.mkdirSync(baseDir, { recursive: true });
+    execFileSync('git', ['init'], { cwd: baseDir, stdio: 'ignore' });
+    execFileSync('git', ['-c', 'user.email=t@example.com', '-c', 'user.name=t',
+      'commit', '--allow-empty', '-m', 'init'], { cwd: baseDir, stdio: 'ignore' });
+    execFileSync('git', ['worktree', 'add', repoDir, '-b', 'smoke-lifecycle'], { cwd: baseDir, stdio: 'ignore' });
 
-    fs.writeFileSync(path.join(repoDir, 'plan.md'), [
-      '---',
-      'title: Smoke lifecycle test',
-      'status: approved',
-      'task_type: non_trivial',
-      'observe_required: true',
-      '---',
-      '',
-      '# Plan: Smoke lifecycle test',
-      '',
-      '## Summary',
-      '',
-      '- verify harness lifecycle',
-      ''
-    ].join('\n'));
+    // plan.md and progress.md were retired 2026-08-17 and left the artifact scan
+    // on 2026-08-20. verification-summary.md is what makes the later gates owed.
     fs.writeFileSync(path.join(repoDir, 'research.md'), '# Research\n');
-    const progressPath = path.join(repoDir, 'progress.md');
-    fs.writeFileSync(progressPath, [
-      '# Progress',
+    fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
+      '# Verification Summary',
       '',
-      '## Current Phase',
-      '- Phase 2: implementation',
+      '## Scope',
       '',
-      '## Last Completed Step',
-      '- Added the managed-session plan',
+      '- smoke lifecycle',
       '',
-      '## Next Action',
-      '- Expand smoke verification',
+      '## Commands Run',
       '',
-      '## Blockers',
-      '- waiting on verification',
+      '- node scripts/ci/smoke-harness-lifecycle.js',
       '',
-      '## Delegated Work',
-      '- docs-writer: documented session semantics',
+      '## Verification Outcome',
       '',
-      '## Latest Checkpoint',
-      '- none',
+      '- pass',
       '',
-      '## Latest Delegated Handoff',
-      '- none',
+      '## Assessment',
+      '',
+      '- acceptable',
       ''
     ].join('\n'));
     fs.writeFileSync(path.join(sessionsDir, '2026-04-10-main-session.tmp'), '# Session\n');
 
     const artifacts = findTaskArtifacts(repoDir);
     const state = buildLifecycleState(artifacts);
-    assert(state.planStatus === 'approved', 'plan status should be approved');
-    assert(state.reviewRequired === true, 'review should be required when observation is required');
-    assert(state.observeRequired === true, 'observe should be required');
+    assert(state.reviewRequired === true, 'review should be owed once verification exists');
+    assert(state.observeRequired === true, 'observe should be owed once verification exists');
+    assert(state.hasVerification === true, 'verification should be present');
     assert(state.hasReview === false, 'review should be absent initially');
-    assert(state.progressPresent === true, 'progress should be present');
-    assert(state.sessionState.currentPhase === 'Phase 2: implementation', 'current phase should be parsed');
-    assert(state.sessionState.nextAction === 'Expand smoke verification', 'next action should be parsed');
     assert(state.blocked.includes('missing review-summary.md'), 'review should be blocked');
-    assert(state.blocked.includes('missing verification-summary.md'), 'verification should be blocked');
     assert(state.blocked.includes('missing observation-summary.md'), 'observation should be blocked');
+    assert(!state.blocked.some(entry => entry.includes('plan.md')), 'plan.md must not appear');
+    assert(!('planStatus' in state), 'planStatus should be gone from the state');
 
     const context = buildArtifactContext(repoDir);
     assert(context && context.includes('Active repository task chain'), 'compact artifact context should be built');
-    assert(context.includes('plan_status=approved'), 'artifact context should include lifecycle state');
     assert(context.includes('review_required=true'), 'artifact context should include review requirement');
-    assert(context.includes('current_phase=Phase 2: implementation'), 'artifact context should include session state');
+    assert(!context.includes('plan_status='), 'artifact context should not mention plan status');
+    assert(!context.includes('current_phase='), 'artifact context should not mention progress state');
     assert(context.includes('detail=/chain-status'), 'artifact context should point to detail command');
     assert(!context.includes('Lifecycle chain:'), 'artifact context should not include verbose lifecycle chain');
 
     const snapshot = buildArtifactSnapshot(repoDir);
     assert(snapshot && snapshot.includes('### Lifecycle State'), 'artifact snapshot should include lifecycle state');
     assert(snapshot.includes('### Lifecycle Chain'), 'artifact snapshot should include verbose lifecycle chain');
-    assert(snapshot.includes('### Session State'), 'artifact snapshot should include session state section');
+    assert(!snapshot.includes('### Session State'), 'the Session State block went with progress.md');
 
     const permissionResult = runNode(
       path.join(__dirname, '..', 'hooks', 'permission-request.js'),
@@ -123,7 +108,8 @@ function main() {
     const permissionJson = JSON.parse(permissionResult.stdout);
     assert(permissionJson.hookSpecificOutput.decision.behavior === 'deny', 'dangerous command should be denied');
 
-    fs.rmSync(progressPath);
+    // Was `fs.rmSync(progressPath)`. progress.md left the artifact scan on
+    // 2026-08-20, so its presence or absence no longer changes any guard.
     const editGuardBlocked = runNode(
       path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
       {
@@ -132,28 +118,11 @@ function main() {
         input: JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } }),
       }
     );
-    assert(editGuardBlocked.status === 2, 'edit guard should block non-trivial edits without progress.md');
-    assert(editGuardBlocked.stderr.includes('progress.md'), 'edit guard should mention progress.md');
+    // Gates are consolidated at completion declaration. Editing is never blocked:
+    // it is reversible, and blocking it only produces stale placeholder artifacts.
+    assert(editGuardBlocked.status === 0, 'edit guard should not block edits');
+    assert(!editGuardBlocked.stderr.includes('[Lifecycle Guardrail] Missing'), 'edit guard should not emit a blocking guardrail error');
 
-    fs.writeFileSync(progressPath, [
-      '# Progress',
-      '',
-      '## Current Phase',
-      '- Phase 2: implementation',
-      '',
-      '## Last Completed Step',
-      '- Added the managed-session plan',
-      '',
-      '## Next Action',
-      '- Expand smoke verification',
-      '',
-      '## Blockers',
-      '- none',
-      '',
-      '## Delegated Work',
-      '- docs-writer: documented session semantics',
-      ''
-    ].join('\n'));
     const editGuardAllowed = runNode(
       path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-edit.js'),
       {
@@ -162,7 +131,7 @@ function main() {
         input: JSON.stringify({ tool_input: { file_path: path.join(repoDir, 'example.js') } }),
       }
     );
-    assert(editGuardAllowed.status === 0, 'edit guard should allow edits once progress.md exists');
+    assert(editGuardAllowed.status === 0, 'edit guard should allow edits');
 
     const compactResult = runNode(
       path.join(__dirname, '..', 'hooks', 'pre-compact.js'),
@@ -173,13 +142,12 @@ function main() {
     );
     assert(compactResult.status === 0, 'pre-compact should exit 0');
     const sessionAfterCompact = fs.readFileSync(path.join(sessionsDir, '2026-04-10-main-session.tmp'), 'utf8');
-    const progressAfterCompact = fs.readFileSync(progressPath, 'utf8');
     assert(sessionAfterCompact.includes('### Lifecycle State'), 'pre-compact should write lifecycle state');
-    assert(sessionAfterCompact.includes('next_action=Expand smoke verification'), 'pre-compact should preserve next action');
+    // Was `next_action=...`, which came from progress.md's Session State block.
+    // pre-compact records which gates exist; it does not summarize state.
+    assert(sessionAfterCompact.includes('next_required_action='), 'pre-compact should record the open gate');
+    assert(!sessionAfterCompact.includes('### Session State'), 'the Session State block went with progress.md');
     assert(sessionAfterCompact.includes('missing review-summary.md'), 'pre-compact should preserve missing review state');
-    assert(progressAfterCompact.includes('## Latest Checkpoint'), 'pre-compact should update latest checkpoint');
-    assert(progressAfterCompact.includes('event=pre-compact'), 'pre-compact should record checkpoint event');
-    assert(progressAfterCompact.includes('suggested_next_action=Expand smoke verification'), 'pre-compact should record suggested next action');
 
     const subagentResult = runNode(
       path.join(__dirname, '..', 'hooks', 'subagent-stop.js'),
@@ -192,7 +160,7 @@ function main() {
           goal: 'Document the managed session contract',
           open_risks: 'Need interrupted-session coverage',
           next_action: 'Run verification',
-          files_touched: ['docs/harness-structure-and-ownership.md', 'docs/session-resume-state.md'],
+          files_touched: ['HARNESS.md', 'SESSION.md'],
           verification_run: ['node smoke-harness-lifecycle.js'],
           last_assistant_message: 'Updated the authority docs.',
         }),
@@ -200,16 +168,12 @@ function main() {
     );
     assert(subagentResult.status === 0, 'subagent-stop should exit 0');
     const sessionAfterSubagent = fs.readFileSync(path.join(sessionsDir, '2026-04-10-main-session.tmp'), 'utf8');
-    const progressAfterSubagent = fs.readFileSync(progressPath, 'utf8');
     assert(sessionAfterSubagent.includes('agent=docs-writer'), 'subagent-stop should record agent');
     assert(sessionAfterSubagent.includes('goal=Document the managed session contract'), 'subagent-stop should record goal');
     assert(sessionAfterSubagent.includes('open_risks=Need interrupted-session coverage'), 'subagent-stop should record open risks');
     assert(sessionAfterSubagent.includes('next_action=Run verification'), 'subagent-stop should record next action');
-    assert(sessionAfterSubagent.includes('files_touched=docs/harness-structure-and-ownership.md, docs/session-resume-state.md'), 'subagent-stop should record files touched');
+    assert(sessionAfterSubagent.includes('files_touched=HARNESS.md, SESSION.md'), 'subagent-stop should record files touched');
     assert(sessionAfterSubagent.includes('verification_run=node smoke-harness-lifecycle.js'), 'subagent-stop should record verification run');
-    assert(progressAfterSubagent.includes('## Latest Delegated Handoff'), 'subagent-stop should persist handoff into progress.md');
-    assert(progressAfterSubagent.includes('agent=docs-writer'), 'subagent-stop should persist handoff agent');
-    assert(progressAfterSubagent.includes('next_action=Run verification'), 'subagent-stop should persist handoff next action');
 
     const commitGuardResult = runNode(
       path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
@@ -219,8 +183,10 @@ function main() {
         input: JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
       }
     );
-    assert(commitGuardResult.status === 2, 'commit guard should block missing verification/observation artifacts');
-    assert(commitGuardResult.stderr.includes('verification-summary.md'), 'commit guard should mention verification-summary.md');
+    assert(commitGuardResult.status === 0, 'commit guard should advise, not block, on missing verification/observation artifacts');
+    // The fixture has verification-summary.md, so what is owed is review and
+    // observation. Was `verification-summary.md`, which the fixture used to lack.
+    assert(commitGuardResult.stderr.includes('review-summary.md'), 'commit guard should mention the owed review');
 
     fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), '# Verification Summary\n');
     const commitGuardBadVerification = runNode(
@@ -231,7 +197,7 @@ function main() {
         input: JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
       }
     );
-    assert(commitGuardBadVerification.status === 2, 'commit guard should block incomplete verification-summary.md');
+    assert(commitGuardBadVerification.status === 0, 'commit guard should advise on incomplete verification-summary.md');
     assert(commitGuardBadVerification.stderr.includes('verification-summary.md is incomplete'), 'commit guard should mention incomplete verification summary');
 
     fs.writeFileSync(path.join(repoDir, 'verification-summary.md'), [
@@ -258,7 +224,7 @@ function main() {
         input: JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
       }
     );
-    assert(commitGuardMissingReview.status === 2, 'commit guard should block missing review-summary.md');
+    assert(commitGuardMissingReview.status === 0, 'commit guard should advise on missing review-summary.md');
     assert(commitGuardMissingReview.stderr.includes('review-summary.md'), 'commit guard should mention review-summary.md');
 
     fs.writeFileSync(path.join(repoDir, 'review-summary.md'), '# Review Summary\n');
@@ -270,19 +236,39 @@ function main() {
         input: JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
       }
     );
-    assert(commitGuardBadReview.status === 2, 'commit guard should block incomplete review-summary.md');
-    assert(commitGuardBadReview.stderr.includes('Missing sections'), 'commit guard should mention missing review sections');
+    assert(commitGuardBadReview.status === 0, 'commit guard should advise on incomplete review-summary.md');
+    assert(commitGuardBadReview.stderr.includes('missing sections'), 'commit guard should mention missing review sections');
 
     fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
       '# Review Summary',
       '',
+      // Complete in every section, so the assertion below isolates the
+      // unresolved finding rather than also tripping the missing-section advice.
       '## Review Scope',
       '- lifecycle guard behavior',
+      '',
+      '## Design Compliance',
+      '- matches the design doc',
+      '',
+      '## Security',
+      '- no decision boundary touched',
+      '',
+      '## Comment Adequacy',
+      '- unchanged',
+      '',
+      '## Code Quality',
+      '- acceptable',
+      '',
+      '## Test Adequacy',
+      '- covered',
       '',
       '## Findings',
       '- HIGH: unresolved lifecycle regression remains',
       '',
       '## Residual Risks',
+      '- none',
+      '',
+      '## Guardrail Candidates',
       '- none',
       '',
       '## Next Action',
@@ -297,7 +283,7 @@ function main() {
         input: JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
       }
     );
-    assert(commitGuardOpenFindings.status === 2, 'commit guard should block unresolved review findings');
+    assert(commitGuardOpenFindings.status === 0, 'commit guard should advise on unresolved review findings');
     assert(commitGuardOpenFindings.stderr.includes('unresolved findings'), 'commit guard should mention unresolved findings');
 
     fs.writeFileSync(path.join(repoDir, 'review-summary.md'), [
@@ -306,10 +292,28 @@ function main() {
       '## Review Scope',
       '- lifecycle guard behavior',
       '',
+      '## Design Compliance',
+      '- matches the design doc',
+      '',
+      '## Security',
+      '- no decision boundary touched',
+      '',
+      '## Comment Adequacy',
+      '- unchanged',
+      '',
+      '## Code Quality',
+      '- acceptable',
+      '',
+      '## Test Adequacy',
+      '- covered',
+      '',
       '## Findings',
       '- none',
       '',
       '## Residual Risks',
+      '- none',
+      '',
+      '## Guardrail Candidates',
       '- none',
       '',
       '## Next Action',
@@ -325,7 +329,7 @@ function main() {
         input: JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
       }
     );
-    assert(commitGuardBadObservation.status === 2, 'commit guard should block incomplete observation-summary.md');
+    assert(commitGuardBadObservation.status === 0, 'commit guard should advise on incomplete observation-summary.md');
     assert(commitGuardBadObservation.stderr.includes('observation-summary.md is incomplete'), 'commit guard should mention incomplete observation summary');
 
     fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
@@ -352,8 +356,8 @@ function main() {
         input: JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
       }
     );
-    assert(commitGuardBadObservationEvidence.status === 2, 'commit guard should block observation without concrete evidence sources');
-    assert(commitGuardBadObservationEvidence.stderr.includes('Concrete evidence source required'), 'commit guard should require concrete evidence sources');
+    assert(commitGuardBadObservationEvidence.status === 0, 'commit guard should advise on observation without concrete evidence sources');
+    assert(commitGuardBadObservationEvidence.stderr.includes('concrete evidence source required'), 'commit guard should name the concrete evidence requirement');
 
     fs.writeFileSync(path.join(repoDir, 'observation-summary.md'), [
       '# Observation Summary',
@@ -380,39 +384,9 @@ function main() {
       }
     );
     assert(commitGuardWarn.status === 0, 'commit guard should allow review/verify/observe complete commits');
-    assert(commitGuardWarn.stderr.includes('Next Action'), 'commit guard should warn on stale progress next action');
+    // 残っているのは verify / review / observe の証拠に対する助言だけ。
+    assert(!commitGuardWarn.stderr.includes('Next Action'), 'commit guard should no longer inspect Next Action');
 
-    fs.writeFileSync(progressPath, [
-      '# Progress',
-      '',
-      '## Current Phase',
-      '- Phase 4: verification',
-      '',
-      '## Last Completed Step',
-      '- Completed verification and observation',
-      '',
-      '## Next Action',
-      '- none',
-      '',
-      '## Blockers',
-      '- none',
-      '',
-      '## Delegated Work',
-      '- none',
-      '',
-      '## Latest Checkpoint',
-      '- updated_at=2026-04-14 19:15:00',
-      '- event=subagent-stop',
-      '- current_phase=Phase 4: verification',
-      '- last_completed_step=Completed verification and observation',
-      '- suggested_next_action=none',
-      '- blockers=none',
-      '- delegated_work=none',
-      '',
-      '## Latest Delegated Handoff',
-      '- none',
-      ''
-    ].join('\n'));
     const commitGuardReady = runNode(
       path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
       {
@@ -421,40 +395,8 @@ function main() {
         input: JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
       }
     );
-    assert(commitGuardReady.status === 0, 'commit guard should allow explicit none in Next Action');
-    assert(!commitGuardReady.stderr.includes('Next Action'), 'commit guard should not warn when Next Action is explicitly none');
+    assert(commitGuardReady.status === 0, 'commit guard should never block a commit');
 
-    fs.writeFileSync(progressPath, [
-      '# Progress',
-      '',
-      '## Current Phase',
-      '- Phase 4: verification',
-      '',
-      '## Last Completed Step',
-      '- Completed verification and observation',
-      '',
-      '## Next Action',
-      '- none',
-      '',
-      '## Blockers',
-      '- waiting on reviewer sign-off',
-      '',
-      '## Delegated Work',
-      '- none',
-      '',
-      '## Latest Checkpoint',
-      '- updated_at=2026-04-14 19:20:00',
-      '- event=pre-compact',
-      '- current_phase=Phase 4: verification',
-      '- last_completed_step=Completed verification and observation',
-      '- suggested_next_action=none',
-      '- blockers=waiting on reviewer sign-off',
-      '- delegated_work=none',
-      '',
-      '## Latest Delegated Handoff',
-      '- none',
-      ''
-    ].join('\n'));
     const commitGuardBlocked = runNode(
       path.join(__dirname, '..', '..', 'hooks', 'lifecycle-pre-commit.js'),
       {
@@ -463,8 +405,8 @@ function main() {
         input: JSON.stringify({ tool_input: { command: 'git commit -m "test"' } }),
       }
     );
-    assert(commitGuardBlocked.status === 2, 'commit guard should block when blockers remain in progress.md');
-    assert(commitGuardBlocked.stderr.includes('Blockers'), 'commit guard should mention blockers');
+    assert(commitGuardBlocked.status === 0, 'commit guard should advise, never block');
+    assert(!commitGuardBlocked.stderr.includes('blockers remain'), 'commit guard should no longer read progress blockers');
 
     const sessionStartResult = runNode(
       path.join(__dirname, '..', 'hooks', 'session-start.js'),
