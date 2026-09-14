@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 'use strict';
 
+/**
+ * Build the goal for one task issue. The agent fetches the issue with whatever access its runtime
+ * has and passes the text, which is why no tracker API is called here. Input (--input <file|->):
+ *   { tracker: string, branch?: string,
+ *     task: { ref: string, title?: string, body: string },
+ *     parent?: { ref: string, title?: string, body: string } }
+ */
+
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -11,13 +19,6 @@ const { prepareGoal, lineDiff } = require('./lib/task-goal');
 // accept the diff before the goal changes.
 const EXIT_SPEC_CHANGED = 3;
 
-/**
- * Input contract. The agent fetches the issue with whatever access its runtime has and passes
- * the text here, which is why no tracker API is called from this script:
- *   { tracker: string, branch?: string,
- *     task: { ref: string, title?: string, body: string },
- *     parent?: { ref: string, title?: string, body: string } }
- */
 function readInput(file) {
   const input = JSON.parse(fs.readFileSync(file === '-' ? 0 : file, 'utf8'));
   const required = [['tracker', input.tracker], ['task.ref', input.task?.ref], ['task.body', input.task?.body]];
