@@ -13,6 +13,25 @@ Use this command to construct `docs/` から永続リファレンスを組み立
 
 `AGENTS.md` はこのコマンドの対象外。`/repo-map` を使う。
 
+## design doc の置き場所
+
+grilling を通っていることを確かめたら（Required behavior 1）、書く前に管理先の宣言を解決する。
+
+```bash
+node ~/.claude/scripts/resolve-tracker.js --repo .
+```
+
+- `configured`: design doc を**親 Issue の本文**に書き、`docs/design/` には書かない。新しい仕様なら起票し、既存の Issue なら本文を更新する。
+  テンプレートの節は選んで使い、不要な見出しと説明は省く。Required behavior 3（規模ゲート）と 4（初回・追加の分岐）は適用しない。
+  1つのタスクとして着手するなら `受け入れ条件` と `検証方法` の節を入れる（`scripts/task-goal.js` が読む）。
+  書いたら、次は `split-issue` で分割案を示す
+- `none`: Required behavior のとおり `docs/` に書く
+- `unconfigured`（終了コード 2）: `candidates` を示して人に選んでもらい、`expected_path` に書いてから再実行する。
+  **人が選ぶ前に Issue を作らない**
+- `invalid`: `error` を示して止まる
+
+GitHub では `tracker.repo` のリポジトリの Issue に書く。他の管理先では、そのランタイムで使える手段で書く。
+
 ## Required behavior
 
 1. **grilling セッションを通っているか確認する。** 入口は `/grill-me`、実体は `grilling`（どちらも upstream skill）。

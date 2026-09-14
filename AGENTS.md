@@ -114,5 +114,7 @@ The SQLite store these hooks used to write was retired on 2026-08-20; the archiv
 - canonical lifecycle: [CLAUDE.md](CLAUDE.md)
 - 今どうなっているか: [docs/architecture.md](docs/architecture.md)
 - 流れの正本: [commands/COMMANDS.md](commands/COMMANDS.md)
+- Issue からゴールで進める入口（両ランタイム共通）: [skills/split-issue](skills/split-issue/SKILL.md) / [skills/start-issue](skills/start-issue/SKILL.md)。
+  Codex では `$start-issue <Issue>` のように明示して呼ぶ
 - Codex runbook: [docs/how-to/codex-operations-runbook.md](docs/how-to/codex-operations-runbook.md)
 - Codex SQLite bridge: [docs/how-to/codex-telemetry-bridge.md](docs/how-to/codex-telemetry-bridge.md)

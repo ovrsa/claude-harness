@@ -10,7 +10,8 @@ Use this command for the `TDD Spec`, `Implement Small`, `Review`, `Verify`, `Eva
 
 ## Preconditions
 
-- A `docs/design/YYYY-MM-DD-<slug>.md` entry exists for this work
+- A `docs/design/YYYY-MM-DD-<slug>.md` entry exists for this work, or, in a project that declares a tracker in
+  `.claude/tracker.json`, the task issue and its parent issue body carry the design doc (`skills/start-issue` starts that path)
 - The operator has approved it in conversation. **There is no machine-readable approval flag** —
   `plan.md` and its `status: approved` were retired on 2026-08-17, and nothing blocks on approval now.
   Ask if you are unsure whether approval was given

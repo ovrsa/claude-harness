@@ -31,3 +31,19 @@ When creating PRs:
 
 > For the full development process (planning, TDD, code review) before git operations,
 > see [development-workflow.md](./development-workflow.md).
+
+## Issue からゴールを始めた時の push と PR
+
+`start-issue` で対象 Issue のゴールを始めたら、その作業ブランチについて次の指示を受けたものとして扱う。
+
+- 作業ブランチの push（`main` / `master` 以外）
+- PR の作成と本文の更新、Draft と Ready for review の切り替え、停止理由のコメント
+
+含まないもの:
+
+- **マージ。** 人が行う。エージェントは `gh pr merge` を実行しない
+- 人がマージする前に、次のタスクの実装を始めること
+
+この PR の本文は `templates/review-request-template.md` の5節だけにする（上の包括的な要約やテスト計画は書かない）。
+機械で止まるのは `main` / `master` への push（`hooks/git-push-guard.js`）だけで、
+マージしないことと、Ready にする前に完了検査（`scripts/task-completion.js`）を呼ぶことは規律に依存する。

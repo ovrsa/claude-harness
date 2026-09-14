@@ -33,12 +33,18 @@ docs/
 コード内                契約（型 + コメント）／Tutorial（実行可能コマンド）
 ```
 
-テンプレートは `~/.claude/templates/` にある（`readme-` / `repo-map-` / `todo-` / `architecture-` / `design-doc-initial-` / `design-doc-increment-` / `how-to-`）。
+テンプレートは `~/.claude/templates/` にある（`readme-` / `repo-map-` / `todo-` / `architecture-` / `design-doc-initial-` / `design-doc-increment-` / `how-to-` / `task-issue-`）。
+
+**design doc の置き場所は管理先の宣言で分かれる。** プロジェクトの `.claude/tracker.json` で管理先を宣言したら、
+design doc は親 Issue の本文にだけ置き、`docs/design/` には置かない（同じ決定を2箇所に置かない）。
+宣言が `none` なら上の `docs/design/` に置く。宣言が無ければ、最初の起票の前に人が選ぶ。
+解決は `scripts/resolve-tracker.js` が行い、GitHub を全プロジェクトに強制せず、管理先へのアクセス手段も固定しない。
 
 | 対象 | 入口 |
 |---|---|
 | `AGENTS.md` | `/repo-map` |
-| `docs/` 一式 | `/docs-build`（**`/grill-me` を通してから**） |
+| `docs/` 一式、または親 Issue の本文 | `/docs-build`（**`/grill-me` を通してから**） |
+| 子 Issue | `split-issue` スキル（本文は `task-issue-template.md`） |
 | 書くべきかの判定 | `writing-reference-docs` スキル |
 
 ## `TODO.md` は実行状態ではない
@@ -46,7 +52,7 @@ docs/
 | 対象 | 役割 | 所有者 |
 |---|---|---|
 | git（ブランチ・`log`・`diff`） | 実際に何が起きたか。**復帰の一次根拠** | — |
-| `docs/design/` の最新1枚 | 決定された意図 | 人間 |
+| design doc（`docs/design/` の最新1枚。管理先があればブランチ名の Issue から辿る親 Issue の本文） | 決定された意図 | 人間 |
 | `runs/<date>-<slug>/` | ゲートの証拠本文。worktree を消しても残る（git 追跡） | フック |
 | `TODO.md` | 人間の作業メモ・現在地（使い捨て・gitignore・完了時に削除） | 人間 |
 
@@ -98,6 +104,8 @@ upstream が定める進め方:
 - grilling を通っていなければ**構築しない**。`/grill-me` に戻る
 - **Grill Record（10項目）を会話から抽出するのはこのコマンドの仕事。** upstream skill は構造化出力を持たない。
   抽出結果はユーザーに提示して確認を取る。拾えなかった項目は空欄のまま残す
+- 管理先を宣言したプロジェクトは、design doc を**親 Issue の本文**に書く。テンプレートの節は選んで使い、
+  不要な見出しと説明は省く。Issue の本文はゴールの入力になるので、Lynch の3問で省かない（3問が決めるのは `docs/` の永続 doc だけ）
 - `docs/design/0000-initial.md` の有無で分岐
   - **無い（初回）** → `README.md` ＋ `docs/design/0000-initial.md`。3問の Yes が2個以上なら `docs/architecture.md` も
   - **ある（追加）** → `docs/design/YYYY-MM-DD-<slug>.md` を1枚。**A4 1枚に収める**
@@ -120,7 +128,10 @@ upstream が定める進め方:
   2026-08-17 まで `plan.md` にも置いていたが、`plan.md` ごと撤去した
 - **マージ前に `触る対象` と Open Issues を確定させる。** 実装で判明した分をここで降ろす。
   取り込んだ後は触らない（追加only は「過去の決定を消さない」規則なので、
-  同じタスクのマージ前の草稿を直すのは履歴の改変ではない）
+  同じタスクのマージ前の草稿を直すのは履歴の改変ではない）。
+  親 Issue の本文に降ろす場合、子 Issue が参照している節を変えると、次の `start-issue` で差分の確認が出る
+- 管理先があるプロジェクトでは、分割（`split-issue`）とゴールでの着手（`start-issue`）が続く。
+  段の順序は `commands/COMMANDS.md` の「管理先があるプロジェクトの流れ」
 - compaction を跨ぐ見込みがあるなら `TODO.md` を作る（`.gitignore` 確認）。跨がないなら作らない
 - `TODO.md` の項目は design doc から導出する。そこで新しくスコープを決めない
 
