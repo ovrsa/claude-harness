@@ -43,6 +43,7 @@ read -r ins del < <(git diff HEAD --numstat 2>/dev/null | awk '{ins+=$1; del+=$2
 c() {
   local code
   case "$1" in
+    red) code=31 ;;
     cyan) code=36 ;;
     white) code=37 ;;
     yellow) code=33 ;;
@@ -88,12 +89,17 @@ fmt_duration() {
 now=$(date +%s)
 model=$(printf '%s' "$model_raw" | sed -E 's/ *\([^)]*\)$//')
 ctx_tokens=$(( cur_in + cur_creation + cur_read ))
-usable=$(awk -v w="$win_size" 'BEGIN{printf "%d", w*0.8}')
-ctx_pct=$(awk -v c="$ctx_tokens" -v u="$usable" 'BEGIN{
-  if (u <= 0) { print 0; exit }
-  p = c/u*100; if (p > 100) p = 100;
+# Share of the whole window, truncated rather than rounded so that 40.0% on
+# screen always means the warning threshold below has been reached.
+ctx_pct=$(awk -v c="$ctx_tokens" -v w="$win_size" 'BEGIN{
+  w += 0  # a non-numeric -v value would otherwise compare as a string
+  if (w <= 0) { print "0.0"; exit }
+  p = int(c*1000/w)/10; if (p > 100) p = 100;
   printf "%.1f", p;
 }')
+# Why 40%: docs/design/2026-09-14-statusline-context-warning.md
+ctx_color=brightBlue
+awk -v p="$ctx_pct" 'BEGIN{exit !(p >= 40)}' && ctx_color=red
 session_clock=$(fmt_duration "$(( dur_ms / 1000 ))" nodays)
 
 join() {
@@ -108,7 +114,7 @@ line1=()
 line1+=("$(c cyan "Model: ${model}")")
 line1+=("$(c white "In: $(fmt_tokens "$tot_in")")")
 line1+=("$(c white "Out: $(fmt_tokens "$tot_out")")")
-line1+=("$(c brightBlue "Ctx(u) Used: ${ctx_pct}%")")
+line1+=("$(c "$ctx_color" "Ctx Used: ${ctx_pct}%")")
 
 line2=()
 [ -n "$branch" ] && line2+=("$(c yellow "⎇ ${branch}")")
