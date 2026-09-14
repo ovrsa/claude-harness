@@ -56,7 +56,7 @@ function parseBlock(lines) {
 function parseIssue(body) {
   const lines = String(body).replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/);
   const all = sections(lines, 2);
-  const doc = { h2: all };
+  const doc = {};
   for (const [key, aliases] of Object.entries(SECTION_ALIASES)) {
     const section = all.find(({ heading }) => aliases.some(alias => heading.toLowerCase().startsWith(alias.toLowerCase())));
     doc[key] = section ? parseBlock(section.lines) : { items: [], notes: [] };
@@ -107,9 +107,9 @@ function buildGoal({ task, doc, parent, repo, branch, revision }) {
   const premise = doc.acceptance.notes.length ? `（前提: ${doc.acceptance.notes.join(' ')}）` : '';
   const nonGoals = [...(parent ? parent.doc.nonGoals.items : []), ...doc.nonGoals.items];
   return [
-    `${task.ref}「${task.title}」を【完了】か【停止】の状態にしたら終了する（仕様 ${revision}）。`,
+    `${task.ref}${task.title ? `「${task.title}」` : ' '}を【完了】か【停止】の状態にしたら終了する（仕様 ${revision}）。`,
     `【完了】次をすべて会話に示す。(1) 受け入れ条件をすべて満たす: ${criteria}${premise}`,
-    `(2) 検証方法を実行した結果: ${blockText(doc.verification)}`,
+    `(2) 検証方法を実行した結果: ${[...doc.verification.notes, ...doc.verification.items].join(' / ')}`,
     '(3) レビューと仕上げを終え、未解決の CRITICAL/HIGH が無い。挙動が変わったなら観測の証拠がある',
     `(4) node ~/.claude/scripts/task-completion.js --repo ${repo} が終了コード 0`,
     `(5) ${branch ? `${branch} の PR` : '作業ブランチの PR'} が Ready for review で、本文は変更理由・変わる動作・検証結果・残る懸念・リンクだけ。`,

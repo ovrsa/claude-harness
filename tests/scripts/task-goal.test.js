@@ -147,6 +147,13 @@ try {
     );
   });
 
+  test('an issue without a title is named by its reference alone', () => {
+    const result = run(repo(), { tracker: 'github', task: { ref: '#3', body: fixture('single.md') } });
+    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+    assert.ok(result.json.goal.startsWith('#3 を【完了】か【停止】'), result.json.goal.slice(0, 80));
+    assert.ok(!result.json.goal.includes('undefined'));
+  });
+
   test('an issue kept as a single task reads its own non-goals and premise without a parent', () => {
     const result = run(repo(), { tracker: 'github', task: { ref: '#3', title: 'ステータスラインを赤くする', body: fixture('single.md') } });
     assert.strictEqual(result.status, 0, result.stdout + result.stderr);
