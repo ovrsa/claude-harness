@@ -41,6 +41,7 @@ const testFiles = [
   { file: 'scripts/claw.test.js' },
   { file: 'scripts/pipeline-runner.test.js' },
   { file: 'scripts/task-completion.test.js' },
+  { file: 'scripts/resolve-tracker.test.js' },
   { file: 'scripts/provider-adapters.test.js' },
   { file: 'scripts/prompt-assemble.test.js' },
   { file: 'scripts/task-queue.test.js' },
