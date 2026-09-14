@@ -1,0 +1,15 @@
+{
+  "repo_root": "/private/tmp/harness-task-finishing",
+  "branch": "fix/task-finishing",
+  "run_id": "2026-09-14-fix-task-finishing",
+  "started_at": "2026-09-14T01:24:58.005Z",
+  "updated_at": "2026-09-14T01:24:58.006Z",
+  "gates": [
+    "observation",
+    "review",
+    "verification"
+  ],
+  "session_ids": [
+    "codex-session-01a095f3-0f4a-7dc0-8734-22aa9887fb5c"
+  ]
+}

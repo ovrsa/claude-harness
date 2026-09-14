@@ -40,6 +40,7 @@ const testFiles = [
   { file: 'ci/validators.test.js' },
   { file: 'scripts/claw.test.js' },
   { file: 'scripts/pipeline-runner.test.js' },
+  { file: 'scripts/task-completion.test.js' },
   { file: 'scripts/provider-adapters.test.js' },
   { file: 'scripts/prompt-assemble.test.js' },
   { file: 'scripts/task-queue.test.js' },

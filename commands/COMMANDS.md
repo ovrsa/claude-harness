@@ -30,7 +30,7 @@ Use the local pipeline by default for standard and heavy-risky implementation an
 5  /docs-build      docs/design/ に決定を記録する = **実装の入力**
 6  実装             skills/tdd（seam 合意 -> RED -> 最小 GREEN。refactor はしない）
 7  検証             -> verification-summary.md（RED 証拠を含む。入口は /verify・任意）
-8  レビュー         -> review-summary.md（**refactor / セキュリティ / コメント**はここ。入口は /review-task・任意）
+8  レビュー・仕上げ -> review-summary.md（refactor / 文章 / セキュリティ / コメント。修正後は再検証）
 9  受容判断         成果物を持たない。7・8・10 を読んで受容を答える（入口は /eval・任意）
 10 観測（挙動が変わった時のみ）-> observation-summary.md
 11 確定             実装で判明した「触る対象」と Open Issues を design doc に降ろす
@@ -82,7 +82,7 @@ Standard and heavy-risky work should leave pipeline run evidence through `/execu
 | 層 | 実体 | 役割 |
 |---|---|---|
 | ライフサイクル | この Ordered Path | **何が起きなければならないか**。経路を問わない |
-| 既定エンジン | `/execute-plan`（ローカルパイプライン） | 手順6〜10 を回す。standard / heavy-risky の既定 |
+| 既定エンジン | `/execute-plan`（ローカルパイプライン） | 手順6〜11 を回す。finish・verify・evaluate 後に完了検査 |
 | 手動経路 | `/implement-task` `/review-task` | エンジンを使わない時の手順6・8 |
 
 `/review-task` は手順8の成果物（`review-summary.md`）を手で作るコマンドであって、

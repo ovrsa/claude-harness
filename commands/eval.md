@@ -35,11 +35,10 @@ The flow is:
 
 1. Read the design doc for this work when it exists.
 2. Read `review-summary.md`.
-3. Confirm `review-summary.md` uses the canonical sections:
-   - `Review Scope`
-   - `Findings`
-   - `Residual Risks`
-   - `Next Action`
+3. Confirm all canonical sections in `templates/review-summary-template.md` are present and
+   the review passes contain actual judgments. Follow `docs/how-to/run-a-task.md` → 完了前の仕上げ:
+   code, prose, and comments must have a target and a reason; verification follows the final edit.
+   Run `node ~/.claude/scripts/task-completion.js --repo <repo>`. Nonzero means NEEDS WORK.
 4. Treat `Findings` as unresolved blockers only.
 5. Treat evaluation as incomplete while a `CRITICAL:` or `HIGH:` finding remains. `MEDIUM:` and below do not hold the chain.
 6. Confirm `verification-summary.md` exists for implementation and bug-fix work.
@@ -48,7 +47,7 @@ The flow is:
    - require concrete evidence sources in that artifact
 8. Compare the current change against the design doc's success conditions and `Non-goals`.
 9. Move accepted non-blocking concerns to `Residual Risks`, not `Findings`.
-10. Produce an acceptance decision:
+10. Produce an acceptance decision only after the completion check and any required observation:
     - `ACCEPT`
     - `NEEDS WORK`
     - `BLOCKED`
@@ -78,7 +77,7 @@ Next Action:
 ## Guardrails
 
 - Do not treat passing tests as equivalent to acceptance.
-- Do not accept work while `Findings` still contains unresolved issues.
+- Do not accept work while `Findings` contains unresolved CRITICAL or HIGH issues.
 - Do not treat observation evidence as a substitute for review.
 - Do not treat review prose without canonical sections as an acceptable evaluation artifact.
 - Do not approve behavior-changing work when required observation evidence is missing.

@@ -115,7 +115,8 @@ Task artifacts should be written in Japanese by default.
 
 ### Where The Lifecycle Is Enforced
 
-**One blocking gate, at the only step that leaves the machine.** Everything else advises.
+**The hook layer has one blocking gate: pushing to main/master.** Other hook checks advise.
+The pipeline runner separately checks task-finishing evidence before reporting DONE.
 
 | Step | Enforcement |
 |---|---|
@@ -141,6 +142,20 @@ Two removals, both for the same reason — a gate that can be satisfied vacuousl
 
 What replaces it is discipline plus the evidence artifacts, and the `Execution Rules` above still
 hold. They are now honestly advisory rather than falsely mechanical.
+
+## Task Finishing
+
+Before reporting an implementation/fix complete, creating its PR, or moving its ticket to Done,
+read `docs/how-to/run-a-task.md` and finish the task's changed code, prose, and comments.
+Apply needed cleanup, update documentation to the actual finished state, and rerun affected checks.
+Record targets and reasons even when no change is needed; use the `Code Quality` fields in
+`templates/review-summary-template.md`. Do not make unrelated cleanup edits.
+After reviewing the final diff and verification evidence, record the fingerprint from
+`node ~/.claude/scripts/task-completion.js --repo <repo> --fingerprint`, then run it without
+`--fingerprint`. Exit zero is required before the completion action. A failed check means continue
+finishing, not ask the operator to request cleanup again. The operator need not invoke a command.
+The standard workflow runs the same check before DONE. Manual execution depends on the agent
+calling it; no Stop hook intercepts arbitrary prose or external ticket API calls.
 
 ## Context Rules
 

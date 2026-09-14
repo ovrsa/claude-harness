@@ -1,0 +1,37 @@
+{
+  "kind": "verification",
+  "source_path": "/private/tmp/harness-task-finishing/verification-summary.md",
+  "captured_at": "2026-09-14T01:24:58.006Z",
+  "fingerprint": "",
+  "state": {
+    "scope": [
+      "タスク仕上げのパーサ、完了検査 CLI、pipeline runner、既定ワークフロー、タスクキュー経由の完了。"
+    ],
+    "commandsRun": [
+      "`volta run --node 22.20.0 node tests/run-all.js`",
+      "`node tests/scripts/task-completion.test.js`",
+      "`node tests/lib/task-artifacts.test.js`",
+      "`node tests/scripts/pipeline-runner.test.js`",
+      "`volta run --node 22.20.0 node tests/scripts/task-queue.test.js`",
+      "変更した JavaScript 10ファイルを ESLint で検査。",
+      "新規設計記録と finish/evaluate facet を markdownlint で検査。",
+      "`node scripts/workflow-doctor.js`、成果物・コマンド・ルール検査、ハーネス整合監査、ライフサイクル smoke、`git diff --check`。"
+    ],
+    "verificationOutcome": [
+      "全体: 1,404件中1,402件成功、2件失敗。失敗は既存 settings.json の Orca wrapper と新しいフックイベントを旧検査器が拒否するもの。",
+      "対象: 完了検査9件、既存パーサ28件、runner 37件、キュー33件が成功。JavaScript lint、新規文書 lint、構造検査も成功。",
+      "`npm test` は既存 validate-hooks.js の設定検査で停止する。元の環境でも同種のエラーを確認した。",
+      "Node 21 の初回全体実行では node:sqlite 未対応の7件も失敗したため、インストール済み Node 22.20.0 で全件を再実行した。",
+      "既存文書全体の markdownlint は既存の長行等で不合格。今回新設した文書・facet は修正後に合格。"
+    ],
+    "assessment": [
+      "今回の変更面は受容可能。全体検査が完全成功したとは扱わず、既存フック検査の2件は残存リスクとする。"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "missingValues": [],
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Verification Summary\n\n## Scope\n\n- タスク仕上げのパーサ、完了検査 CLI、pipeline runner、既定ワークフロー、タスクキュー経由の完了。\n\n## RED Evidence\n\n- `node tests/scripts/task-completion.test.js`: 空欄コメント確認のレビューを incomplete と期待したところ、変更前は true を返して失敗した。\n- CLI 未実装時は証拠不足の診断も得られなかった。実装後は同じ公開 CLI で期待する終了コードを確認した。\n\n## Commands Run\n\n- `volta run --node 22.20.0 node tests/run-all.js`\n- `node tests/scripts/task-completion.test.js`\n- `node tests/lib/task-artifacts.test.js`\n- `node tests/scripts/pipeline-runner.test.js`\n- `volta run --node 22.20.0 node tests/scripts/task-queue.test.js`\n- 変更した JavaScript 10ファイルを ESLint で検査。\n- 新規設計記録と finish/evaluate facet を markdownlint で検査。\n- `node scripts/workflow-doctor.js`、成果物・コマンド・ルール検査、ハーネス整合監査、ライフサイクル smoke、`git diff --check`。\n\n## Verification Outcome\n\n- 全体: 1,404件中1,402件成功、2件失敗。失敗は既存 settings.json の Orca wrapper と新しいフックイベントを旧検査器が拒否するもの。\n- 対象: 完了検査9件、既存パーサ28件、runner 37件、キュー33件が成功。JavaScript lint、新規文書 lint、構造検査も成功。\n- `npm test` は既存 validate-hooks.js の設定検査で停止する。元の環境でも同種のエラーを確認した。\n- Node 21 の初回全体実行では node:sqlite 未対応の7件も失敗したため、インストール済み Node 22.20.0 で全件を再実行した。\n- 既存文書全体の markdownlint は既存の長行等で不合格。今回新設した文書・facet は修正後に合格。\n\n## Assessment\n\n- 今回の変更面は受容可能。全体検査が完全成功したとは扱わず、既存フック検査の2件は残存リスクとする。\n"
+}

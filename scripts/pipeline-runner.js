@@ -9,6 +9,7 @@ const {
   getRepoRoot,
   parsePlanState,
 } = require('./lib/task-artifacts');
+const { checkTaskCompletion } = require('./lib/task-completion');
 const { resolveBranch } = require('./lib/run-record');
 const { recordLifecycleGates } = require('./lib/lifecycle-record');
 const {
@@ -867,7 +868,7 @@ async function runWorkflowLoop(options, result, workflow, initialStep) {
       };
     }
 
-    const transition = resolveWorkflowTransition(workflow, currentStep, condition);
+    const transition = checkCompletionTransition(workflow, resolveWorkflowTransition(workflow, currentStep, condition), result.repoRoot);
     if (reviewAggregation && reviewAggregation.blocker) {
       transition.blocker = reviewAggregation.blocker;
     }
@@ -973,6 +974,17 @@ function loadWorkflow(workflowPath) {
     path: resolved,
     definition: parseYamlSubset(fs.readFileSync(resolved, 'utf8')),
   };
+}
+
+function checkCompletionTransition(workflow, transition, repoRoot) {
+  if (transition.status !== 'complete' || workflow.completion_check !== 'task-finishing') return transition;
+  try {
+    const completion = checkTaskCompletion(repoRoot);
+    if (completion.ready) return transition;
+    return { ...transition, status: 'blocked', blocker: `task finishing incomplete: ${completion.issues.join(' | ')}` };
+  } catch (error) {
+    return { ...transition, status: 'blocked', blocker: `task finishing check failed: ${error.message}` };
+  }
 }
 
 function resolveWorkflowTransition(workflow, stepName, condition) {
@@ -1307,7 +1319,7 @@ async function buildResult(options) {
                 status = 'BLOCKED';
                 blockers.push('workflow adapter result must include condition');
               } else {
-                workflowTransition = resolveWorkflowTransition(workflow, selectedWorkflowStep, aggregate.condition);
+                workflowTransition = checkCompletionTransition(workflow, resolveWorkflowTransition(workflow, selectedWorkflowStep, aggregate.condition), repoRoot);
                 if (reviewAggregation && reviewAggregation.blocker) {
                   workflowTransition.blocker = reviewAggregation.blocker;
                 }
@@ -1343,7 +1355,11 @@ async function buildResult(options) {
                 }
               }
             } else {
-              status = 'DONE';
+              const completion = checkCompletionTransition(
+                { completion_check: 'task-finishing' }, { status: 'complete' }, repoRoot
+              );
+              status = completion.status === 'complete' ? 'DONE' : 'BLOCKED';
+              if (completion.blocker) blockers.push(completion.blocker);
             }
           } else if (execution.decision) {
             status = 'NEEDS_DECISION';
@@ -1387,7 +1403,7 @@ async function buildResult(options) {
       ? (workflowTransition && workflowTransition.to
           ? `Run workflow step: ${workflowTransition.to}`
           : 'Run again with --execute and an approved engine adapter when ready.')
-      : (status === 'DONE' ? 'Proceed to verification and review gates; commit, push, PR, and deploy still require explicit authorization.' : (blockers[0] || decisions[0] || 'Resolve runner stop condition')),
+      : (status === 'DONE' ? 'Execution complete; follow the operator-authorized handoff.' : (blockers[0] || decisions[0] || 'Resolve runner stop condition')),
   };
 }
 

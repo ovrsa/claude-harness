@@ -178,7 +178,7 @@ function summarizeSectionStatus(sections, requiredHeadings) {
 }
 
 function parseReviewState(content) {
-  const sections = parseMarkdownSections(content);
+  const sections = parseMarkdownSections(String(content || '').replace(/<!--[\s\S]*?-->/g, ''));
   const status = summarizeSectionStatus(sections, REVIEW_REQUIRED_HEADINGS);
   const reviewScopeState = parseSectionState(sections['Review Scope']);
   const findingsState = parseSectionState(sections.Findings);
@@ -210,6 +210,11 @@ function parseReviewState(content) {
   if (!findingsState.hasEntries) missingValues.push('Findings');
   if (!residualRiskState.hasEntries) missingValues.push('Residual Risks');
   if (!nextActionState.hasEntries) missingValues.push('Next Action');
+  for (const heading of ['Design Compliance', 'Security', 'Comment Adequacy', 'Code Quality', 'Test Adequacy']) {
+    if (sections[heading] && !parseSectionState(sections[heading]).values.some(value => !/^(?:-|[^:]+:\s*)$/.test(value))) {
+      missingValues.push(heading);
+    }
+  }
   const complete = status.complete && missingValues.length === 0 && invalidFindings.length === 0;
 
   return {
@@ -458,7 +463,7 @@ function buildLifecycleState(artifacts) {
   }
 
   if (review && review.review_state && !review.review_state.complete) {
-    blocked.push(`incomplete review-summary.md: missing ${review.review_state.missingSections.join(', ')}`);
+    blocked.push(`incomplete review-summary.md: ${[...review.review_state.missingSections, ...(review.review_state.missingValues || []), ...(review.review_state.invalidFindings || [])].join(', ')}`);
     chain.push(makeLifecycleStep('review', 'blocked', 'review-summary.md incomplete', 'review-summary.md'));
   } else if (reviewHasBlockingFindings) {
     chain.push(makeLifecycleStep('review', 'blocked', 'review-summary.md has unresolved findings', 'review-summary.md'));

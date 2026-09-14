@@ -62,6 +62,7 @@ function writeAdapter(filePath, options = {}) {
     '    },',
     '  }, null, 2));',
     '}',
+    options.completeTask ? `require(${JSON.stringify(path.resolve(__dirname, '../fixtures/task-finishing.js'))}).writeFinishingEvidence(process.env.PIPELINE_RUNNER_REPO);` : '',
     stdoutJson ? `console.log(${JSON.stringify(JSON.stringify(stdoutJson))});` : '',
     `process.exit(${exitCode});`,
     '',
@@ -102,6 +103,7 @@ function writeSequenceAdapter(filePath, options = {}) {
     'if (markerPath) fs.writeFileSync(countPath, String(count + 1));',
     'const stepResponses = Array.isArray(responses[step]) ? responses[step] : [responses[step] || defaultResponse];',
     'const response = stepResponses[Math.min(count, stepResponses.length - 1)];',
+    `if (${Boolean(options.completeTask)} && step === 'evaluate') require(${JSON.stringify(path.resolve(__dirname, '../fixtures/task-finishing.js'))}).writeFinishingEvidence(process.env.PIPELINE_RUNNER_REPO);`,
     'if (response !== null) console.log(JSON.stringify(response));',
     'process.exit(exitByStep[step] === undefined ? 0 : exitByStep[step]);',
     '',
@@ -547,7 +549,7 @@ function runTests() {
       const marker = path.join(dir, 'adapter-marker.json');
       initRepo(repo);
       writePlan(path.join(repo, 'plan.md'));
-      writeAdapter(adapter, { markerPath: marker });
+      writeAdapter(adapter, { markerPath: marker, completeTask: true });
 
       const result = run([
         '--repo', repo,
@@ -726,7 +728,7 @@ function runTests() {
       const adapter = path.join(dir, 'adapter.js');
       initRepo(repo);
       writePlan(path.join(repo, 'plan.md'));
-      writeAdapter(adapter);
+      writeAdapter(adapter, { completeTask: true });
 
       const result = run([
         '--repo', repo,
@@ -1255,6 +1257,7 @@ function runTests() {
       writePlan(path.join(repo, 'plan.md'));
       writeSequenceAdapter(adapter, {
         markerPath: marker,
+        completeTask: true,
         responses: {
           research: { condition: 'research_complete', artifacts: ['research.md'] },
           plan: { condition: 'approved', artifacts: ['plan.md'] },
@@ -1262,6 +1265,8 @@ function runTests() {
           architecture_review: { condition: 'approved', status: 'approved', findings: [], residual_risks: [] },
           security_review: { condition: 'approved', status: 'approved', findings: [], residual_risks: [] },
           harness_review: { condition: 'approved', status: 'approved', findings: [], residual_risks: [] },
+          finish: { condition: 'finished' },
+          evaluate: { condition: 'accepted' },
           verify: { condition: 'verified', artifacts: ['verification-summary.md'] },
         },
       });
@@ -1282,7 +1287,7 @@ function runTests() {
       assert.strictEqual(result.code, 0, result.stdout);
       assert.ok(result.stdout.includes('PIPELINE RUNNER: DONE'));
       assert.ok(result.stdout.includes('Workflow:    research -> COMPLETE'));
-      assert.ok(result.stdout.includes('Steps:       5'));
+      assert.ok(result.stdout.includes('Steps:       7'));
       const researchInvocation = readJson(`${marker}.research.json`);
       assert.strictEqual(researchInvocation.env.workflow, 'standard-development');
       assert.strictEqual(researchInvocation.env.stepIndex, '0');
@@ -1293,7 +1298,7 @@ function runTests() {
       assert.ok(researchInvocation.argv.includes('research'));
       assert.ok(researchInvocation.argv.includes('--run-id'));
       assert.ok(researchInvocation.argv.includes('run-loop-complete'));
-      for (const stepName of ['research', 'plan', 'implement', 'architecture_review', 'security_review', 'harness_review', 'verify']) {
+      for (const stepName of ['research', 'plan', 'implement', 'architecture_review', 'security_review', 'harness_review', 'finish', 'verify', 'evaluate']) {
         assert.strictEqual(fs.readFileSync(`${marker}.${stepName}.count`, 'utf8'), '1');
       }
 
@@ -1301,8 +1306,8 @@ function runTests() {
       const meta = readJson(path.join(runDir, 'meta.json'));
       assert.strictEqual(meta.status, 'done');
       assert.strictEqual(meta.workflow, 'standard-development');
-      assert.strictEqual(meta.step_count, 5);
-      assert.strictEqual(meta.final_step, 'verify');
+      assert.strictEqual(meta.step_count, 7);
+      assert.strictEqual(meta.final_step, 'evaluate');
       const events = readNdjson(path.join(runDir, 'logs', 'events.ndjson'));
       assert.ok(fs.existsSync(path.join(runDir, 'context', 'prompt-preview.research.md')));
       assert.ok(fs.existsSync(path.join(runDir, 'context', 'prompt-preview.verify.md')));
@@ -1321,7 +1326,7 @@ function runTests() {
       assert.ok(events.some(event => event.type === 'review_aggregated' && event.step === 'review' && event.reviewer_count === 3));
       assert.ok(events.some(event => event.type === 'verification_run' && event.step === 'verify' && event.condition === 'verified'));
       assert.ok(events.some(event => event.type === 'step_started' && event.step === 'research'));
-      assert.ok(events.some(event => event.type === 'rule_matched' && event.from === 'verify' && event.to === 'COMPLETE'));
+      assert.ok(events.some(event => event.type === 'rule_matched' && event.from === 'evaluate' && event.to === 'COMPLETE'));
       assert.ok(events.some(event => event.type === 'run_completed'));
     } finally {
       cleanup(dir);
@@ -1388,6 +1393,7 @@ function runTests() {
       writePlan(path.join(repo, 'plan.md'));
       writeSequenceAdapter(adapter, {
         markerPath: marker,
+        completeTask: true,
         responses: {
           research: { condition: 'research_complete' },
           plan: { condition: 'approved' },
@@ -1398,6 +1404,8 @@ function runTests() {
             { condition: 'approved', status: 'approved', findings: [], residual_risks: [] },
           ],
           harness_review: { condition: 'approved', status: 'approved', findings: [], residual_risks: [] },
+          finish: { condition: 'finished' },
+          evaluate: { condition: 'accepted' },
           verify: { condition: 'verified' },
         },
       });
@@ -1415,7 +1423,7 @@ function runTests() {
 
       assert.strictEqual(result.code, 0, result.stdout);
       assert.ok(result.stdout.includes('PIPELINE RUNNER: DONE'));
-      assert.ok(result.stdout.includes('Steps:       7'));
+      assert.ok(result.stdout.includes('Steps:       9'));
       assert.strictEqual(fs.readFileSync(`${marker}.research.count`, 'utf8'), '1');
       assert.strictEqual(fs.readFileSync(`${marker}.plan.count`, 'utf8'), '1');
       assert.strictEqual(fs.readFileSync(`${marker}.implement.count`, 'utf8'), '2');
@@ -1599,6 +1607,43 @@ function runTests() {
       cleanup(dir);
     }
   })) passed++; else failed++;
+
+  if (test('adapter exit zero alone cannot finish a task without a workflow', () => {
+    const dir = createTempDir();
+    try {
+      const repo = path.join(dir, 'repo');
+      const adapter = path.join(dir, 'adapter.js');
+      initRepo(repo);
+      writePlan(path.join(repo, 'plan.md'));
+      writeAdapter(adapter);
+      const result = run(['--repo', repo, '--plan', path.join(repo, 'plan.md'), '--track', 'standard',
+        '--runtime', 'codex', '--execute', '--engine-command', adapter],
+      { HOME: path.join(dir, 'home'), CLAUDE_SESSION_ID: 'adapter-missing-finishing' });
+      assert.strictEqual(result.code, 1, result.stdout);
+      assert.ok(result.stdout.includes('task finishing incomplete'), result.stdout);
+    } finally { cleanup(dir); }
+  })) passed++; else failed++;
+
+  for (const loop of [false, true]) {
+    if (test(`refuses default workflow completion without finishing evidence (loop=${loop})`, () => {
+      const dir = createTempDir();
+      try {
+        const repo = path.join(dir, 'repo');
+        const adapter = path.join(dir, 'adapter.js');
+        initRepo(repo);
+        writePlan(path.join(repo, 'plan.md'));
+        writeSequenceAdapter(adapter, { responses: { evaluate: { condition: 'accepted' } } });
+        const result = run([
+          '--repo', repo, '--plan', path.join(repo, 'plan.md'), '--track', 'standard', '--runtime', 'codex',
+          '--workflow', path.join(__dirname, '../../workflows/standard-development.yaml'),
+          '--step', 'evaluate', '--execute', ...(loop ? ['--loop'] : []), '--engine-command', adapter,
+        ], { HOME: path.join(dir, 'home'), CLAUDE_SESSION_ID: 'missing-finishing' });
+        assert.strictEqual(result.code, 1, result.stdout);
+        assert.ok(result.stdout.includes('task finishing incomplete'), result.stdout);
+        assert.ok(!result.stdout.includes('PIPELINE RUNNER: DONE'), result.stdout);
+      } finally { cleanup(dir); }
+    })) passed++; else failed++;
+  }
 
   console.log(`\nResults: Passed: ${passed}, Failed: ${failed}`);
   process.exit(failed > 0 ? 1 : 0);

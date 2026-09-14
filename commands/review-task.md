@@ -52,7 +52,12 @@ Use this command when local durable review evidence is needed.
    Measure the ratio and compare it against the repository baseline (see
    `docs/how-to/run-a-task.md`). **There is no threshold** — a large gap needs a stated reason,
    not a failure.
-7. Record findings first using the canonical sections:
+7. Finish the task's changed code, prose, and comments before completion. Update stale operational
+   instructions and resolved design Open Issues. Follow `docs/how-to/run-a-task.md` → 完了前の仕上げ.
+   Fill the `Code Quality` finishing fields in `templates/review-summary-template.md` with targets
+   and reasons. Keep Verification pending until checks run after the final cleanup; record the
+   fingerprint only after reviewing that final diff and evidence. Never invent cleanup changes.
+8. Record findings first using the canonical sections:
    - `Review Scope`
    - `Design Compliance`
    - `Security`
@@ -63,24 +68,24 @@ Use this command when local durable review evidence is needed.
    - `Residual Risks`
    - `Next Action`
    - optional `Guardrail Candidates`
-8. Use `Findings` only for unresolved issues. Prefix every finding with one of:
+9. Use `Findings` only for unresolved issues. Prefix every finding with one of:
    - `CRITICAL:`
    - `HIGH:`
    - `MEDIUM:`
    - `LOW:`
    - `INFO:`
-9. Move accepted or non-blocking concerns to `Residual Risks`.
-10. Treat review as approval-ready only when no `CRITICAL:` or `HIGH:` finding remains. `MEDIUM:` and below are recorded, not blocking — that is what `scripts/lib/task-artifacts.js` enforces.
-11. If verification has not run yet, leave `Next Action` pointing to verification instead of treating the task as approval-ready.
-12. Treat review as the primary input to `/eval`, not as a substitute for `/verify`.
-13. Separate review dimensions:
+10. Move accepted or non-blocking concerns to `Residual Risks`.
+11. Treat review as approval-ready only when no `CRITICAL:` or `HIGH:` finding remains. `MEDIUM:` and below are recorded, not blocking — that is what `scripts/lib/task-artifacts.js` enforces.
+12. If verification has not run yet, leave `Next Action` pointing to verification instead of treating the task as approval-ready.
+13. Treat review as the primary input to `/eval`, not as a substitute for `/verify`.
+14. Separate review dimensions:
     - `Plan Compliance`: approved scope, interface expectations, and acceptance criteria
     - `Code Quality`: correctness, maintainability, security, regressions
     - `Test Adequacy`: RED/GREEN evidence, BDD scenarios, integration/E2E coverage, observation evidence when required
-14. Run review in two passes for non-trivial implementation:
+15. Run review in two passes for non-trivial implementation:
     - pass 1: plan/spec compliance and missing acceptance evidence
     - pass 2: code quality, maintainability, security, regressions, and test adequacy
-15. When the same class of failure looks promotion-worthy, record it in `Guardrail Candidates` with:
+16. When the same class of failure looks promotion-worthy, record it in `Guardrail Candidates` with:
     - `failure_pattern`
     - `source`
     - `recommended_layer`
