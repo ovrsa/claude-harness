@@ -81,6 +81,9 @@ node ~/.claude/scripts/task-goal.js --repo . --input <task.json>
 | 3 | `SPEC_CHANGED` | `diff` を示し、この仕様で進めるか人に確かめる。確かめてから `--accept-change` を付けて再実行する |
 | 1 | `INVALID` | `issues` を示して止まる。Issue の本文を直すのは人 |
 
+終了コード 1 で「仕様を保存できない」と出たら、承認を得てサンドボックスの外で再実行する。
+Codex の `workspace-write` では `.git` が読み取り専用で、この後のコミットと push も同じ承認が要る。
+
 ## 6. ゴールを始める
 
 | 環境 | 始め方 |
@@ -97,8 +100,7 @@ node ~/.claude/scripts/task-goal.js --repo . --input <task.json>
   `tdd` スキルの seam の合意は、Issue の `検証方法` で済んでいるものとして扱う。そこに無い seam が要るなら、
   範囲の変更として停止する
 - 親 Issue は、子 Issue が参照する節だけを読み直す
-- 証拠の `*-summary.md` はコミットしない。プロジェクトの `.gitignore` に無ければ
-  `git rev-parse --git-path info/exclude` が示すファイルに足す
+- 証拠の `*-summary.md` はコミットしない。`git add` にはファイルを名指しし、`-A` や `.` を使わない
 - 最初のコミットを push したら Draft PR を作る。本文は `~/.claude/templates/review-request-template.md` の5節で、
   `Closes #<番号>` と仕様の revision を入れる（親 Issue は `Closes` に書かない）
 

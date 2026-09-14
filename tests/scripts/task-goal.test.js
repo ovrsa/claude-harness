@@ -184,6 +184,21 @@ try {
     assert.strictEqual(run(dir, broken, '--check').status, 1);
   });
 
+  test('a git directory the sandbox cannot write stops with the path and a way forward, and shows no goal', () => {
+    const dir = repo();
+    const gitDir = path.join(dir, '.git');
+    fs.chmodSync(gitDir, 0o555);
+    try {
+      const result = run(dir, childInput());
+      assert.strictEqual(result.status, 1, result.stdout + result.stderr);
+      assert.strictEqual(result.stdout, '', 'a goal without a stored spec could not be resumed or diffed');
+      assert.match(result.stderr, /task-goal\//);
+      assert.match(result.stderr, /サンドボックス/);
+    } finally {
+      fs.chmodSync(gitDir, 0o755);
+    }
+  });
+
   test('input without the fields the goal needs is refused before anything is read', () => {
     const dir = repo();
     for (const [input, field] of [

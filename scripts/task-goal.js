@@ -76,8 +76,15 @@ function main(argv) {
       return EXIT_SPEC_CHANGED;
     }
   }
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `${JSON.stringify({ revision, spec, goal }, null, 2)}\n`);
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, `${JSON.stringify({ revision, spec, goal }, null, 2)}\n`);
+  } catch (error) {
+    if (!['EACCES', 'EPERM', 'EROFS'].includes(error.code)) throw error;
+    // Codex's workspace-write sandbox keeps .git read-only. Without the stored spec a resumed
+    // task could not be diffed, so no goal is printed.
+    throw new Error(`仕様を保存できない: ${file}（${error.code}）。サンドボックスで .git が読み取り専用なら、承認を得てサンドボックスの外で再実行する`);
+  }
   console.log(JSON.stringify(result, null, 2));
   return 0;
 }
