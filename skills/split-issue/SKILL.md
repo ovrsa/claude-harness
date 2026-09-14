@@ -6,7 +6,7 @@ description: 親 Issue に書いた仕様を、成果と依存関係だけの分
 # 仕様を子 Issue に分ける
 
 Claude Code は `/split-issue <親Issue>`、Codex は `$split-issue <親Issue>` で呼ぶ。
-流れの中の位置は `commands/COMMANDS.md` の「管理先があるプロジェクトの流れ」にある。
+流れの中の位置は `~/.claude/commands/COMMANDS.md` の「管理先があるプロジェクトの流れ」にある。
 分割の考え方は mattpocock/skills の `to-tickets` を参考にしている（upstream は編集しない）。
 
 ## 1. 管理先を確かめる
@@ -41,10 +41,10 @@ node ~/.claude/scripts/resolve-tracker.js --repo .
 
 ## 4. 子 Issue を作る（確認の後）
 
-先行の無いものから順に作る。本文は `templates/task-issue-template.md` に沿って書き、
+先行の無いものから順に作る。本文は `~/.claude/templates/task-issue-template.md` に沿って書き、
 `親Issue` 節に親の番号と、子が読むべき親の見出し（`参照:`）を書く。
 
-作る前に、下書きからゴール文面を作れるか確かめる。入力の形は `scripts/task-goal.js` の先頭にある。
+作る前に、下書きからゴール文面を作れるか確かめる。入力の形は `~/.claude/scripts/task-goal.js` の先頭にある。
 `INVALID` なら直してから作る。
 
 ```bash
