@@ -247,6 +247,25 @@ function runTests() {
     }
   })) passed++; else failed++;
 
+  if (test('validates the optional completion check setting', () => {
+    const dir = createTempDir();
+    try {
+      const filePath = path.join(dir, 'workflow.yaml');
+      for (const value of ['task-finishng', 'false', '42', '']) {
+        writeWorkflow(filePath, `completion_check: ${value}\n${VALID_WORKFLOW}`);
+        const result = run([filePath]);
+        assert.strictEqual(result.code, 1, `invalid setting accepted: ${value}`);
+        assert.ok(result.stderr.includes('completion_check must be task-finishing when present'), result.stderr);
+      }
+      writeWorkflow(filePath, `completion_check: task-finishing\n${VALID_WORKFLOW}`);
+      assert.strictEqual(run([filePath]).code, 0);
+      writeWorkflow(filePath, VALID_WORKFLOW);
+      assert.strictEqual(run([filePath]).code, 0, 'existing workflows may omit completion_check');
+    } finally {
+      cleanup(dir);
+    }
+  })) passed++; else failed++;
+
   if (test('rejects unbounded max_steps', () => {
     const dir = createTempDir();
     try {

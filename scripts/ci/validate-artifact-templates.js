@@ -19,6 +19,8 @@ const TEMPLATE_CHECKS = [
   {
     file: 'review-summary-template.md',
     parser: parseReviewState,
+    // Review judgments stay blank until an actual task is reviewed.
+    allowEmptyValues: true,
   },
   {
     file: 'verification-summary-template.md',
@@ -53,7 +55,7 @@ function main() {
     if (state.missingSections && state.missingSections.length > 0) {
       errors.push(`${check.file}: missing sections ${state.missingSections.join(', ')}`);
     }
-    if (state.missingValues && state.missingValues.length > 0) {
+    if (!check.allowEmptyValues && state.missingValues && state.missingValues.length > 0) {
       errors.push(`${check.file}: empty sections ${state.missingValues.join(', ')}`);
     }
     if (check.extra) {

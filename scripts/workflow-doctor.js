@@ -294,6 +294,9 @@ function validateWorkflow(workflow, filePath) {
   if (!workflow.initial_step || typeof workflow.initial_step !== 'string') {
     error('initial_step is required');
   }
+  if (Object.hasOwn(workflow, 'completion_check') && workflow.completion_check !== 'task-finishing') {
+    error('completion_check must be task-finishing when present');
+  }
   if (!Number.isInteger(workflow.max_steps) || workflow.max_steps < 1 || workflow.max_steps > 50) {
     error('max_steps must be between 1 and 50');
   }

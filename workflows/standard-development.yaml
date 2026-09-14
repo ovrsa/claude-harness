@@ -1,6 +1,7 @@
 name: standard-development
+completion_check: task-finishing
 initial_step: research
-max_steps: 12
+max_steps: 16
 steps:
   - name: research
     mode: readonly
@@ -109,6 +110,20 @@ steps:
       - review-summary.md
     rules:
       - condition: approved
+        next: finish
+      - condition: needs_fix
+        next: implement
+      - condition: blocked
+        next: ABORT
+  - name: finish
+    mode: edit
+    required_permission_mode: edit
+    facets:
+      persona: implementer
+      instruction: finish-task
+      output_contract: review-summary
+    rules:
+      - condition: finished
         next: verify
       - condition: needs_fix
         next: implement
@@ -128,6 +143,18 @@ steps:
       - verification-summary.md
     rules:
       - condition: verified
-        next: COMPLETE
+        next: evaluate
       - condition: failed_with_design_uncertainty
+        next: ABORT
+  - name: evaluate
+    mode: readonly
+    facets:
+      persona: reviewer
+      instruction: evaluate-task
+    rules:
+      - condition: accepted
+        next: COMPLETE
+      - condition: needs_fix
+        next: finish
+      - condition: blocked
         next: ABORT

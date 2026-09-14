@@ -1,0 +1,35 @@
+{
+  "kind": "observation",
+  "source_path": "/private/tmp/harness-task-finishing/observation-summary.md",
+  "captured_at": "2026-09-14T01:24:58.006Z",
+  "fingerprint": "",
+  "state": {
+    "behaviorChecked": [
+      "仕上げ前の完了拒否、修正不要の判断、変更後の古い記録、既定ワークフローとキューの完了。"
+    ],
+    "method": [
+      "使い捨て git リポジトリで実際の CLI と runner を起動し、stdout と終了コードを確認した。"
+    ],
+    "evidence": [
+      "`tests/scripts/task-completion.test.js`: 証拠なし、pending、空理由、重複宣言、古い Revision、未解決 HIGH は終了1。対象と理由、現行 Revision、必要な証拠がある場合は READY / 終了0。",
+      "同テスト: シェル風の文字を含むファイル名をそのまま扱い、コマンドが実行されないこと、シンボリックリンク先の内容を読まないことを確認。",
+      "`tests/scripts/pipeline-runner.test.js`: evaluate の accepted 応答だけでは、単発・ループとも DONE に進まない。workflow なしの adapter 終了0だけでも不可。",
+      "`tests/scripts/task-queue.test.js`: finish → verify → evaluate を含む既定経路でキューが完了する。",
+      "実行 stdout は /private/tmp/finishing-all-node22.log、/private/tmp/finishing-pipeline-tests.log、/private/tmp/finishing-queue-tests.log。"
+    ],
+    "remainingUncertainty": [
+      "実 LLM の次のタスクで手動経路の指示遵守率が改善するかは未観測。CLI を呼ばない外部完了操作の一律遮断は行っていない。"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "missingValues": [],
+    "concreteEvidenceLines": [
+      "使い捨て git リポジトリで実際の CLI と runner を起動し、stdout と終了コードを確認した。",
+      "実行 stdout は /private/tmp/finishing-all-node22.log、/private/tmp/finishing-pipeline-tests.log、/private/tmp/finishing-queue-tests.log。"
+    ],
+    "hasConcreteEvidence": true,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Observation Summary\n\n## Behavior Checked\n\n- 仕上げ前の完了拒否、修正不要の判断、変更後の古い記録、既定ワークフローとキューの完了。\n\n## Method\n\n- 使い捨て git リポジトリで実際の CLI と runner を起動し、stdout と終了コードを確認した。\n\n## Evidence\n\n- `tests/scripts/task-completion.test.js`: 証拠なし、pending、空理由、重複宣言、古い Revision、未解決 HIGH は終了1。対象と理由、現行 Revision、必要な証拠がある場合は READY / 終了0。\n- 同テスト: シェル風の文字を含むファイル名をそのまま扱い、コマンドが実行されないこと、シンボリックリンク先の内容を読まないことを確認。\n- `tests/scripts/pipeline-runner.test.js`: evaluate の accepted 応答だけでは、単発・ループとも DONE に進まない。workflow なしの adapter 終了0だけでも不可。\n- `tests/scripts/task-queue.test.js`: finish → verify → evaluate を含む既定経路でキューが完了する。\n- 実行 stdout は /private/tmp/finishing-all-node22.log、/private/tmp/finishing-pipeline-tests.log、/private/tmp/finishing-queue-tests.log。\n\n## Remaining Uncertainty\n\n- 実 LLM の次のタスクで手動経路の指示遵守率が改善するかは未観測。CLI を呼ばない外部完了操作の一律遮断は行っていない。\n"
+}

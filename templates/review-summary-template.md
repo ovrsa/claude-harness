@@ -1,7 +1,7 @@
 <!--
 節を消さない。2026-08-21 から `scripts/lib/task-artifacts.js` がこのテンプレートの全10節を
 要求する。欠けた節は `missingSections` になり、成果物は incomplete としてチェーンを止める。
-触っていない回は1行（「該当なし」）で埋める。**空にはできるが、消すことはできない。**
+触っていない回は1行（「該当なし」）で埋める。**レビュー各観点は空欄や説明コメントだけでは通らない。**
 
 必須節リストとこのファイルの見出しが一致することは
 `tests/lib/task-artifacts.test.js` が検査する。片方だけ変えると落ちる。
@@ -46,7 +46,20 @@
 
 ## Code Quality
 
--
+- Refactoring:
+- Documents:
+- Comments:
+- Verification:
+- Observation:
+- Revision:
+
+<!-- 仕上げの完了検査は scripts/task-completion.js が行う。
+Refactoring / Documents / Comments: changed | 対象と修正内容、または unchanged / not-applicable | 対象と理由。
+Verification: passed | 最後の修正後に成功した検証コマンドと結果。
+Observation: recorded | observation-summary.md の証拠、または not-required | 観測不要の理由。
+Revision: 同 CLI の --fingerprint 出力。証拠ファイルと runs/ を除く作業内容を識別する。
+未実施なら pending | 残作業 と書く。空欄、pending、理由なし、古い Revision は完了不可。
+全項目を埋めても品質を機械が保証するわけではない。実際の差分を読んで判断する。 -->
 
 ## Test Adequacy
 

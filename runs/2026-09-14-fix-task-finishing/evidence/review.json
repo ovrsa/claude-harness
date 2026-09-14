@@ -1,0 +1,35 @@
+{
+  "kind": "review",
+  "source_path": "/private/tmp/harness-task-finishing/review-summary.md",
+  "captured_at": "2026-09-14T01:24:58.005Z",
+  "fingerprint": "",
+  "state": {
+    "reviewScope": [
+      "設計記録に挙げた変更23ファイル。承認済みの変更範囲内の仕上げと、完了操作との接続を確認した。"
+    ],
+    "findings": [],
+    "residualRisks": [
+      "フック設定検査に既存2件の失敗が残る。今回 settings.json とフック本体は変更していない。",
+      "手動経路でCLIを呼ばない完了報告・外部チケット更新は機械的に遮断されない。",
+      "内容識別は証拠ファイルと runs/、git が無視する未追跡ファイルを対象外とする。文書やレビューの質は機械判定できない。"
+    ],
+    "nextAction": "none",
+    "guardrailCandidates": [
+      {
+        "failure_pattern": "仕上げ記録の確認前に完了報告とチケットDoneに進む",
+        "source": "PRI-236の実行ログと利用者の反復報告",
+        "recommended_layer": "command",
+        "confidence": "high"
+      }
+    ],
+    "guardrailCandidateWarnings": [],
+    "parsedFindings": [],
+    "invalidFindings": [],
+    "missingValues": [],
+    "blockingFindings": [],
+    "hasBlockingFindings": false,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Review Summary\n\n## Review Scope\n\n- 設計記録に挙げた変更23ファイル。承認済みの変更範囲内の仕上げと、完了操作との接続を確認した。\n\n## Design Compliance\n\n- 既存の使い方を基に、コード・文章・コメントの確認、必要な修正と再検証を完了前へ移した。無関係な整理と upstream 編集は行っていない。\n\n## Security\n\n- CLI の repo 引数とファイル名は git の引数配列で渡す。文字列をシェルで評価しない。\n- 公開 CLI の実行テストで、シェル風のファイル名は実行なし、シンボリックリンクはリンク名のみを識別、重複宣言・pending・理由なしは終了1となることを確認。\n\n## Comment Adequacy\n\n- 落とした: 新規の経緯コメントは作らず、決定理由を設計記録へ置いた。\n- 残した: 証拠ファイルを内容識別から除く理由、重複宣言を拒否する理由。\n- 足した: 空欄テンプレートと記入済みレビューの検査を分ける理由。\n- 比率: 新規の完了検査ライブラリは80行中2行の説明コメント。公開 CLI と小さな関数で動作を読めるため、既存の履歴説明が多いパーサより少なくてよいと判断した。\n\n## Code Quality\n\n- Refactoring: changed | 完了判定を共通ライブラリへ置き、CLI、単発runner、loopから再利用。テスト証拠生成もfixtureへまとめた\n- Documents: changed | CLAUDE.md、使い方、実装・レビュー・eval、facetの順序と実施主体を照合。見出しと長文を整理し、手動経路の制約を明記した\n- Comments: unchanged | 新規ライブラリの除外理由・重複拒否理由とテンプレート検査の説明を確認し、追加説明は不要と判断した\n- Verification: passed | 最終コード変更後のNode 22全体テストで対象107件成功、ESLint成功。全体の既存2件失敗はResidual Risksへ記録\n- Observation: recorded | observation-summary.md の実CLIとrunnerの終了コード・stdout\n- Revision: 5796eb0609b1a1feb0c3c25799777870bca27aeee0b2cc4161fea8d4b5f5c8a7\n\n## Test Adequacy\n\n- 既存の空欄通過をREDで再現。検査の関数内部ではなく、公開CLIとrunnerの完了状態を中心に検証した。\n\n## Findings\n\n- none\n\n## Residual Risks\n\n- フック設定検査に既存2件の失敗が残る。今回 settings.json とフック本体は変更していない。\n- 手動経路でCLIを呼ばない完了報告・外部チケット更新は機械的に遮断されない。\n- 内容識別は証拠ファイルと runs/、git が無視する未追跡ファイルを対象外とする。文書やレビューの質は機械判定できない。\n\n## Guardrail Candidates\n\n- failure_pattern: 仕上げ記録の確認前に完了報告とチケットDoneに進む\n  source: PRI-236の実行ログと利用者の反復報告\n  recommended_layer: command\n  confidence: high\n\n## Next Action\n\n- none\n"
+}
