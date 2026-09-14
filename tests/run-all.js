@@ -49,6 +49,7 @@ const testFiles = [
   { file: 'scripts/skill-create-output.test.js' },
   { file: 'scripts/eval-batch.test.js' },
   { file: 'scripts/runs-cli.test.js' },
+  { file: 'scripts/statusline.test.js' },
   { file: 'lib/health-loop.test.js' },
   { file: 'lib/guardrail-candidates.test.js' },
   // 走らせない場合は必ず理由を書く。黙って一覧から外すと「全部通っている」に見えてしまう。
