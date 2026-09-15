@@ -125,7 +125,9 @@ function buildGoal({ task, doc, parent, repo, branch, revision }) {
  * Build the goal shared by both runtimes. Nothing here depends on the runtime or the tracker,
  * which is what keeps the goal text identical in Claude Code and Codex.
  */
-function prepareGoal({ task, parent, repo, branch }) {
+function prepareGoal({ task: input, parent, repo, branch }) {
+  // The goal is one line, so nothing interpolated into it may carry a line break.
+  const task = { ...input, ref: flatten(input.ref), title: flatten(input.title || '') };
   const doc = parseIssue(task.body);
   const parentDoc = parent ? parseIssue(parent.body) : null;
   const references = referencedPaths(doc).map(path => ({ path, lines: parent ? findReference(parent.body, path) : null }));
@@ -142,7 +144,7 @@ function prepareGoal({ task, parent, repo, branch }) {
   const parentView = parent ? { ref: parent.ref, doc: parentDoc, references } : null;
   const spec = renderSpec(task, doc, parentView);
   const revision = createHash('sha256').update(spec).digest('hex').slice(0, 12);
-  const goal = buildGoal({ task, doc, parent: parentView, repo, branch, revision });
+  const goal = buildGoal({ task, doc, parent: parentView, repo, branch: flatten(branch || ''), revision });
   const chars = Array.from(goal).length;
   if (chars > MAX_GOAL_CHARS) {
     return { issues: [`ゴール文面が ${chars} 字で、上限の 4,000 字を超える。受け入れ条件・検証方法・対象外を短くするか、Issue を分ける`] };

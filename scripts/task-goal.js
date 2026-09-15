@@ -25,6 +25,9 @@ function readInput(file) {
   if (input.parent) required.push(['parent.ref', input.parent.ref], ['parent.body', input.parent.body]);
   const missing = required.filter(([, value]) => typeof value !== 'string' || !value.trim()).map(([name]) => name);
   if (missing.length) throw new Error(`input is missing ${missing.join(', ')}`);
+  const optional = [['branch', input.branch], ['task.title', input.task.title], ['parent.title', input.parent?.title]];
+  const malformed = optional.filter(([, value]) => value != null && typeof value !== 'string').map(([name]) => name);
+  if (malformed.length) throw new Error(`input has non-string ${malformed.join(', ')}`);
   return input;
 }
 

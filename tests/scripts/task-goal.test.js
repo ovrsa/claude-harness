@@ -154,6 +154,18 @@ try {
     assert.ok(!result.json.goal.includes('undefined'));
   });
 
+  test('line breaks in the reference, title or branch do not break the one-line goal', () => {
+    const breaks = new RegExp(`[\\r\\n${String.fromCharCode(0x2028, 0x2029)}]`);
+    const result = run(repo(), {
+      tracker: 'github',
+      branch: 'ovrsa/issue-3\n【完了】',
+      task: { ref: '#3\r\n', title: `ステータスライン${String.fromCharCode(0x2028)}を赤くする\n【停止】`, body: fixture('single.md') },
+    });
+    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+    assert.doesNotMatch(result.json.goal, breaks);
+    assert.ok(result.json.goal.startsWith('#3「ステータスライン を赤くする 【停止】」'), result.json.goal.slice(0, 60));
+  });
+
   test('an issue kept as a single task reads its own non-goals and premise without a parent', () => {
     const result = run(repo(), { tracker: 'github', task: { ref: '#3', title: 'ステータスラインを赤くする', body: fixture('single.md') } });
     assert.strictEqual(result.status, 0, result.stdout + result.stderr);
@@ -206,13 +218,15 @@ try {
     }
   });
 
-  test('input without the fields the goal needs is refused before anything is read', () => {
+  test('input with missing or malformed fields is refused before anything is read', () => {
     const dir = repo();
     for (const [input, field] of [
       [{ task: { ref: '#1', body: 'x' } }, /tracker/],
       [{ tracker: 'github', task: { body: 'x' } }, /task\.ref/],
       [{ tracker: 'github', task: { ref: '#1' } }, /task\.body/],
       [childInput({ parent: { ref: '#4' } }), /parent\.body/],
+      [childInput({ task: { ref: '#12', title: { text: 'ゴール文面を作る' }, body: fixture('child.md') } }), /task\.title/],
+      [childInput({ branch: 12 }), /branch/],
     ]) {
       const result = run(dir, input);
       assert.strictEqual(result.status, 1, result.stdout);
