@@ -27,14 +27,14 @@ Use the local pipeline by default for standard and heavy-risky implementation an
 3  /grill-me        尋問（upstream skill / 実体は grilling）。診断もここ read-only
    ---- ここまで read-only。捨てるならここで捨てる ----
 4  worktree         書き込みが発生するならエージェントが作る（コマンドではない）
-5  /docs-build      docs/design/ に決定を記録する = **実装の入力**
+5  /docs-build      決定を記録する = **実装の入力**（管理先あり: 親 Issue 本文 / なし: docs/design/）
 6  実装             skills/tdd（seam 合意 -> RED -> 最小 GREEN。refactor はしない）
 7  検証             -> verification-summary.md（RED 証拠を含む。入口は /verify・任意）
 8  レビュー・仕上げ -> review-summary.md（refactor / 文章 / セキュリティ / コメント。修正後は再検証）
 9  受容判断         成果物を持たない。7・8・10 を読んで受容を答える（入口は /eval・任意）
 10 観測（挙動が変わった時のみ）-> observation-summary.md
 11 確定             実装で判明した「触る対象」と Open Issues を design doc に降ろす
-12 commit / PR（明示指示がある時のみ）
+12 commit / PR（明示指示がある時のみ。管理先ありの流れではゴールの開始が指示を兼ねる）
 ```
 
 1〜3 は read-only なので、ここでタスクを捨てる判断ができる。捨てるタスクに worktree を作らないための順序。
@@ -62,7 +62,8 @@ Use the local pipeline by default for standard and heavy-risky implementation an
 
 **`plan.md` と `progress.md` はこの列に無い。** 2026-08-17 に撤去した。承認は 5 の design doc に対して
 会話で与える。**状態の要約を保存する仕組みは無い** — 復帰の根拠は git（ブランチ・log・diff）と
-`docs/design/` の最新1枚、そして `runs/<date>-<slug>/` に残るゲートの証拠。
+design doc（管理先があればブランチ名の Issue 番号から辿る Issue と親 Issue の本文、無ければ `docs/design/` の最新1枚）、
+そして `runs/<date>-<slug>/` に残るゲートの証拠。
 **compact の前にコミットする。** 経緯は
 [docs/design/2026-08-17-lifecycle-five-steps.md](../docs/design/2026-08-17-lifecycle-five-steps.md)
 と [docs/design/2026-08-20-retire-sqlite.md](../docs/design/2026-08-20-retire-sqlite.md)。
@@ -77,16 +78,41 @@ Use the local pipeline by default for standard and heavy-risky implementation an
 
 Standard and heavy-risky work should leave pipeline run evidence through `/execute-plan` or task queue execution. The current guardrail warns when that evidence is missing but does not block the work.
 
-この12段は**ライフサイクル**であって実行経路ではない。経路は3層に分かれる。
+この12段は**ライフサイクル**であって実行経路ではない。ライフサイクルと、それを回す経路を分けて見る。
 
 | 層 | 実体 | 役割 |
 |---|---|---|
 | ライフサイクル | この Ordered Path | **何が起きなければならないか**。経路を問わない |
 | 既定エンジン | `/execute-plan`（ローカルパイプライン） | 手順6〜11 を回す。finish・verify・evaluate 後に完了検査 |
+| ゴール経路 | `start-issue` スキルとランタイムのゴール | 管理先があるプロジェクトで、手順6〜12 を1つの会話で回す（下の節） |
 | 手動経路 | `/implement-task` `/review-task` | エンジンを使わない時の手順6・8 |
 
 `/review-task` は手順8の成果物（`review-summary.md`）を手で作るコマンドであって、
 パイプラインを使う場合の既定ではない。 `/worktree-start` is the manual override for the worktree the agent normally creates on its own — reach for it only when you want `--detached` (a separate process) or a specific base branch.
+
+### 管理先があるプロジェクトの流れ
+
+プロジェクトの `.claude/tracker.json` で管理先を宣言したプロジェクトでは、上の段を Issue と会話の単位に割り当てる。
+宣言の解決は `scripts/resolve-tracker.js`、ゴール文面の組み立ては `scripts/task-goal.js` が持つ。
+
+```
+A  調査・グリル  手順1〜3。read-only
+B  仕様          手順5。/docs-build が親 Issue の本文に書く（docs/design/ には置かない）
+C  分割          split-issue。成果と依存だけの分割案を人が確認 -> 子 Issue。1つの会話で終わるなら親をそのまま1タスクにする
+   ---- ここから1タスク1会話 ----
+D  着手          start-issue <Issue>。先行 Issue の解決を確かめ、手順4の worktree とゴール文面を作る
+E  ゴール        手順6〜11 を回す。Claude Code は人が /goal の1行を実行し、Codex はエージェントが始める
+F  確認依頼      手順12。完了検査の後に Ready for review にする。停止したら Draft のまま理由をコメントする
+G  マージ        人が行う。次の start-issue が Issue のクローズを確かめ、着手できる子 Issue を示す
+```
+
+- ゴール文面の停止条件（同じ原因で3回連続の失敗 / 30ターン / 受け入れ条件や範囲の変更 / 権限や外部依存）の正本は
+  `scripts/lib/task-goal.js`。ゴール機能が使えない時は、同じ文面を終了条件にして会話の中で繰り返す
+- ゴールの開始は、作業ブランチの push と PR の作成・更新・状態変更の指示を兼ねる。マージは含まない（`rules/common/git-workflow.md`）
+- 機械で止まるのは main/master への push（`hooks/git-push-guard.js`）だけ。完了検査を呼ぶこと、
+  マージしないこと、マージ前に次のタスクへ進まないことは規律に依存する
+- **キュー経路（`task-queue.js run/retry/watch`、`pipeline-runner.js --execute`）はこの流れに未対応。**
+  管理先の宣言もゴール文面も読まない
 
 ## Core Lifecycle Pairs
 

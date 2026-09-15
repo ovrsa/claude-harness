@@ -67,6 +67,24 @@
      （browser / screenshot / logs / stderr / stdout / trace / runtime health / process state / metrics）
    - 「looks good」「手で確認した」は証拠にならない
 
+### 管理先があるプロジェクト
+
+`.claude/tracker.json` で管理先を宣言したプロジェクトでは、2〜4 の手の動かし方が次のように変わる。
+段の順序は `commands/COMMANDS.md` の「管理先があるプロジェクトの流れ」が正本。
+
+- **2 は親 Issue の本文を承認する。** `/docs-build` は `docs/design/` ではなく親 Issue に書く。
+  宣言が無いプロジェクトでは、エージェントが remote から候補を示すので、最初の起票の前に選ぶ
+- **分割案を確認する。** `split-issue` が成果と依存だけの表を出す。粒度と依存が良ければ子 Issue を作らせる。
+  3 と 4 は、各子 Issue の `検証方法`（検証と観測の境界）をここで確かめることで済ませる
+- **新しい会話でタスクを始める。** Claude Code は `/start-issue <番号>`、Codex は `$start-issue <番号>`。
+  Claude Code ではエージェントが示す `/goal` の1行を自分で実行する（エージェントは `/goal` を打てない）。
+  auto mode で実行すると、ゴールのターンが許可の確認で止まらない
+- **Ready for review の PR を見てマージする。** マージが承認になる。エージェントはマージしない
+- **停止したら判断を返す。** Draft PR（PR が無ければ Issue）のコメントに、当たった停止条件・試したこと・
+  必要な判断がある。判断を返したら、新しい会話で同じ Issue の `start-issue` から再開する。
+  Issue の本文を変えていれば差分が示されるので、その仕様で進めてよいか答える
+- 親 Issue は、子 Issue がすべて閉じてから受け入れ条件を確かめて閉じる
+
 ## 確認
 
 **成果物はエージェントが黙って書く。コマンドを打つ必要はない。**
@@ -229,6 +247,11 @@ done
 
 - **`/grill-me` が何も起こさない** → `/grill-me` はユーザーが打つしかない。
   エージェントに始めさせたいなら `grilling` を名指しする（そちらは制限が無い）
+- **`/goal` が使えない** → hooks が無効な設定や、信頼していないワークスペースでは使えない（理由は `/goal` 自身が表示する）。
+  エージェントにそう伝えると、同じ文面を終了条件にして会話の中で繰り返す
+- **Codex のゴールが権限で止まる** → `workspace-write` のサンドボックスでは `.git` が読み取り専用で、
+  GitHub の認証も効かないことがある（`git push`・`git fetch` と、複合コマンドの中の `gh` で観測）。
+  対話の Codex で、サンドボックスの外での実行を承認する。承認できない `codex exec` では、ここで停止する
 - **`main` に push したい** → できない。フックはプロファイルで無効化できない。
   remote が無いローカル運用なので、fork 元で `git merge --no-ff <branch>` して
   `ExitWorktree(action: "remove")` で片付ける

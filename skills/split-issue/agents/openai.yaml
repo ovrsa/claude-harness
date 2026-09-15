@@ -1,0 +1,5 @@
+interface:
+  display_name: "Split Issue"
+  short_description: "Split a spec issue into child issues after review"
+policy:
+  allow_implicit_invocation: false

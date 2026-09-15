@@ -16,7 +16,9 @@
     "implement": "user-invocable-only",
     "python-code-style": "user-invocable-only",
     "setup-matt-pocock-skills": "user-invocable-only",
+    "split-issue": "user-invocable-only",
     "sql-optimization": "user-invocable-only",
+    "start-issue": "user-invocable-only",
     "to-spec": "user-invocable-only",
     "to-tickets": "user-invocable-only"
   },

@@ -61,7 +61,8 @@ Use the lightest artifact chain that preserves correctness.
 Local artifacts remain available when needed:
 
 - `research.md` for prior art, options, and risks
-- `docs/design/YYYY-MM-DD-<slug>.md` for the decisions themselves — written **before** implementation, not after
+- `docs/design/YYYY-MM-DD-<slug>.md` for the decisions themselves — written **before** implementation, not after.
+  A project that declares a tracker in `.claude/tracker.json` keeps them in the parent issue body instead
 - `review-summary.md` for acceptance findings and residual risks
 - `verification-summary.md` for rerunnable verification evidence, including the RED observation
 - `observation-summary.md` when runtime or UI behavior changed
@@ -75,8 +76,8 @@ gate that read it could not fire — see below. The decisions live in the design
 deliberately: `run_state.current_phase` / `next_action` / `blockers_json` were filled *from*
 `progress.md`, not the other way round, so SQLite was the store and `progress.md` was the source.
 Rebuilding it would need a new way to supply the summary, which a hook cannot do — it sees repository
-files, not what the agent knows. Recovery is git (branch, log, diff) plus the latest `docs/design/`
-entry. **Commit before compacting.**
+files, not what the agent knows. Recovery is git (branch, log, diff) plus the design doc: the latest
+`docs/design/` entry, or with a tracker, the issue named in the branch and its parent. **Commit before compacting.**
 
 **The SQLite plane was retired on 2026-08-20.** Before removal every table was write-only: the
 readers had already moved to the JSON logs, so the store was 144MB of data nothing consumed. What
@@ -123,6 +124,7 @@ The pipeline runner separately checks task-finishing evidence before reporting D
 | editing | advisory only. `[Lifecycle Advisory]` names missing evidence and continues |
 | `git commit` | advisory only. A commit is a checkpoint, not a claim of completion |
 | declaring a task complete | advisory only. Nothing mechanical checks the evidence chain |
+| merging a PR, or starting the next task before a merge | discipline. The goal flow leaves the merge to a person; nothing stops `gh pr merge` |
 | **`git push` to `main`/`master`** | **blocked** by `hooks/git-push-guard.js`, which resolves the target branch from the repository — so bare `git push` on main is caught, not just an explicit refspec |
 
 A row may claim **blocked** only if it names the hook that implements it. The audit
@@ -163,7 +165,8 @@ calling it; no Stop hook intercepts arbitrary prose or external ticket API calls
 - prefer a thin repo-local map over ad hoc repository orientation
 - prefer references to artifacts, docs, and skills over long inline guidance
 - keep repo-local maps pointed at truth sources instead of copying global lifecycle rules
-- restore the current task from git first (branch, log, diff), then the latest `docs/design/` entry
+- restore the current task from git first (branch, log, diff), then the design doc (the latest `docs/design/` entry,
+  or the issue named in the branch and its parent when the project declares a tracker)
 - commit before compacting — nothing else carries the state across
 
 ## Preferred Commands
@@ -172,7 +175,9 @@ In lifecycle order. Diagnosis belongs to step 1, and the decisions are recorded 
 **before** implementation, while they are still fresh.
 
 1. `/grill-me` for the depth pass before any file is written (upstream skill; the real content is `grilling`)
-2. `/docs-build` for the design doc that records the decisions, and for persistent reference docs in `docs/`
+2. `/docs-build` for the design doc that records the decisions, and for persistent reference docs in `docs/`.
+   With a declared tracker it writes the parent issue, `split-issue` proposes child issues, and
+   `start-issue` starts each task in a new conversation as a runtime goal (`commands/COMMANDS.md`)
 3. `skills/tdd` for implementation: agree the seams, RED, then the minimum GREEN. No refactoring inside the loop
 4. the evidence artifacts: `verification-summary.md` for rerunnable checks, `review-summary.md`
    for findings, then the acceptance decision. **Refactoring, the security pass, and the

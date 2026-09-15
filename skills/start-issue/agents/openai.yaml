@@ -1,0 +1,5 @@
+interface:
+  display_name: "Start Issue"
+  short_description: "Start a task issue as a goal and stop at review"
+policy:
+  allow_implicit_invocation: false
