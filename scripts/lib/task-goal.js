@@ -54,6 +54,7 @@ function parseBlock(lines) {
 }
 
 function parseIssue(body) {
+  // HTML comments carry the template's guidance, which is not part of the spec.
   const lines = String(body).replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/);
   const all = sections(lines, 2);
   const doc = {};

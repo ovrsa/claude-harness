@@ -16,6 +16,7 @@ function remoteUrls(repoRoot) {
     const match = line.match(/^(\S+)\s+(\S+)\s+\(fetch\)$/);
     if (match) byName.set(match[1], match[2]);
   }
+  // origin first: a github declaration without repo takes the first GitHub remote.
   const names = [...byName.keys()].sort((a, b) => (b === 'origin') - (a === 'origin'));
   return names.map(name => byName.get(name));
 }
