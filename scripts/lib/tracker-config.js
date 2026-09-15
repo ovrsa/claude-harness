@@ -6,6 +6,8 @@ const { execFileSync } = require('child_process');
 
 const CONFIG_PATH = path.join('.claude', 'tracker.json');
 const HOSTED_REMOTE = /^(?:[a-z][a-z0-9+.-]*:\/\/)?(?:[^@/]+@)?(github\.com|gitlab\.com)[:/](.+?)(?:\.git)?\/?$/i;
+// The repo ends up in API paths such as repos/<owner>/<name>/issues, so "." and ".." are not names.
+const GITHUB_REPO = /^[\w-]+\/(?!\.\.?$)[\w.-]+$/;
 
 function remoteUrls(repoRoot) {
   const output = execFileSync('git', ['-C', repoRoot, 'remote', '-v'], { encoding: 'utf8' });
@@ -23,7 +25,7 @@ function candidateFromRemote(url) {
   if (!match) return null;
   const [, host, location] = match;
   if (host.toLowerCase() === 'github.com') {
-    return /^[\w.-]+\/[\w.-]+$/.test(location) ? { kind: 'github', repo: location } : null;
+    return GITHUB_REPO.test(location) ? { kind: 'github', repo: location } : null;
   }
   return /^[\w.-]+(?:\/[\w.-]+)+$/.test(location) ? { kind: 'gitlab', project: location } : null;
 }
@@ -72,7 +74,7 @@ function resolveTracker(repoRoot) {
   if (tracker.kind === 'none') return { status: 'none', source, tracker, design_doc: 'docs/design' };
   if (tracker.kind === 'github') {
     const repo = tracker.repo ?? (remoteCandidates(repoRoot).find(candidate => candidate.kind === 'github') || {}).repo;
-    if (!/^[\w.-]+\/[\w.-]+$/.test(String(repo))) {
+    if (!GITHUB_REPO.test(String(repo))) {
       return invalid(source, 'repo must be "owner/name" for a github tracker, or a GitHub remote must exist');
     }
     return { status: 'configured', source, tracker: { ...tracker, repo }, design_doc: 'parent-issue' };

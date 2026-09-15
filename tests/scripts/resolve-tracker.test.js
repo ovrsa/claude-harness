@@ -83,6 +83,8 @@ try {
       [{}, /kind/],
       [{ kind: 'GitHub Enterprise' }, /kind/],
       [{ kind: 'github', repo: 'widgets' }, /repo/],
+      [{ kind: 'github', repo: '../..' }, /repo/],
+      [{ kind: 'github', repo: 'acme/..' }, /repo/],
     ]) {
       writeConfig(dir, value);
       const result = run(dir);
