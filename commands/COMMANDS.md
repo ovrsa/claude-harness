@@ -94,6 +94,8 @@ Standard and heavy-risky work should leave pipeline run evidence through `/execu
 
 プロジェクトの `.claude/tracker.json` で管理先を宣言したプロジェクトでは、上の段を Issue と会話の単位に割り当てる。
 宣言の解決は `scripts/resolve-tracker.js`、ゴール文面の組み立ては `scripts/task-goal.js` が持つ。
+Task 内の実行順、休止、別セッション再開を Graph で扱う場合の共通契約と接続点は
+[`docs/how-to/execution-graph-contract.md`](../docs/how-to/execution-graph-contract.md) が持つ。
 
 ```
 A  調査・グリル  手順1〜3。read-only

@@ -1,0 +1,14 @@
+{
+  "repo_root": "/private/tmp/claude-harness-issue-9",
+  "branch": "feat/issue-9-graph-contract",
+  "run_id": "2026-09-18-feat-issue-9-graph-contract",
+  "started_at": "2026-09-18T14:19:15.711Z",
+  "updated_at": "2026-09-18T14:19:15.712Z",
+  "gates": [
+    "review",
+    "verification"
+  ],
+  "session_ids": [
+    "codex-session-01a0b367-a79f-71c2-ad1b-e50ea5e47ff3"
+  ]
+}
