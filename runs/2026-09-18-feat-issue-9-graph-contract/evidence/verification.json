@@ -1,0 +1,52 @@
+{
+  "kind": "verification",
+  "source_path": "/private/tmp/claude-harness-issue-9/verification-summary.md",
+  "captured_at": "2026-09-18T14:19:15.712Z",
+  "fingerprint": "",
+  "state": {
+    "scope": [
+      "Issue #9 の共通 Graph 契約と既存入口への参照。実行エンジンは #10 の範囲。"
+    ],
+    "commandsRun": [
+      "`node scripts/ci/audit-harness-contract.js`: PASS。",
+      "`node scripts/ci/validate-commands.js`: 54 command files を検査して成功。",
+      "`node scripts/ci/validate-text-sources.js`: PASS。",
+      "`node tests/scripts/task-goal.test.js`: 13 passed / 0 failed。",
+      "`node tests/scripts/resolve-tracker.test.js`: 7 passed / 0 failed。",
+      "`node tests/lib/run-record.test.js`: sol 担当による実行で 28 passed / 0 failed。",
+      "`git diff --check`: 成功。",
+      "変更した3文書の相対リンク、6つの JSON 例、主例の定義 hash を以下で照合して成功。",
+      "```python",
+      "import json, re, pathlib, hashlib",
+      "root = pathlib.Path('.')",
+      "files = ['docs/how-to/execution-graph-contract.md', 'commands/COMMANDS.md', 'skills/start-issue/SKILL.md']",
+      "blocks = []",
+      "for name in files:",
+      "p = root / name",
+      "body = p.read_text()",
+      "blocks.extend(json.loads(b) for b in re.findall(r'```json\\n(.*?)\\n```', body, re.S))",
+      "for target in re.findall(r'\\]\\(([^)]+)\\)', body):",
+      "if '://' not in target and not target.startswith('#'):",
+      "assert (p.parent / target.split('#')[0]).exists(), (name, target)",
+      "g = blocks[0]",
+      "definition = {k: g[k] for k in ['schema_version', 'graph_id', 'task_id', 'limits', 'nodes']}",
+      "actual = 'sha256:' + hashlib.sha256(json.dumps(definition, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()",
+      "assert actual == g['definition_revision']",
+      "print('PASS:', len(files), 'documents,', len(blocks), 'JSON examples, links, definition hash')",
+      "```"
+    ],
+    "verificationOutcome": [
+      "変更文書の契約監査、入口検査、構文・リンク・hash 照合はすべて成功。",
+      "既存 task-goal / tracker / Run 記録の計48件のテストが成功。Graph executor の実測を示すものではない。"
+    ],
+    "assessment": [
+      "再実行可能な検査を記録した。受容判断と残る範囲は review-summary.md を参照。"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "missingValues": [],
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Verification Summary\n\n## Scope\n\n- Issue #9 の共通 Graph 契約と既存入口への参照。実行エンジンは #10 の範囲。\n\n## Commands Run\n\n- `node scripts/ci/audit-harness-contract.js`: PASS。\n- `node scripts/ci/validate-commands.js`: 54 command files を検査して成功。\n- `node scripts/ci/validate-text-sources.js`: PASS。\n- `node tests/scripts/task-goal.test.js`: 13 passed / 0 failed。\n- `node tests/scripts/resolve-tracker.test.js`: 7 passed / 0 failed。\n- `node tests/lib/run-record.test.js`: sol 担当による実行で 28 passed / 0 failed。\n- `git diff --check`: 成功。\n- 変更した3文書の相対リンク、6つの JSON 例、主例の定義 hash を以下で照合して成功。\n\n```python\nimport json, re, pathlib, hashlib\nroot = pathlib.Path('.')\nfiles = ['docs/how-to/execution-graph-contract.md', 'commands/COMMANDS.md', 'skills/start-issue/SKILL.md']\nblocks = []\nfor name in files:\n    p = root / name\n    body = p.read_text()\n    blocks.extend(json.loads(b) for b in re.findall(r'```json\\n(.*?)\\n```', body, re.S))\n    for target in re.findall(r'\\]\\(([^)]+)\\)', body):\n        if '://' not in target and not target.startswith('#'):\n            assert (p.parent / target.split('#')[0]).exists(), (name, target)\ng = blocks[0]\ndefinition = {k: g[k] for k in ['schema_version', 'graph_id', 'task_id', 'limits', 'nodes']}\nactual = 'sha256:' + hashlib.sha256(json.dumps(definition, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()\nassert actual == g['definition_revision']\nprint('PASS:', len(files), 'documents,', len(blocks), 'JSON examples, links, definition hash')\n```\n\n## RED Evidence\n\n- 新しい実行コード・テストは追加していない。設計契約の検証なので TDD の RED/GREEN は対象外。\n- 初稿で `audit-harness-contract.js` が `docs/reference` の規約違反を検出した。`docs/how-to/` に移し、最終監査で解消を確認した。\n\n## Verification Outcome\n\n- 変更文書の契約監査、入口検査、構文・リンク・hash 照合はすべて成功。\n- 既存 task-goal / tracker / Run 記録の計48件のテストが成功。Graph executor の実測を示すものではない。\n\n## Guardrail Candidates\n\n- none\n\n## Assessment\n\n- 再実行可能な検査を記録した。受容判断と残る範囲は review-summary.md を参照。\n"
+}

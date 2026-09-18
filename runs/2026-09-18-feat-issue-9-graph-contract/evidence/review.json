@@ -1,0 +1,28 @@
+{
+  "kind": "review",
+  "source_path": "/private/tmp/claude-harness-issue-9/review-summary.md",
+  "captured_at": "2026-09-18T14:19:15.712Z",
+  "fingerprint": "",
+  "state": {
+    "reviewScope": [
+      "Issue #9、親 #8 の設計方針と受入条件に対する契約文書、commands/COMMANDS.md、skills/start-issue/SKILL.md の設計レビュー。",
+      "sol が作成・修正し、別コンテキストの sol と親担当が確認した。"
+    ],
+    "findings": [],
+    "residualRisks": [
+      "Graph validator / executor / session 再開の実測は #10、8時間相当の無回答と通知重複の回帰は #7 に残る。",
+      "#9 本文には task-goal が要求する検証方法節がないため、この作業では自動 goal を生成していない。既存の受入条件で文書を検証し、Issue 本文を補完・変更していない。"
+    ],
+    "nextAction": "none",
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "parsedFindings": [],
+    "invalidFindings": [],
+    "missingValues": [],
+    "blockingFindings": [],
+    "hasBlockingFindings": false,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Review Summary\n\n## Review Scope\n\n- Issue #9、親 #8 の設計方針と受入条件に対する契約文書、commands/COMMANDS.md、skills/start-issue/SKILL.md の設計レビュー。\n- sol が作成・修正し、別コンテキストの sol と親担当が確認した。\n\n## Design Compliance\n\n- 既存の start-issue / task-goal / task-completion / session hooks / pipeline-runner / workflow / schema の接続を実装から確認した。\n- 要求 ID → node → 証拠の対応、保存先、版、Task/attempt/session、権限、上限、休止・再開を定義した。\n- 正常系、検証失敗、質問待ち、別セッション再開の4例と、静的・遷移時の検出点を示した。\n- Orca を必須にせず、共通の逐次実行経路と任意 adapter を区別した。\n- 独立レビューで見つかった自己参照 hash、古い成功の再利用、Run 衝突、event 消費、要求 ID、同一原因カウント、action/gate の識別の曖昧さを修正した。\n- 評価: #9 の受入条件を満たす。#10 の実行機能と #7 の回帰検証は未実施。\n\n## Security\n\n- 実行コード・権限判定コード・外部入力パーサは変更していない。文書では Graph が権限を付与しないこと、node permission と外部許可の両方が必要なことを規定した。敵対的入力の実行検証は #10 の責務。\n\n## Comment Adequacy\n\n- 落とした: 該当なし。既存コードコメントは変更していない。\n- 残した: 既存入口の責務とライフサイクル手順。\n- 足した: #9 は契約のみで自動実行は #10 以後という区別。\n- 比率: 実行コードの変更がないため対象外。\n\n## Code Quality\n\n- Refactoring: not-applicable | 実行コードを変更しない契約文書タスク。\n- Documents: changed | 契約正本を docs/how-to/execution-graph-contract.md に置き、既存入口2箇所から参照した。未実装機能を実装済みと書かないよう整理した。\n- Comments: unchanged | 実行コードのコメントは変更対象にない。追加した説明文と JSON 例の整合を確認した。\n- Verification: passed | 最終差分で契約監査、54入口検査、text検査、JSON例とリンクと定義hash照合、git diff --check に成功した。\n- Observation: not-required | #9 は文書契約と参照の追加のみで、Graph の実行・休止・再開は実装していない。\n- Revision: 4ec5059417389fbc02e1df2fca08dc59e760daf60057522c567312d6e7d33cdc\n\n## Test Adequacy\n\n- RED/GREEN evidence: 新しい実行コードやテストを追加していない。初稿の配置監査失敗と修正後の成功を verification-summary.md に記録した。\n- BDD scenarios: 正常系、検証失敗、質問待ち、別セッション再開を例として確認した。実行テストではない。\n- integration/E2E evidence: 既存の task-goal 13件、tracker 7件、Run 28件が成功。Graph E2E は #10 で追加する。\n- observe evidence: 実動作を変えていないため対象外。\n\n## Findings\n\n- none\n\n## Residual Risks\n\n- Graph validator / executor / session 再開の実測は #10、8時間相当の無回答と通知重複の回帰は #7 に残る。\n- #9 本文には task-goal が要求する検証方法節がないため、この作業では自動 goal を生成していない。既存の受入条件で文書を検証し、Issue 本文を補完・変更していない。\n\n## Guardrail Candidates\n\n- none\n\n## Next Action\n\n- none\n"
+}

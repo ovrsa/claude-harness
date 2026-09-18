@@ -91,6 +91,11 @@ GitHub の認証もサンドボックスの中では効かないことがある�
 文面だけで【停止】に当たると分かる時（受け入れ条件が対象外や制約とぶつかる、など）は、ゴールを始めずに
 食い違いと必要な判断を示して止まる。
 
+Execution Graph を使う実装では、`task-goal.js` が返した仕様 revision と既存 Run を
+[`docs/how-to/execution-graph-contract.md`](../../docs/how-to/execution-graph-contract.md) の接続点に渡す。
+この参照は #9 で確定した契約だけを示す。Graph の作成・読込・自動実行は #10 の実装後に有効になる。
+Graph を使う時もランタイム固有の goal を正本にしない。
+
 | 環境 | 始め方 |
 |---|---|
 | Claude Code | `claude_code` の1行をコードブロックで示し、人に実行してもらう。エージェントは `/goal` を実行できない |
@@ -120,6 +125,8 @@ gh pr comment <PR> --body-file <停止コメント>      # 【停止】。PR が
   `Revision` に記録し、`task-completion.js` を実行して出力を会話に示す
 - Codex は【完了】【停止】のどちらでも終了状態に達したら `update_goal` を `complete` にする。
   止まったことは PR の状態（Draft と停止コメント）と報告で区別する
+- Graph が人間待ちになったら待機状態を Run に保存してターンを終了する。新しい session、timeout、
+  heartbeat は再開理由にせず、Graph に記録した許可イベントを受けてから再開する
 - 会話での報告は短くする。完了か停止か、PR のリンク、検証結果、残る懸念だけを書く
 
 ## しないこと
