@@ -13,6 +13,7 @@
  */
 
 const fs = require('fs');
+const { listCodexTranscripts } = require('./lib/codex-transcripts');
 
 const { listRunRecords, readRunRecord, getRunsDir } = require('./lib/run-record');
 const { listTranscriptFiles } = require('./lib/transcript-log');
@@ -22,6 +23,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--runs-dir') options.runsDir = argv[++i] || '';
+    else if (arg === '--codex-home') options.codexHome = argv[++i] || '';
     else if (arg === '--transcript-dir') options.transcriptDir = argv[++i] || '';
     else if (arg === '--limit') options.limit = Number(argv[++i] || 0) || 0;
     else if (arg === '--json') options.json = true;
@@ -40,14 +42,16 @@ function printHelp() {
     '  node scripts/runs-cli.js list [--limit N]',
     '  node scripts/runs-cli.js show <run-id> [--json]',
     '  node scripts/runs-cli.js diff <run-a> <run-b>',
-    '  node scripts/runs-cli.js trace <run-id>',
+    '  node scripts/runs-cli.js trace <run-id> [--json]',
     '',
     'Reads runs/<YYYY-MM-DD>-<slug>/ — gate evidence bodies, lifecycle events,',
     'and the session ids that resolve to the raw JSONL transcripts.',
     '',
     'Options:',
     '  --runs-dir <path>        override the run record directory',
-    '  --transcript-dir <path>  override where trace resolves transcripts',
+    '  --transcript-dir <path>  override Claude projects directory',
+    '  --codex-home <path>      override CODEX_HOME (default: ~/.codex)',
+    '  trace: 0 resolved, 2 unlinked/missing/partial, 1 invalid input or read error.',
     '',
   ].join('\n'));
 }
@@ -151,6 +155,22 @@ function commandDiff(options) {
   return 0;
 }
 
+function traceModels(filePath) {
+  const models = [];
+  let previous;
+  const content = fs.readFileSync(filePath, 'utf8');
+  content.split('\n').forEach((line, index) => {
+    let record;
+    try { record = JSON.parse(line); } catch { return; }
+    const model = record?.type === 'turn_context' ? record.payload?.model : record?.message?.model;
+    if (typeof model === 'string' && model !== '<synthetic>' && model !== previous) {
+      models.push({ model, line: index + 1 });
+      previous = model;
+    }
+  });
+  return models;
+}
+
 function commandTrace(options) {
   const runsDir = resolveRunsDir(options);
   const runId = options.args[0] || '';
@@ -162,38 +182,38 @@ function commandTrace(options) {
 
   const sessionIds = Array.isArray(record.session_ids) ? record.session_ids : [];
   if (sessionIds.length === 0) {
-    process.stdout.write(`${runId}: no session ids recorded, so no transcript can be resolved\n`);
-    return 0;
+    const result = { run_id: runId, status: 'unlinked', sessions: [] };
+    process.stdout.write(options.json ? `${JSON.stringify(result)}\n` : `${runId}: unlinked (no session ids recorded)\n`);
+    return 2;
   }
 
   const files = listTranscriptFiles(
     options.transcriptDir ? { transcriptDir: options.transcriptDir } : {}
-  );
+  ).filter(file => !file.sessionId.startsWith('codex-session-'));
+  const codexIds = sessionIds.filter(id => id.startsWith('codex-session-')).map(id => id.slice('codex-session-'.length));
+  if (codexIds.length) files.push(...listCodexTranscripts(codexIds, options.codexHome));
   const bySession = new Map();
   for (const file of files) {
     if (!bySession.has(file.sessionId)) bySession.set(file.sessionId, []);
     bySession.get(file.sessionId).push(file.path);
   }
 
-  for (const sessionId of sessionIds) {
+  const sessions = sessionIds.map(sessionId => {
     const paths = bySession.get(sessionId) || [];
-    if (paths.length === 0) {
-      // Transcript retention is Claude Code's, not the harness's: an older run
-      // legitimately has no trace left. Say so instead of omitting the session.
-      process.stdout.write(`${sessionId}: no transcript found (retention or different machine)\n`);
-      continue;
-    }
-    for (const filePath of paths) {
-      let size = '';
-      try {
-        size = ` (${Math.round(fs.statSync(filePath).size / 1024)} KB)`;
-      } catch {
-        size = '';
-      }
-      process.stdout.write(`${sessionId}: ${filePath}${size}\n`);
+    return { session_id: sessionId, runtime: sessionId.startsWith('codex-session-') ? 'codex' : 'claude',
+      status: paths.length ? 'resolved' : 'missing', traces: paths.map(filePath => ({ path: filePath, models: traceModels(filePath) })) };
+  });
+  const resolved = sessions.filter(session => session.status === 'resolved').length;
+  const status = resolved === sessions.length ? 'resolved' : resolved ? 'partial' : 'missing';
+  if (options.json) process.stdout.write(`${JSON.stringify({ run_id: runId, status, sessions }, null, 2)}\n`);
+  else for (const session of sessions) {
+    if (session.status === 'missing') process.stdout.write(`${session.session_id}: missing (${session.runtime}; no transcript found)\n`);
+    for (const trace of session.traces) {
+      process.stdout.write(`${session.session_id}: ${trace.path} (${session.runtime})\n`);
+      for (const item of trace.models) process.stdout.write(`  line ${item.line}: model=${item.model}\n`);
     }
   }
-  return 0;
+  return status === 'resolved' ? 0 : 2;
 }
 
 function main(argv = process.argv.slice(2)) {

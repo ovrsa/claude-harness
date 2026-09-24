@@ -4,15 +4,24 @@ This file is the thin operating entrypoint for my personal agent harness.
 
 ## Managed Grill Entry
 
-Non-trivial work starts with the managed read-only plugin's `grilling` skill before this
-harness's local pipeline begins. Claude Code uses the managed plugin directly. Codex resolves the
-same installation with `node ~/.claude/scripts/resolve-managed-skill.js grilling`, then reads the
-returned `SKILL.md` completely.
+Use the managed read-only plugin's `grilling` skill when unresolved requirements or design
+choices need the operator's decision, or when the operator explicitly requests a Grill.
+Codex resolves it with `node ~/.claude/scripts/resolve-managed-skill.js grilling` and reads the
+returned `SKILL.md` completely. Follow its confirmation flow when it is invoked.
 
-The Grill closes the unresolved design frontier through questions and environment research. It
-ends by presenting a final understanding and waiting for the operator to confirm it. Confirmation
-does not authorize file changes: wait for an explicit next instruction. When the operator asks to
-continue, resume the distribution lifecycle below.
+When the task's scope, finish line, and implementation authorization are already clear, proceed
+through the lifecycle using those decisions. Do not require a Grill or a second instruction to
+start the same authorized work. A request for analysis alone does not authorize implementation.
+
+Clear authorization removes redundant questions, not lifecycle steps. For implementation in a
+repository with a tracker, create or identify the Issue before writing implementation code. Agree
+the test seams, follow one-test-at-a-time RED → GREEN, review the result, and submit a PR before
+integration. Do not apply worktree patches to the live harness to bypass PR review.
+
+Keep working after status updates when the next step is authorized. Ask only for a decision that
+blocks progress, a material scope change, missing authorization, or an unapproved destructive or
+external action. Heavy-risky work still requires explicit approval. Record settled decisions and
+verify the result; do not replace required evidence with an assumption that the task is done.
 
 ## Core Rule
 
@@ -174,7 +183,7 @@ calling it; no Stop hook intercepts arbitrary prose or external ticket API calls
 In lifecycle order. Diagnosis belongs to step 1, and the decisions are recorded in step 2 —
 **before** implementation, while they are still fresh.
 
-1. `/grill-me` for the depth pass before any file is written (upstream skill; the real content is `grilling`)
+1. `/grill-me` for unresolved requirements or design decisions before implementation (upstream skill; the real content is `grilling`)
 2. `/docs-build` for the design doc that records the decisions, and for persistent reference docs in `docs/`.
    With a declared tracker it writes the parent issue, `split-issue` proposes child issues, and
    `start-issue` starts each task in a new conversation as a runtime goal (`commands/COMMANDS.md`)
@@ -196,7 +205,7 @@ In lifecycle order. Diagnosis belongs to step 1, and the decisions are recorded 
 There is no planning command. `commands/plan.md` and `commands/plan-task.md` were removed on
 2026-08-12 because nothing consumed them; `plan.md` itself was retired on 2026-08-17.
 
-The worktree is not a command you invoke. When the grilling settles and the next move writes files,
+The worktree is not a command you invoke. When the task is settled and the next move writes files,
 the agent creates it — see `rules/common/worktree-policy.md`.
 
 See `~/.claude/commands/COMMANDS.md` for the grouped command taxonomy, lifecycle pairs, and secondary surfaces.

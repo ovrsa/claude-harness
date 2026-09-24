@@ -14,7 +14,13 @@ Use this command when the operator explicitly wants the harness to improve itsel
    - `node scripts/runs-cli.js list` — which task runs exist
    - `node scripts/runs-cli.js show <run-id>` — the gate evidence bodies, verbatim
    - `node scripts/runs-cli.js trace <run-id>` — the raw JSONL transcript for that run
-   - grep the transcript directly for the failure being diagnosed
+   - `trace --json` distinguishes resolved, partial, missing, and unlinked (exit 2 for incomplete resolution).
+     Codex logs resolve from `CODEX_HOME` (or `--codex-home`), including archived sessions.
+   - Read each resolved trace directly for the failure being diagnosed. Model transitions include
+     line numbers; do not attribute a mixed-model session to its initial model.
+   - Report missing links as an observation gap, not a successful run or a model failure.
+     Never infer a session link from cwd/time alone. Record the harness revision and effective
+     settings used in any new comparison; unknown historical settings stay unknown.
 2. Use `health-status` and `triage-loop` outputs only to decide **where to look**. Do not let a
    summary stand in for the trace it summarizes. If a candidate cannot be traced back to raw
    evidence, say so rather than acting on the summary alone.

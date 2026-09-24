@@ -153,7 +153,7 @@ git と design doc から復帰する方を選んだ。`run_state` は 2026-08-2
 - **リンクの向きが一様でない。** `skills/` の5件（`design-doc-mermaid` `python-code-style` `sql-code-review` `sql-optimization` `sql-optimization-patterns`）は実体が `~/.agents/skills/` 側にあり **git 管理外**。worktree ではダングリングする。別の7件は両側に実体があり、現時点で内容は一致しているが構造上いつでも乖離しうる
 - **未起動スキルが残っている。** 起動実績があるのは13本（計測は2026-04-22〜08-15、`Skill` ツールの起動記録91件が母数）。ローカル作成分の判断が未着手
 - **SQL スキル2本の内容が重複している。** `sql-optimization`(296行) と `sql-optimization-patterns`(499行)。両方 lock 管理下で、片方が `skillOverrides` で隠れているため自動選択の衝突は起きない
-- **尋問系スキルとライフサイクルゲートが噛み合っていない。** `issue-framing` で要件整理をしても `/docs-build` の grilling ゲートは通らない。ゲートが認識するのは `grilling` だけ
+- **文書化の入口は決定と実行許可を確認する。** `/docs-build` は会話・承認済み仕様を使い、未確定の判断がある場合だけ `grilling` に戻る。スキルの呼び出し履歴だけでは停止しない。
 - **並行セッションを検知する手段が無い。** 同一リポジトリで別の `claude` プロセスが走っていても互いに見えず、片方の編集がもう片方から出自不明の変更として現れる
 - `tests/hooks/hooks.test.js`（5,581行）が高負荷時に断続的に停止する。停止位置は毎回異なり単体では再現しない。原因未特定
 - **セッション `.tmp` の注入がリポジトリ横断。** `sessions/*-session.tmp` は全リポジトリ分が同じディレクトリに並ぶため、`session-start.js` の3番目のフォールバックは「最後に触ったプロジェクト」の会話要約を拾いうる

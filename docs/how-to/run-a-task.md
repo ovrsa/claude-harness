@@ -33,28 +33,22 @@
 
 ## 手で行う部分
 
-**手で行うのはこの4つ。** 他は自動か、エージェントに任せる。
+必要な判断だけ人が行う。目的・範囲・成功条件と実行許可が既に揃っていれば、同じ確認を繰り返さない。
 
-1. **`/grill-me` と打つ。**
-   - `/grill-me` は**モデルからは起動できない**（`disable-model-invocation: true`）。
-     ただし実体の `grilling` には制限が無いので、**エージェント側から始めることはできる**。
-     ゲートが守るのは「grilling を飛ばさないこと」であって、誰が始めるかではない
-   - 一度に1問しか来ない。**事実はエージェントが自分で調べる。答えるのは決定だけ**
-   - **バグ修正でも先にここへ来る。** 診断は read-only なのでこの段の仕事。
-     原因が分かってから実装に入る
-   - 止め時の目安 — Objective が1文 / Non-goals が1つ以上 / 却下した案と理由 /
-     未確定事項 / 成功条件。**質問が尽きた時ではない**
-   - ここまで read-only。**捨てるならここで捨てる**
+1. **未確定の判断を決める。**
+   - 未確定の要件・設計判断がある場合、または明示的に求めた場合に `grilling` を使う。
+   - 事実はエージェントが調べ、利用者には決定が必要な点だけ聞く。
+   - 明確な実行指示では、Grill を開始するための確認を挟まない。
 
-2. **design doc を承認する。**
+2. **未承認の設計判断を確認する。**
    - `/docs-build` が `docs/design/YYYY-MM-DD-<slug>.md` を書く。**書くのはエージェント**
    - 見るのは Non-goals と却下した案。**スコープ境界がここで決まる**
    - `heavy-risky` は承認前に実装させない
    - 承認したら実装はエージェントに任せる
 
-3. **seam に合意する。**
+3. **検証する境界を決める。**
    - 実装は `skills/tdd` の RED -> 最小 GREEN で進む。**refactor はループの外**（review 段の仕事）
-   - upstream skill が定める唯一の人間ゲート:
+   - upstream skill が定める人間ゲート（既に合意済みなら繰り返さない）:
      「**Test only at pre-agreed seams.** No test is written at an unconfirmed seam」
    - seam とは、内部に手を入れずに挙動を観測できる公開境界のこと。**全部はテストできないので、
      どこで観測するかを先に決める**のが、労力を重要な経路へ寄せる唯一の方法
@@ -150,7 +144,8 @@ slug は `docs/design/YYYY-MM-DD-<slug>.md` と同じなので、決定と証拠
 `runs/` は git 追跡対象なので、worktree のマージが証拠を `main` に運ぶ。
 
 生の実行トレースは複製しない。`meta.json` の `session_ids` から
-`projects/<slug>/<session-id>.jsonl` に辿れる。
+`runs-cli trace <run-id> --json` で Claude の `projects/`、Codex の `sessions/` と
+`archived_sessions/` に辿る。未関連付け・欠落・一部解決は終了コード2。モデル変更は行番号とともに表示される。
 
 2026-08-18 より前の証拠は残っていない。`verification-summary.md` を書いた回でも
 worktree ごと消えており、SQLite 側には2行の抜粋と**存在しないパスへの参照**しか無い。

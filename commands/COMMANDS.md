@@ -11,20 +11,24 @@ Use the local pipeline by default for standard and heavy-risky implementation an
 - `/next-action` as the operator-facing status surface for the current recommended next step
 - `/shape-task` as the explicit task-shaping surface for rough intent before planning, routing, or execution
 - `/route-task` as the explicit readonly routing surface for shaped tasks before execution or delegation
-- `/grill-me` as the depth pass on a sharpened task before any file is written
-- `/docs-build` for persistent reference docs; it extracts the Grill Record from the grilling session
+- `/grill-me` for unresolved requirements or design decisions
+- `/docs-build` for persistent reference docs; it extracts decisions from the conversation or approved specification
 - `/execute-plan` as the pipeline entrypoint when the work suits it
 - `/verify` to capture local rerunnable evidence when needed
 - `/eval` to record local acceptance judgment when needed
 
 ### Ordered Path
 
+目的・範囲・成功条件と実行許可が既に明確な場合、Grill と承認待ちを繰り返さず進む。
+未確定の判断・未承認の範囲・破壊的な操作は確認する。正本は `CLAUDE.md` の Managed Grill Entry。
+
+
 読み取り専用フェーズを前に固め、**最初にファイルを書く直前に worktree を作る**。
 
 ```
 1  調査             質問に答える。ここで終わることも多い              read-only
 2  /shape-task      意図を固める（重み判定・任意）                    read-only
-3  /grill-me        尋問（upstream skill / 実体は grilling）。診断もここ read-only
+3  /grill-me        未確定の判断がある時の尋問（upstream skill / 実体は grilling）。診断は read-only
    ---- ここまで read-only。捨てるならここで捨てる ----
 4  worktree         書き込みが発生するならエージェントが作る（コマンドではない）
 5  /docs-build      決定を記録する = **実装の入力**（管理先あり: 親 Issue 本文 / なし: docs/design/）
@@ -160,7 +164,7 @@ Used to enter a repo cleanly and keep deeper references current.
 - `/sessions`
 
 `/repo-map` は `AGENTS.md` のみを扱う。`docs/` の永続リファレンスは `/docs-build` が担い、
-`/grill-me` を通してから実行する。標準は `~/.claude/rules/common/documentation.md`。
+未確定の判断があれば `/grill-me` で確認してから実行する。決定済みなら既存の合意から進める。標準は `~/.claude/rules/common/documentation.md`。
 
 ### Capture And Health
 

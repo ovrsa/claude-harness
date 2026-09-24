@@ -13,15 +13,15 @@ Use that file for the full operating model, artifact chain, and lifecycle rules.
 
 ## Managed Grill
 
-For non-trivial work, resolve the managed `grilling` skill before entering the distribution
-lifecycle:
+Follow `CLAUDE.md` → Managed Grill Entry. Resolve the managed skill when a Grill is explicitly
+requested or unresolved requirements need the operator's decision:
 
 ```bash
 node ~/.claude/scripts/resolve-managed-skill.js grilling
 ```
 
-Read the returned `SKILL.md` completely and follow it. Present the final understanding and wait
-for confirmation. After confirmation, wait for an explicit instruction before writing files.
+Read the returned `SKILL.md` completely when invoking it. For already specified and authorized
+work, proceed without a mandatory Grill or repeated authorization.
 
 ## Codex Start / End
 
