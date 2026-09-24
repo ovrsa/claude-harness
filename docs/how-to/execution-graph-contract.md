@@ -1,7 +1,18 @@
 # Execution Graph contract
 
+## 実行入口
+
+`scripts/task-goal.js graph` が既存の goal 入口を拡張する。操作は `create`, `status`, `ingest`,
+`capture`, `succeed`, `fail`, `wait`, `resume`, `revise`, `revalidate`。すべて明示した絶対 `--run-dir`、git `--repo`、tracker の
+`--input` を受け取り、現在の仕様 revision を照合する。Run の `graph.json` が snapshot、
+`logs/events.ndjson` が遷移と取込 event の台帳である。node の shell や外部操作は自動実行しない。
+呼び出し例と人回答の取込境界は `skills/start-issue/SKILL.md` を参照する。
+完了済み Graph の `status` も現在の task-completion と gate 証拠を再検査し、stale なら完了として返さない。
+`revalidate` は stale な最初の gate と後続 gate を失効させ、上限内なら新 attempt からやり直す。
+session hook が同じ Run の gate 証拠を再退避する時も Graph の仕様・定義 revision と成果物 fingerprint を付ける。
+
 この文書は、管理先に仕様を置く1つの Task を、ランタイムをまたいで実行・休止・再開するための
-最小 Graph 契約の正本である。Graph 実行エンジンの実装はこの契約に含めない。
+最小 Graph 契約の正本である。実装の詳細はこの契約と分けて `scripts/lib/execution-graph.js` に置く。
 
 Graph は要求整理から使う。受け入れ条件へ安定 ID を付け、未確定な判断を質問 node、確定した作業を
 依存付きの実装 node、その完了根拠を検証・レビュー node へ写像する。失敗分岐と反復上限を先に置き、
@@ -222,6 +233,8 @@ session start hook は waiting Graph を発見して文脈を示せるが、状�
 追加する。`new_attempt` は旧 attempt を `cancelled` にして `ended_at` を埋め、wait を null にし、同じ
 node に新しい `running` attempt を作る。どちらも `event_id` を top-level `consumed_event_ids` へ追加し、
 回答イベントと状態更新を同じ transition で確定する。
+`continue_attempt` で消費した回答は、同じ attempt の `success_when` がその回答 event を要求する場合に限り
+1回だけ成功条件として参照できる。別 attempt の再利用はできない。
 
 ## 証拠の有効性
 

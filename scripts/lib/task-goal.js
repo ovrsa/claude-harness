@@ -176,4 +176,4 @@ function lineDiff(before, after) {
   return out.join('\n');
 }
 
-module.exports = { prepareGoal, lineDiff, MAX_GOAL_CHARS };
+module.exports = { prepareGoal, lineDiff, parseIssue, MAX_GOAL_CHARS };
