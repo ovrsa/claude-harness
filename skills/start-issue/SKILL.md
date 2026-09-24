@@ -91,10 +91,37 @@ GitHub の認証もサンドボックスの中では効かないことがある�
 文面だけで【停止】に当たると分かる時（受け入れ条件が対象外や制約とぶつかる、など）は、ゴールを始めずに
 食い違いと必要な判断を示して止まる。
 
-Execution Graph を使う実装では、`task-goal.js` が返した仕様 revision と既存 Run を
+Execution Graph を使う時は、`task-goal.js` が返した仕様 revision と既存 Run を
 [`docs/how-to/execution-graph-contract.md`](../../docs/how-to/execution-graph-contract.md) の接続点に渡す。
-この参照は #9 で確定した契約だけを示す。Graph の作成・読込・自動実行は #10 の実装後に有効になる。
-Graph を使う時もランタイム固有の goal を正本にしない。
+定義 JSON は Issue の受け入れ条件と同じ順の `requirement_ids` を持つ。Graph は node を勝手に実行せず、
+次の作業と成功条件を返す。どの操作でも現在の Issue 入力と git repo を渡し、仕様変更と成果物変更を検査する。
+`task_id` は手入力のリポジトリ名を信用せず、1 で解決した tracker 宣言の repository identity と Issue ref に一致させる。
+`node ~/.claude/scripts/runs-cli.js list` と `show <run-id> --json` で Run を探し、
+`task_id`・`repository_identity`・`branch` が一致するものだけを選ぶ。Graph のある Run は再利用し、
+別 Task の Run は branch 名が同じでも使わない。Run がまだ無ければ、既存の Run 保存先の下に
+重複しない `run_id` を選んで作成する。絶対 `--run-dir` と task 入力 JSON を次のセッションへ渡す。
+
+```bash
+node ~/.claude/scripts/task-goal.js graph create --run-dir <runs/run-id の絶対パス> --repo . --input <task.json> --graph-input <definition.json> --permissions repo:read,repo:write,tracker:read,network:read
+node ~/.claude/scripts/task-goal.js graph status --run-dir <runs/run-id の絶対パス> --repo . --input <task.json>
+```
+
+`succeed`, `fail`, `wait`, `resume`, `ingest`, `capture`, `revise` も同じ引数に操作ごとの JSON を `--graph-input` で足す。
+`revalidate` は JSON 不要で、成果物変更により stale になった gate から上限内で再開する。
+`status` は保存した次 node・attempt・wait を返す。`waiting` なら、回答が来るまでそのターンを終える。
+`completed` でも現在の成果物や証拠が古ければ成功を返さず、`revalidate` で再検証に戻す。
+検証・レビュー後は既存の `verification-summary.md` / `review-summary.md` を完成させ、
+`capture` に `{"kind":"verification"}` / `{"kind":"review"}` を渡して Run evidence に保存する。
+Graph の証拠参照は `{"evidence":{"kind":"verification","subject":"task","subject_revision":"<現在のtaskFingerprint>"}}`
+の形にし、`capture` した本文 hash と現在の成果物 fingerprint を照合する。
+runtime が人の実回答を確認してから `ingest` で永続 event を登録し、別 session が `resume` でその event を指定する。
+CLI は回答者の真正性を証明しない。`resume` は actor の許可、wait/attempt の相関、必須回答欄、event ID の
+再利用を機械的に検査する。実装と review は別 runtime session ID で行う。終了時は既存
+`task-completion.js` の実結果が必要で、payload の自己申告値では通らない。
+仕様が変わった場合は通常操作を止める。Graph が `spec_change_accepted` を待つ状態にある時だけ、
+runtime が人の受け入れを確認し、新 revision を含む event を `ingest` する。続けて
+`revise` に `{"definition":<新しい全Graph定義>,"event_id":"<受理event ID>"}` を渡す。
+旧 attempt と gate 証拠は失効し、新定義の最初の node から再実行する。
 
 | 環境 | 始め方 |
 |---|---|

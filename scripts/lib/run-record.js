@@ -196,6 +196,8 @@ function captureEvidence(options = {}) {
     source_path: artifactPath,
     captured_at: isoNow(),
     fingerprint: options.fingerprint || '',
+    ...(options.specRevision ? { spec_revision: options.specRevision } : {}),
+    ...(options.definitionRevision ? { definition_revision: options.definitionRevision } : {}),
     state: options.state || null,
     body,
   };
@@ -295,11 +297,21 @@ function recordGateEvidence(options = {}) {
   // Redirecting HOME or dbPath covers most of them; this covers the rest.
   if (process.env.CLAUDE_DISABLE_RUN_RECORD === '1') return { runId, captured };
 
+  const graph = readJson(path.join(getRunDir(options), 'graph.json'));
+  const graphEvidence = graph && graph.schema_version === 1 && graph.spec?.revision && graph.definition_revision
+    ? {
+      fingerprint: require('./task-completion').taskFingerprint(options.repoRoot),
+      specRevision: graph.spec.revision,
+      definitionRevision: graph.definition_revision,
+    }
+    : {};
+
   for (const artifact of artifacts) {
     const kind = GATE_ARTIFACTS[artifact && artifact.name];
     if (!kind) continue;
     const written = captureEvidence({
       ...options,
+      ...graphEvidence,
       kind,
       artifactPath: artifact.path,
       state: artifact[`${kind}_state`] || null,
