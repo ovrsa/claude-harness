@@ -1,0 +1,15 @@
+runs-cli
+  ✓ list shows newest first with gates and session count
+  ✓ list honors --limit
+  ✓ show prints the evidence body verbatim, not a summary
+  ✓ show --json emits machine-readable output for an agent to parse
+runs-cli: no run record for no-such-run
+  ✓ show on an unknown run exits nonzero instead of printing nothing
+  ✓ trace resolves a run to its transcript paths via session_ids
+  ✓ trace resolves a Codex session by metadata instead of its filename
+  ✓ trace resolves an archived Codex session
+  ✓ diff reports which gates and evidence differ between two runs
+  ✓ no subcommand prints help and exits 1
+  ✓ an empty runs directory reports emptiness rather than crashing
+
+Results: Passed: 11, Failed: 0

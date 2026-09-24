@@ -1,0 +1,42 @@
+  ✗ all hook commands use node or approved shell wrappers
+    Error: Hook command should use node or approved shell wrapper: if [ -z "${HOME-}" ]; then case "${OSTYPE-}" in msys*|cygwin*|win32*) printf '{}\n'; if [ -z "${ORCA...
+  ✓ script references use CLAUDE_PLUGIN_ROOT variable (except SessionStart fallback)
+
+plugin.json Validation:
+  ✓ plugin.json does NOT have explicit hooks declaration
+
+suggest-compact.js:
+  ✓ increments tool counter on each invocation
+  ✓ suggests compact at exact threshold
+  ✓ suggests at periodic intervals after threshold
+  ✓ does not suggest below threshold
+  ✓ resets counter when file contains huge overflow number
+  ✓ resets counter when file contains negative number
+  ✗ passes on real project hooks.json
+    Error: Should pass, got stderr: ERROR: SessionStart[2] missing 'matcher' field
+ERROR: Stop[3] missing 'matcher' field
+ERROR: SubagentStop[1] missing 'matcher' field
+ERROR: UserPromptSubmit[0] missing 'matcher' field
+ERROR: Invalid event type: StopFailure
+ERROR: Invalid event type: SubagentStart
+ERROR: Invalid event type: TeammateIdle
+ERROR: Invalid event type: PostToolUseFailure
+ERROR: Invalid event type: PostCompact
+
+
+1 !== 0
+
+║  Failed:         2  ✗                                    ║
+║  Skipped files:  0                                       ║
+║  Uncounted files:  0                                     ║
+╚══════════════════════════════════════════════════════════╝
+
+╔══════════════════════════════════════════════════════════╗
+║                     Final Results                        ║
+╠══════════════════════════════════════════════════════════╣
+║  Total Tests: 1446                                       ║
+║  Passed:      1444  ✓                                    ║
+║  Failed:         2  ✗                                    ║
+║  Skipped files:  0                                       ║
+║  Uncounted files:  0                                     ║
+╚══════════════════════════════════════════════════════════╝

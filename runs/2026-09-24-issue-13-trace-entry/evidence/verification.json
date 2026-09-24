@@ -1,0 +1,8 @@
+{
+  "kind": "verification",
+  "source_path": "/private/tmp/harness-issue13/verification-summary.md",
+  "captured_at": "2026-09-24T14:19:03.294Z",
+  "fingerprint": "",
+  "state": null,
+  "body": "# Verification Summary\n\n## Scope\n\nIssue #13。合意済みの公開CLI境界（出力・終了コード）と着手条件文書。\n\n## Commands Run\n\n- node tests/scripts/runs-cli.test.js: 15 passed / 0 failed。\n- node scripts/ci/audit-harness-contract.js: PASS。\n- node scripts/ci/validate-commands.js: 54 files passed。\n- node scripts/ci/validate-text-sources.js: PASS。\n- git diff origin/main...HEAD --check: PASS。\n- node tests/run-all.js: 変更前1440件中1438成功、変更後1446件中1444成功。いずれも既存hook互換性の同じ2件が失敗。\n- node tests/ci/validators.test.js: 149成功/1失敗（上記2件のうちhook schemaの失敗）。\n\n## RED Evidence\n\nIssue起票、利用者のseam合意後、最新origin/mainから6サイクルを逐次実施した。\n各サイクルでRED出力を読み、最小実装の後GREENを確認してから次のテストを書いた。\n先行試作をTDD証拠として使用していない。\n\n1. Codex session_meta によるID解決: 9成功/1失敗 → 10成功。\n2. Codex archive解決: 10成功/1失敗 → 11成功。\n3. 未関連付けのJSON/textと終了コード: 11成功/1失敗 → 12成功。\n4. 欠落・部分解決: 12成功/1失敗 → 13成功。\n5. モデル切替の行番号、Claude子エージェントとCodex混在: 13成功/1失敗 → 14成功。\n6. Claudeファイル名でCodex IDを偽装: 14成功/1失敗 → 15成功。\n\n生出力は runs/2026-09-24-issue-13-trace-entry/logs/tdd-*-red.txt と tdd-*-green.txt。\n\n## Verification Outcome\n\n変更面と契約検査が成功。全体の失敗は変更前後とも all hook commands use node or approved shell wrappers と passes on real project hooks.json。追加の失敗は無い。\n最終文書修正後にcommand検査・契約監査・diff検査も成功。\n\n## Guardrail Candidates\n\n- none\n\n## Assessment\n\nモデル性能や停止率は未計測。文書変更のシナリオレビューはreview-summary.md。\n"
+}

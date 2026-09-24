@@ -1,0 +1,8 @@
+{
+  "kind": "observation",
+  "source_path": "/private/tmp/harness-issue13/observation-summary.md",
+  "captured_at": "2026-09-24T14:19:03.294Z",
+  "fingerprint": "",
+  "state": null,
+  "body": "# Observation Summary\n\n## Behavior Checked\n\nIssue #13のCodex生ログ解決。\n\n## Method\n\n- stdout: runs-cli trace 2026-09-18-feat-issue-9-graph-contract --runs-dir <live-harness>/runs --json を読み取り専用で実行。\n\n## Evidence\n\n- trace: 旧CLIでは no transcript found。新CLIはstatus=resolved、runtime=codex、session_metaのID一致で既存rolloutを返した。\n- stdout: model=gpt-6-astra、line=8。コマンド終了コード0。\n\n## Remaining Uncertainty\n\nPRのマージ前にlive環境へ差分を適用しない。ログ未関連付けの過去Runを推測補完しない。着手停止率の実測は未実施。\n\n## Guardrail Candidates\n\n- none\n"
+}

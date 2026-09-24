@@ -1,0 +1,19 @@
+runs-cli
+  ✓ list shows newest first with gates and session count
+  ✓ list honors --limit
+  ✓ show prints the evidence body verbatim, not a summary
+  ✓ show --json emits machine-readable output for an agent to parse
+runs-cli: no run record for no-such-run
+  ✓ show on an unknown run exits nonzero instead of printing nothing
+  ✓ trace resolves a run to its transcript paths via session_ids
+  ✓ trace resolves a Codex session in sessions/2026/09/24 by metadata instead of its filename
+  ✓ trace resolves a Codex session in archived_sessions by metadata instead of its filename
+  ✓ trace reports unlinked runs as incomplete in JSON and text
+  ✓ trace reports partial and missing sessions without treating them as successful
+  ✓ trace exposes model transitions with source lines across Claude, subagents and Codex
+  ✓ trace cannot resolve a Codex ID from a Claude filename
+  ✓ diff reports which gates and evidence differ between two runs
+  ✓ no subcommand prints help and exits 1
+  ✓ an empty runs directory reports emptiness rather than crashing
+
+Results: Passed: 15, Failed: 0

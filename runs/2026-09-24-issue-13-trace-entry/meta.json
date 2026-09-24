@@ -1,0 +1,16 @@
+{
+  "repo_root": "/private/tmp/harness-issue13",
+  "branch": "fix/issue-13-trace-entry",
+  "issue": "https://github.com/ovrsa/claude-harness/issues/13",
+  "base_revision": "6b82398",
+  "implementation_revision": "734138f",
+  "gates": [
+    "verification",
+    "review",
+    "observation"
+  ],
+  "session_ids": [],
+  "run_id": "2026-09-24-issue-13-trace-entry",
+  "started_at": "2026-09-24T14:19:03.293Z",
+  "updated_at": "2026-09-24T14:19:03.294Z"
+}
