@@ -214,25 +214,17 @@ echo "claude --dangerous"
 
 ## Recommended Flow
 
-調査 → `/grill-me` → **worktree**(通常はエージェントが作る。このコマンドは上書き用)→ `/docs-build` → 実装 → `/verify` → `/review-task` → `/eval` → observe if required → design doc 確定 → commit
+調査 → 未確定の判断があれば `/grill-me` → **worktree**(通常はエージェントが作る。このコマンドは上書き用)→ `/docs-build` → 実装 → `/verify` → `/review-task` → `/eval` → observe if required → design doc 確定 → commit
 
 全体像は `~/.claude/commands/COMMANDS.md` の Ordered Path を参照。
 
 ## Cleanup (After Merge)
 
-**既定(同一セッション)**: マージが必要な場合は親ブランチ側で `git merge --no-ff <branch>` を実行してから `ExitWorktree(action: "remove")` を呼ぶ。
+取り込みは `rules/common/worktree-policy.md` の Git Safety に従う。
 
-**Detached Mode**:
-
-```bash
-BASE_TO_MERGE_INTO="<fork元ブランチ>"
-cd "<main worktree path>"
-git checkout "${BASE_TO_MERGE_INTO}"
-git merge --no-ff "${BRANCH}"
-
-git worktree remove "${TARGET}"
-git branch -d "${BRANCH}"
-```
+- **remote がある場合**: PRを作成し、人によるマージを待つ。親ブランチへの直接マージやパッチ適用は行わない。
+- **remote が無い場合**: fork元ブランチでローカルマージする。
+- マージを確認し、必要な証拠を退避した後にworktreeを削除する。未マージの作業は削除しない。
 
 ## Important
 
