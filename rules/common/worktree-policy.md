@@ -84,7 +84,7 @@ worktree 作成が承認より前なのは、design doc を書くこと自体が
   - **remote が無い**(`~/.claude` がこれ): fork 元で `git merge --no-ff <branch>` を実行し、
     `ExitWorktree(action: "remove")` で片付ける。PR を出す先が無いので、
     ここに PR を要求していた従来の文言は満たしようがなかった
-- `main` / `master` 以外のブランチは、状況に応じて直接マージしてよい(PR は任意)
+- remote があるリポジトリの変更は、取り込み先が feature branch でも PR と人のマージを経る。remote が無い場合は上記のローカル取り込みに従う
 - PR の作成・更新・マージは明示指示がある場合のみ実行する。例外は `start-issue` でゴールを始めた時で、
   push と PR の作成・更新・状態変更だけが指示に含まれる（マージは含まない。`git-workflow.md`）
 - worktree を作る前に dirty state を解消または退避

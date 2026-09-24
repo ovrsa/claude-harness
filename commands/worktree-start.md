@@ -4,7 +4,7 @@ description: Manual override for worktree creation. The agent normally creates t
 
 # Worktree Start Command
 
-**通常このコマンドは打たない。** grilling が終わり次の動作がファイル書き込みなら、
+**通常このコマンドは打たない。** 必要な判断と実行許可が揃い次の動作がファイル書き込みなら、
 エージェントが自分で worktree を作る(`rules/common/worktree-policy.md`)。
 6ヶ月でこのコマンドがユーザーから打たれた回数は2回、最後は 2026-02-14 だった。
 
@@ -24,7 +24,7 @@ description: Manual override for worktree creation. The agent normally creates t
 
 ## Preconditions
 
-1. `/grill-me` を通過していること(read-only。ここで捨てるタスクに worktree を作らない)
+1. 目的・範囲・成功条件が明確なこと。未確定の判断があれば `/grill-me` で確認する。既存の合意は再利用する
 2. これから**リポジトリ内のファイルを書く**こと。read-only 作業なら worktree は不要
 3. `slug` がチケット/機能を一意に表せること
 4. (Detached Mode のみ)現在の作業ツリーに未コミットの変更がないこと(必要なら先に退避)。既定モードでは `EnterWorktree` 自体が独立した作業ディレクトリを作るため、この前提は適用されない

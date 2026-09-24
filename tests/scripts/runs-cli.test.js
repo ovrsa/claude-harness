@@ -175,43 +175,26 @@ test('trace resolves a run to its transcript paths via session_ids', () => {
   }
 });
 
-test('trace resolves a Codex session by metadata instead of its filename', () => {
-  const dir = createTempDir();
-  try {
-    const runsDir = seedRuns(dir);
-    const codexHome = path.join(dir, 'codex');
-    const sessions = path.join(codexHome, 'sessions', '2026', '09', '24');
-    fs.mkdirSync(sessions, { recursive: true });
-    const trace = path.join(sessions, 'rollout-unrelated-name.jsonl');
-    fs.writeFileSync(trace, JSON.stringify({ type: 'session_meta', payload: { id: 'real' } }) + '\n');
-    fs.writeFileSync(path.join(sessions, 'rollout-real.jsonl'), JSON.stringify({ type: 'session_meta', payload: { id: 'different' } }) + '\n');
-    writeRunMeta({ runsDir, runId: '2026-08-18-newer-task', fields: { session_ids: ['codex-session-real'] } });
-    const result = require('child_process').spawnSync(process.execPath, [path.join(ROOT, 'scripts/runs-cli.js'),
-      'trace', '2026-08-18-newer-task', '--runs-dir', runsDir, '--codex-home', codexHome], { encoding: 'utf8' });
-    assert.strictEqual(result.status, 0, result.stderr);
-    assert.ok(result.stdout.includes(trace), result.stdout);
-    assert.ok(!result.stdout.includes('rollout-real.jsonl'), 'must not trust a matching filename');
-  } finally { cleanup(dir); }
-});
-
-test('trace resolves an archived Codex session', () => {
-  const dir = createTempDir();
-  try {
-    const runsDir = seedRuns(dir);
-    const codexHome = path.join(dir, 'codex');
-    const sessions = path.join(codexHome, 'archived_sessions');
-    fs.mkdirSync(sessions, { recursive: true });
-    const trace = path.join(sessions, 'rollout-unrelated-name.jsonl');
-    fs.writeFileSync(trace, JSON.stringify({ type: 'session_meta', payload: { id: 'real' } }) + '\n');
-    fs.writeFileSync(path.join(sessions, 'rollout-real.jsonl'), JSON.stringify({ type: 'session_meta', payload: { id: 'different' } }) + '\n');
-    writeRunMeta({ runsDir, runId: '2026-08-18-newer-task', fields: { session_ids: ['codex-session-real'] } });
-    const result = require('child_process').spawnSync(process.execPath, [path.join(ROOT, 'scripts/runs-cli.js'),
-      'trace', '2026-08-18-newer-task', '--runs-dir', runsDir, '--codex-home', codexHome], { encoding: 'utf8' });
-    assert.strictEqual(result.status, 0, result.stderr);
-    assert.ok(result.stdout.includes(trace), result.stdout);
-    assert.ok(!result.stdout.includes('rollout-real.jsonl'), 'must not trust a matching filename');
-  } finally { cleanup(dir); }
-});
+for (const layout of ['sessions/2026/09/24', 'archived_sessions']) {
+  test(`trace resolves a Codex session in ${layout} by metadata instead of its filename`, () => {
+    const dir = createTempDir();
+    try {
+      const runsDir = seedRuns(dir);
+      const codexHome = path.join(dir, 'codex');
+      const sessions = path.join(codexHome, ...layout.split('/'));
+      fs.mkdirSync(sessions, { recursive: true });
+      const trace = path.join(sessions, 'rollout-unrelated-name.jsonl');
+      fs.writeFileSync(trace, JSON.stringify({ type: 'session_meta', payload: { id: 'real' } }) + '\n');
+      fs.writeFileSync(path.join(sessions, 'rollout-real.jsonl'), JSON.stringify({ type: 'session_meta', payload: { id: 'different' } }) + '\n');
+      writeRunMeta({ runsDir, runId: '2026-08-18-newer-task', fields: { session_ids: ['codex-session-real'] } });
+      const result = require('child_process').spawnSync(process.execPath, [path.join(ROOT, 'scripts/runs-cli.js'),
+        'trace', '2026-08-18-newer-task', '--runs-dir', runsDir, '--codex-home', codexHome], { encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, result.stderr);
+      assert.ok(result.stdout.includes(trace), result.stdout);
+      assert.ok(!result.stdout.includes('rollout-real.jsonl'), 'must not trust a matching filename');
+    } finally { cleanup(dir); }
+  });
+}
 
 test('trace reports unlinked runs as incomplete in JSON and text', () => {
   const dir = createTempDir();
