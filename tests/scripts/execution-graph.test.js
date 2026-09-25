@@ -23,13 +23,14 @@ let passed = 0;
 function test(name, fn) { fn(); passed++; console.log(`  ✓ ${name}`); }
 function jsonFileLater(name, value) { const file = path.join(root, name); fs.writeFileSync(file, JSON.stringify(value)); return file; }
 function jsonFile(name, value) { return jsonFileLater(name, value); }
-function run(operation, value, ...extra) {
+function run(operation, value, ...extra) { return runInSession({}, operation, value, ...extra); }
+// runtimeEnv replaces every runtime session variable, including the ones of the session running the tests.
+function runInSession(runtimeEnv, operation, value, ...extra) {
   const args = [script, 'graph', operation, '--run-dir', runDir, '--repo', repoDir, '--input', taskFile, ...extra];
   if (value !== undefined) args.push('--graph-input', jsonFile(`${operation}-${Date.now()}-${Math.random()}.json`, value));
   const env = { ...process.env };
-  delete env.CODEX_SESSION_ID;
-  delete env.CODEX_THREAD_ID;
-  delete env.CLAUDE_SESSION_ID;
+  for (const name of ['CLAUDE_SESSION_ID', 'CLAUDE_CODE_SESSION_ID', 'CODEX_SESSION_ID', 'CODEX_THREAD_ID']) delete env[name];
+  Object.assign(env, runtimeEnv);
   const result = spawnSync(process.execPath, args, { encoding: 'utf8', env });
   let json; try { json = JSON.parse(result.stdout); } catch { json = null; }
   return { ...result, json };
@@ -244,6 +245,26 @@ try {
     const r4 = run('create', successLoop, '--run-dir', path.join(root, 'runs', 'success-loop-run'), '--session', 's1', '--permissions', 'repo:read,repo:write');
     assert.notStrictEqual(r4.status, 0, 'a loop needs a success path out, not only a failure path to complete');
     assert.match(r4.stderr, /success loop/);
+  });
+  test('rejects a --session that differs from the running Claude Code or Codex session', () => {
+    const sessionRun = path.join(root, 'runs', 'runtime-session-run');
+    const d = JSON.parse(JSON.stringify(definition)); d.run_id = 'runtime-session-run';
+    const claudeCode = { CLAUDE_CODE_SESSION_ID: '7c010143-8bf0-46be-b12a-e1c43a11ea91' };
+    let r = runInSession(claudeCode, 'create', d, '--run-dir', sessionRun, '--session', 'someone-else', '--permissions', 'repo:read,repo:write');
+    assert.notStrictEqual(r.status, 0); assert.match(r.stderr, /session id must match the current runtime/);
+    assert.ok(!fs.existsSync(path.join(sessionRun, 'graph.json')));
+    r = runInSession(claudeCode, 'create', d, '--run-dir', sessionRun, '--permissions', 'repo:read,repo:write');
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(sessionRun, 'graph.json'))).attempts[0].session_ids, [claudeCode.CLAUDE_CODE_SESSION_ID]);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(sessionRun, 'meta.json'))).session_ids, [claudeCode.CLAUDE_CODE_SESSION_ID]);
+    r = runInSession(claudeCode, 'status', undefined, '--run-dir', sessionRun, '--session', claudeCode.CLAUDE_CODE_SESSION_ID);
+    assert.strictEqual(r.status, 0, r.stderr);
+    // A Codex session started from a Claude Code shell inherits CLAUDE_CODE_SESSION_ID; its own ID still decides.
+    const codexInClaudeCode = { ...claudeCode, CODEX_THREAD_ID: 'thread-1' };
+    r = runInSession(codexInClaudeCode, 'status', undefined, '--run-dir', sessionRun, '--session', claudeCode.CLAUDE_CODE_SESSION_ID);
+    assert.notStrictEqual(r.status, 0); assert.match(r.stderr, /session id must match the current runtime/);
+    r = runInSession(codexInClaudeCode, 'status', undefined, '--run-dir', sessionRun, '--session', 'codex-thread-thread-1');
+    assert.strictEqual(r.status, 0, r.stderr);
   });
 } finally { fs.rmSync(root, { recursive: true, force: true }); }
 console.log(`Results: Passed: ${passed}, Failed: 0`);

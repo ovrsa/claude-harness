@@ -140,6 +140,21 @@ function getRuntimeSessionId(fallback = '') {
 }
 
 /**
+ * Get the ID of the runtime session running this command, for checks against a supplied ID.
+ * Claude Code sets CLAUDE_CODE_SESSION_ID (the transcript UUID) for Bash commands and hooks, but
+ * getRuntimeSessionId does not read it: hooks name session files and Run records from that result.
+ * It is read after the Codex variables, so a Codex session started from a Claude Code shell,
+ * which inherits the variable, still resolves to its own ID.
+ */
+function getCurrentSessionId(fallback = '') {
+  const runtimeSessionId = getRuntimeSessionId();
+  if (runtimeSessionId) return runtimeSessionId;
+
+  const claudeCodeSessionId = String(process.env.CLAUDE_CODE_SESSION_ID || '').trim();
+  return claudeCodeSessionId || fallback;
+}
+
+/**
  * Get short session ID from runtime environment variables.
  * Returns last 8 characters, falls back to project name then 'default'
  */
@@ -550,6 +565,7 @@ module.exports = {
   // Session/Project
   getRuntimeKind,
   getRuntimeSessionId,
+  getCurrentSessionId,
   getSessionIdShort,
   getGitRepoName,
   getProjectName,

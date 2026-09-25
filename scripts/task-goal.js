@@ -18,7 +18,7 @@ const { prepareGoal, lineDiff, parseIssue } = require('./lib/task-goal');
 const executionGraph = require('./lib/execution-graph');
 const { checkTaskCompletion, taskFingerprint } = require('./lib/task-completion');
 const { writeRunMeta, captureEvidence } = require('./lib/run-record');
-const { getRuntimeSessionId } = require('./lib/utils');
+const { getCurrentSessionId } = require('./lib/utils');
 
 // 3 is not an error: the issue changed after the goal was first built, and a person must
 // accept the diff before the goal changes.
@@ -105,12 +105,12 @@ function graphMain(argv) {
   const operation = argv.shift();
   let runDir = null;
   let inputFile = null;
-  let session = getRuntimeSessionId() || null;
+  const runtimeSession = getCurrentSessionId() || null;
+  let session = runtimeSession;
   let permissions = [];
   let subjectFingerprint = null;
   let repo = null;
   let taskInputFile = null;
-  const runtimeSession = getRuntimeSessionId() || null;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--run-dir' && argv[i + 1]) runDir = argv[++i];
     else if (argv[i] === '--graph-input' && argv[i + 1]) inputFile = argv[++i];

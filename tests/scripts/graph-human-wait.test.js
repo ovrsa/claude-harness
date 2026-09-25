@@ -46,7 +46,7 @@ function run(operation, runDir, value, ...extra) {
     args.push('--graph-input', file);
   }
   const env = { ...process.env };
-  for (const name of ['CLAUDE_SESSION_ID', 'CODEX_SESSION_ID', 'CODEX_THREAD_ID']) delete env[name];
+  for (const name of ['CLAUDE_SESSION_ID', 'CLAUDE_CODE_SESSION_ID', 'CODEX_SESSION_ID', 'CODEX_THREAD_ID']) delete env[name];
   const result = spawnSync(process.execPath, args, { encoding: 'utf8', env });
   let json = null;
   try { json = JSON.parse(result.stdout); } catch { /* asserted by the caller */ }
