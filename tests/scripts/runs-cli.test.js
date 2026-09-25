@@ -166,10 +166,132 @@ test('trace resolves a run to its transcript paths via session_ids', () => {
       '--runs-dir', runsDir,
       '--transcript-dir', path.join(dir, 'projects'),
     ]));
-    assert.strictEqual(code, 0);
+    // One of two transcripts is not a success: the reader would take a partial trace for the whole run.
+    assert.strictEqual(code, 2, out);
+    assert.ok(/partial/.test(out), `the run must be called partial, got: ${out}`);
     assert.ok(out.includes('sess-new-1.jsonl'), 'the existing transcript must be reported');
     // The missing one must be named as missing rather than silently omitted.
     assert.ok(out.includes('sess-new-2'), 'a session with no transcript should still be listed');
+  } finally {
+    cleanup(dir);
+  }
+});
+
+/** A run whose only session is `sessionId`, for trace tests. */
+function seedTraceRun(dir, runId, sessionIds) {
+  const runsDir = path.join(dir, 'runs');
+  writeRunMeta({ runsDir, runId, fields: { branch: runId } });
+  for (const sessionId of sessionIds) writeRunMeta({ runsDir, runId, fields: {}, addSessionId: sessionId });
+  return runsDir;
+}
+
+/** A Codex rollout file. Codex writes session_meta first; `metaId` lets a test make it disagree with the name. */
+function seedCodexRollout(codexHome, folder, id, { metaId = id, lines = [] } = {}) {
+  const dir = path.join(codexHome, folder);
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `rollout-2026-09-24T10-00-00-${id}.jsonl`);
+  const meta = { type: 'session_meta', payload: { id: metaId, cwd: '/tmp', originator: 'codex-tui' } };
+  fs.writeFileSync(file, [meta, ...lines].map(line => JSON.stringify(line)).join('\n') + '\n');
+  return file;
+}
+
+const CODEX_ID = '01a0d3b1-d208-7fc1-ae99-4b0ec2bab438';
+
+test('trace resolves a Codex session id to its rollout under sessions/', () => {
+  const dir = createTempDir();
+  try {
+    const runsDir = seedTraceRun(dir, '2026-09-24-codex', [`codex-session-${CODEX_ID}`]);
+    const codexHome = path.join(dir, 'codex');
+    const file = seedCodexRollout(codexHome, path.join('sessions', '2026', '09', '24'), CODEX_ID);
+    // Identity comes from session_meta, not the file name: this one only borrows the id in its name.
+    const impostor = seedCodexRollout(codexHome, path.join('sessions', '2026', '09', '25'), CODEX_ID, { metaId: '01a0ffff-0000-7000-8000-000000000000' });
+    // A rollout cut off after its first record has no trailing newline; session_meta is still whole.
+    const cutOff = path.join(codexHome, 'sessions', '2026', '09', '26', `rollout-2026-09-26T10-00-00-${CODEX_ID}.jsonl`);
+    fs.mkdirSync(path.dirname(cutOff), { recursive: true });
+    fs.writeFileSync(cutOff, JSON.stringify({ type: 'session_meta', payload: { id: CODEX_ID } }));
+    const { code, out } = capture(() => runsCli([
+      'trace', '2026-09-24-codex', '--runs-dir', runsDir,
+      '--transcript-dir', path.join(dir, 'projects'), '--codex-home', codexHome,
+    ]));
+    assert.strictEqual(code, 0, out);
+    assert.ok(/resolved/.test(out), `the run must be called resolved, got: ${out}`);
+    assert.ok(out.includes(file), `the rollout must be reported, got: ${out}`);
+    assert.ok(!out.includes(impostor), 'a rollout whose session_meta names another session must not be reported');
+    assert.ok(out.includes(cutOff), `a rollout without a trailing newline must still resolve, got: ${out}`);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test('trace resolves archived Codex rollouts and the codex-thread form of the id', () => {
+  const dir = createTempDir();
+  try {
+    // CODEX_THREAD_ID carries the same id as session_meta (seen in real rollouts), recorded as codex-thread-<id>.
+    const threadId = '019d9f09-64e9-7f53-905c-d89dce56cef2';
+    // The same id can reach a run in both forms; each must resolve rather than one shadowing the other.
+    const runsDir = seedTraceRun(dir, '2026-09-24-archived', [`codex-session-${CODEX_ID}`, `codex-thread-${threadId}`, `codex-thread-${CODEX_ID}`]);
+    const codexHome = path.join(dir, 'codex');
+    const archived = seedCodexRollout(codexHome, 'archived_sessions', CODEX_ID);
+    const thread = seedCodexRollout(codexHome, path.join('sessions', '2026', '04', '18'), threadId);
+    const { code, out } = capture(() => runsCli([
+      'trace', '2026-09-24-archived', '--runs-dir', runsDir,
+      '--transcript-dir', path.join(dir, 'projects'), '--codex-home', codexHome,
+    ]));
+    assert.strictEqual(code, 0, out);
+    assert.ok(out.includes(archived), `the archived rollout must be reported, got: ${out}`);
+    assert.ok(out.includes(thread), `the codex-thread id must resolve, got: ${out}`);
+    assert.ok(/resolved \(3\/3 sessions\)/.test(out), `every form of the id must resolve, got: ${out}`);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test('trace tells an unlinked run from a missing one, and neither exits 0', () => {
+  const dir = createTempDir();
+  try {
+    const runsDir = seedTraceRun(dir, '2026-09-24-unlinked', []);
+    seedTraceRun(dir, '2026-09-24-missing', [`codex-session-${CODEX_ID}`, 'claude-gone']);
+    const args = ['--runs-dir', runsDir, '--transcript-dir', path.join(dir, 'projects'), '--codex-home', path.join(dir, 'codex')];
+    const unlinked = capture(() => runsCli(['trace', '2026-09-24-unlinked', ...args]));
+    assert.strictEqual(unlinked.code, 2, unlinked.out);
+    assert.ok(/unlinked/.test(unlinked.out), `got: ${unlinked.out}`);
+    const missing = capture(() => runsCli(['trace', '2026-09-24-missing', ...args]));
+    assert.strictEqual(missing.code, 2, missing.out);
+    assert.ok(/missing/.test(missing.out), `got: ${missing.out}`);
+    assert.ok(missing.out.includes(`codex-session-${CODEX_ID}`) && missing.out.includes('claude-gone'), 'each missing session must be named');
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test('trace shows the models each transcript used and the lines where they changed', () => {
+  const dir = createTempDir();
+  try {
+    const runsDir = seedTraceRun(dir, '2026-09-24-mixed', ['claude-mixed', `codex-session-${CODEX_ID}`]);
+    const projects = path.join(dir, 'projects', 'proj-a');
+    fs.mkdirSync(projects, { recursive: true });
+    const assistant = model => ({ type: 'assistant', message: { role: 'assistant', model, content: [] } });
+    fs.writeFileSync(path.join(projects, 'claude-mixed.jsonl'), [
+      { type: 'user', message: { role: 'user', content: 'go' } },
+      assistant('claude-opus-5-5'), assistant('claude-opus-5-5'), assistant('claude-sonnet-5'), assistant('<synthetic>'),
+    ].map(line => JSON.stringify(line)).join('\n') + '\n');
+    const codexHome = path.join(dir, 'codex');
+    const turn = model => ({ type: 'turn_context', payload: { model } });
+    seedCodexRollout(codexHome, path.join('sessions', '2026', '09', '24'), CODEX_ID, {
+      lines: [turn('gpt-6-sol'), { type: 'response_item', payload: {} }, turn('gpt-6-sol'), turn('gpt-6-mini')],
+    });
+    const { code, out } = capture(() => runsCli([
+      'trace', '2026-09-24-mixed', '--runs-dir', runsDir,
+      '--transcript-dir', path.join(dir, 'projects'), '--codex-home', codexHome,
+    ]));
+    assert.strictEqual(code, 0, out);
+    // Line numbers are 1-based lines of the JSONL file, so a reader can jump straight there.
+    for (const expected of ['line 2: model=claude-opus-5-5', 'line 4: model=claude-sonnet-5', 'line 2: model=gpt-6-sol', 'line 5: model=gpt-6-mini']) {
+      assert.ok(out.includes(expected), `expected "${expected}" in: ${out}`);
+    }
+    assert.ok(!out.includes('line 3: model=claude-opus-5-5'), 'an unchanged model is not repeated');
+    assert.ok(!out.includes('<synthetic>'), 'Claude Code placeholder messages are not a model');
+    assert.ok(/models: claude-opus-5-5, claude-sonnet-5, gpt-6-sol, gpt-6-mini/.test(out), `the run must list every model it used, got: ${out}`);
   } finally {
     cleanup(dir);
   }

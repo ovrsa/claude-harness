@@ -18,7 +18,10 @@ Use this command to read what actually happened on a past task.
    - `show <run-id>` — gate evidence bodies, printed verbatim
    - `show <run-id> --json` — the same record, machine-readable
    - `diff <run-a> <run-b>` — which gates and evidence differ
-   - `trace <run-id>` — the raw JSONL transcript paths for that run's sessions
+   - `trace <run-id>` — the raw JSONL transcript paths for that run's sessions: Claude Code's
+     `projects/`, and Codex's `sessions/` and `archived_sessions/` matched by session_meta.
+     It lists the model at each line where it changed, and exits 2 when the run is unlinked,
+     missing or only partly resolved
 3. When diagnosing a failure, read the trace, not just the evidence summary.
 4. Report the run id alongside any conclusion so it can be re-checked.
 
@@ -26,8 +29,8 @@ Use this command to read what actually happened on a past task.
 
 - **Is**: gate evidence bodies (`verification` / `review` / `observation`), the branch,
   the session ids, which gates fired and when
-- **Is not**: the raw tool calls. Those stay in `projects/**/*.jsonl` and are never
-  copied. `trace` resolves a run to them
+- **Is not**: the raw tool calls. Those stay in the runtimes' own logs (`projects/**/*.jsonl`,
+  Codex rollouts) and are never copied. `trace` resolves a run to them
 - **Is not**: anything before 2026-08-18. Earlier evidence was written into worktrees
   that were then removed
 
