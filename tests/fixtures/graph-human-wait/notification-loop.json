@@ -1,0 +1,13 @@
+{
+  "source": "agent-daily-digest Portfolio Graph run, 2026-09-18 02:13-08:26 JST. Task #2 (Runtime Spike) waited for a person's approval while the Coordinator and Worker kept waking: 74 Coordinator checks, 36 Worker re-asks and 36 heartbeats. Reduced to one cycle of runtime-neutral events, with no conversation text, credentials or runtime IDs.",
+  "interval_minutes": 10,
+  "cycle": [
+    { "type": "timeout", "what": "the wait for the answer timed out" },
+    { "type": "task_notification", "what": "a completion notification reached the Worker" },
+    { "type": "heartbeat", "what": "the Worker reported it was alive" },
+    { "type": "question_reposted", "what": "the Worker asked the same question again" },
+    { "type": "read_receipt", "what": "the Coordinator marked the notification read" },
+    { "type": "session_started", "what": "a session started in response" },
+    { "type": "resume_requested", "what": "an instruction to resume, without the answer" }
+  ]
+}

@@ -68,6 +68,12 @@ try {
     assert.match(result.json.revision, /^[0-9a-f]{12}$/);
   });
 
+  test('the goal stops instead of running on while its Graph waits for a human answer', () => {
+    const { goal } = run(repo(), childInput()).json;
+    const stop = goal.slice(goal.indexOf('【停止】次の'), goal.indexOf('【制約】'));
+    assert.ok(stop.includes('Graph が人の回答待ち'), stop);
+  });
+
   test('a resumed task with the same spec gets the same revision back', () => {
     const dir = repo();
     const first = run(dir, childInput());

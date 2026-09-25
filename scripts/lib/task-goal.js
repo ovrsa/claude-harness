@@ -115,7 +115,7 @@ function buildGoal({ task, doc, parent, repo, branch, revision }) {
     `(4) node ~/.claude/scripts/task-completion.js --repo ${repo} が終了コード 0`,
     `(5) ${branch ? `${branch} の PR` : '作業ブランチの PR'} が Ready for review で、本文は変更理由・変わる動作・検証結果・残る懸念・リンクだけ。`,
     '【停止】次のどれかに当たったら作業をやめ、PR を Draft のまま（PR が無ければ Issue に）試したことと必要な判断をコメントし、会話で未完了と伝える:',
-    `同じ原因で3回連続して失敗 / このゴールで${TURN_LIMIT}ターンに到達 / 受け入れ条件や範囲の変更が必要 / 権限や外部依存で進めない。`,
+    `同じ原因で3回連続して失敗 / このゴールで${TURN_LIMIT}ターンに到達 / 受け入れ条件や範囲の変更が必要 / 権限や外部依存で進めない / Graph が人の回答待ち（task-goal.js graph status が waiting）。`,
     '【制約】マージしない。次のタスクに着手しない。人の確認なしにこの条件を変えない。',
     nonGoals.length ? `対象外: ${nonGoals.join('; ')}。` : '',
     doc.constraints.items.length ? `制約: ${doc.constraints.items.join('; ')}。` : '',

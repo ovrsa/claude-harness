@@ -23,6 +23,9 @@ const { getRuntimeSessionId } = require('./lib/utils');
 // 3 is not an error: the issue changed after the goal was first built, and a person must
 // accept the diff before the goal changes.
 const EXIT_SPEC_CHANGED = 3;
+// 4 is not an error either: the event did not wake the waiting Graph and was not stored. A runtime
+// starts an LLM session only on exit 0 with `wake: true`.
+const EXIT_HOLD = 4;
 
 function readInput(file) {
   const input = JSON.parse(fs.readFileSync(file === '-' ? 0 : file, 'utf8'));
@@ -167,6 +170,8 @@ function graphMain(argv) {
   }
   const options = { runDir, session, permissions, subjectFingerprint, branch: taskInput.branch || null, completion: operation === 'succeed' ? input.task_completion : null };
   let graph;
+  let wake;
+  let reason;
   if (operation === 'status') {
     graph = executionGraph.readGraph(runDir);
     executionGraph.assertReadyGatesFresh(graph, runDir, subjectFingerprint);
@@ -207,7 +212,7 @@ function graphMain(argv) {
       else if (operation === 'wait') graph = executionGraph.wait(runDir, input);
       else if (operation === 'resume') graph = executionGraph.resume(runDir, input, options);
       else if (operation === 'revalidate') graph = executionGraph.revalidate(runDir, subjectFingerprint, checkTaskCompletion(repo), options);
-      else if (operation === 'ingest') graph = executionGraph.ingest(runDir, input);
+      else if (operation === 'ingest') ({ graph, wake, reason } = executionGraph.ingest(runDir, input));
       else if (operation === 'revise') graph = executionGraph.revise(runDir, input.definition, input.event_id, options);
       else throw new Error(`unknown graph operation: ${operation}`);
     } finally {
@@ -215,7 +220,11 @@ function graphMain(argv) {
       fs.unlinkSync(lock);
     }
   }
-  console.log(JSON.stringify(executionGraph.result(graph), null, 2));
+  if (reason) {
+    console.log(JSON.stringify({ status: 'HOLD', wake: false, reason, ...executionGraph.result(graph) }, null, 2));
+    return EXIT_HOLD;
+  }
+  console.log(JSON.stringify({ ...executionGraph.result(graph), ...(operation === 'ingest' ? { wake } : {}) }, null, 2));
   return 0;
 }
 
