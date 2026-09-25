@@ -21,7 +21,7 @@ fs.writeFileSync(path.join(repoDir, 'work.js'), 'module.exports = 1;\n');
 spawnSync('git', ['-C', repoDir, 'add', 'work.js', '.claude/tracker.json']);
 spawnSync('git', ['-C', repoDir, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'initial']);
 
-const taskInput = { tracker: 'github', branch: 'issue-1', task: { ref: '#1', title: 'spike', body: '## 目的\n人の承認を待つ。\n\n## 受け入れ条件\n- [ ] 承認後に続ける。\n\n## 検証方法\n- テストを実行する。\n' } };
+const taskInput = { tracker: 'github', branch: 'issue-1', task: { ref: '#1', title: 'spike', body: '## 目的\n人の承認を待つ。\n\n## 受け入れ条件\n- [ ] 承認後に続ける。\n\n## 検証方法\n- テストを実行する。\n\n## Graph\n- 型: 個別（理由: テストが定義の JSON を渡す）\n' } };
 const taskFile = path.join(root, 'task.json');
 fs.writeFileSync(taskFile, JSON.stringify(taskInput));
 const revision = prepareGoal({ task: taskInput.task, repo: repoDir, branch: taskInput.branch }).revision;

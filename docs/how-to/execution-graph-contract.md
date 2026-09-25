@@ -66,6 +66,30 @@ Orca ID、コマンド名を永続形式に入れない。
 追記する。途中で停止してイベントが欠けた場合は snapshot の `last_transition` から1回だけ補完する。
 既存 ID の追記は無視する。実装は単一 writer を保証するか、`revision` の比較交換で同時更新を拒否する。
 
+## Issue の Graph 節
+
+Graph を使うかは、起票の時に Task Issue の `Graph` 節で決める。書き方は
+`templates/task-issue-template.md`、読み取りと検査は `scripts/lib/task-goal.js` の `parseGraph()` にある。
+`task-goal.js` はこの節の無い Issue と、型を読めない Issue を `INVALID` にする。節は仕様の一部なので、
+型や上限を変えると仕様 revision も変わる。
+
+| 型 | `graph create` |
+|---|---|
+| なし | 拒否する。ゴールの停止条件だけで進める |
+| 標準 | `--graph-input` を受け取らず、Graph 節から定義を作る |
+| 個別（理由: 〜） | これまでどおり `--graph-input` の定義 JSON から作る |
+
+標準の定義は `scripts/lib/execution-graph.js` の `standardDefinition()` が作る。形は
+implement → verify → review → complete で、verify と review の失敗は fix を経て verify に戻る。
+verify と review の `max_attempts` は Graph 節の上限（省略時は検証3回・レビュー2回）、fix はその反復に足りる数、
+`max_total_attempts` は各 node の上限の合計である。implement と fix は `work_recorded` event、
+verify と review は `task` を対象とする evidence で成功する。
+
+人の判断が「実装の前: 〈質問〉」なら、先頭に人が答える `ask` node を置き、`create` の直後にその質問で
+待つ（`standardWait()`）。回答は `human_answer` event の `payload.answer` に入れ、`ingest` → `resume` →
+`succeed` の順で `ask` を終える。ほかの時点で聞く Graph は型を個別にする。
+`revise` は型によらず、新しい全定義を `--graph-input` で受け取る。
+
 ## 識別子と関係
 
 | 識別子 | 意味 | 安定範囲 |

@@ -91,9 +91,17 @@ GitHub の認証もサンドボックスの中では効かないことがある�
 文面だけで【停止】に当たると分かる時（受け入れ条件が対象外や制約とぶつかる、など）は、ゴールを始めずに
 食い違いと必要な判断を示して止まる。
 
-Execution Graph を使う時は、`task-goal.js` が返した仕様 revision と既存 Run を
+Graph を使うかは、Issue の `Graph` 節の型で起票の時に決まっている。
+
+| 型 | 着手の時にすること |
+|---|---|
+| なし | Graph を作らない。ゴールだけで進める |
+| 標準 | `graph create` を `--graph-input` なしで呼ぶ。Graph は Graph 節から作られる。人の判断が「実装の前: 〜」なら、作った直後に人の回答待ちになる |
+| 個別 | 定義 JSON を `--graph-input` で渡す。定義は Issue の受け入れ条件と同じ順の `requirement_ids` を持つ |
+
+Graph を使う時は、`task-goal.js` が返した仕様 revision と既存 Run を
 [`docs/how-to/execution-graph-contract.md`](../../docs/how-to/execution-graph-contract.md) の接続点に渡す。
-定義 JSON は Issue の受け入れ条件と同じ順の `requirement_ids` を持つ。Graph は node を勝手に実行せず、
+Graph は node を勝手に実行せず、
 次の作業と成功条件を返す。どの操作でも現在の Issue 入力と git repo を渡し、仕様変更と成果物変更を検査する。
 `task_id` は手入力のリポジトリ名を信用せず、1 で解決した tracker 宣言の repository identity と Issue ref に一致させる。
 `node ~/.claude/scripts/runs-cli.js list` と `show <run-id> --json` で Run を探し、
@@ -102,7 +110,8 @@ Execution Graph を使う時は、`task-goal.js` が返した仕様 revision と
 重複しない `run_id` を選んで作成する。絶対 `--run-dir` と task 入力 JSON を次のセッションへ渡す。
 
 ```bash
-node ~/.claude/scripts/task-goal.js graph create --run-dir <runs/run-id の絶対パス> --repo . --input <task.json> --graph-input <definition.json> --permissions repo:read,repo:write,tracker:read,network:read
+node ~/.claude/scripts/task-goal.js graph create --run-dir <runs/run-id の絶対パス> --repo . --input <task.json> --permissions repo:read,repo:write,tracker:read,network:read
+# 型が個別の時だけ、上の行に --graph-input <definition.json> を足す
 node ~/.claude/scripts/task-goal.js graph status --run-dir <runs/run-id の絶対パス> --repo . --input <task.json>
 ```
 

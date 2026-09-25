@@ -397,4 +397,32 @@ function revise(runDir, definition, eventId, options = {}) {
 }
 function result(graph) { return { state: graph.state, revision: graph.revision, graph_id: graph.graph_id, wait: graph.wait, next: instruction(graph) }; }
 
-module.exports = { createGraph, readGraph, transition, wait, resume, ingest, revise, revalidate, result, validateDefinition, definitionRevision, assertCurrentCompletion, assertReadyGatesFresh };
+const STANDARD_WAIT_ID = 'ask';
+/**
+ * The Graph an issue asks for with "型: 標準": implement, verify with a repair loop, then review.
+ * A question the issue names for "実装の前" becomes a human node in front of implementation.
+ */
+function standardDefinition({ taskId, runId, source, revision, requirementIds, limits, question }) {
+  const node = (id, kind, role, fields) => ({ id, kind, role, required: true, requirement_ids: requirementIds, depends_on: [], authority: 'agent', permissions: ['repo:read'], max_attempts: 1, ...fields });
+  const recorded = id => [{ type: 'event', event_type: 'work_recorded', correlation_id: id }];
+  const evidence = kind => [{ type: 'evidence', kind, subject: 'task', revision_selector: 'current_subject' }];
+  const nodes = [
+    node('implement', 'implementation', 'action', { depends_on: question ? [STANDARD_WAIT_ID] : [], permissions: ['repo:write'], success_when: recorded('implement'), success_to: 'verify' }),
+    node('verify', 'verification', 'gate', { depends_on: ['implement'], max_attempts: limits.verify, success_when: evidence('verification'), success_to: 'review', failure_to: 'fix' }),
+    // Every verification after the first follows a fix, so fixes never outnumber the retries.
+    node('fix', 'fix', 'action', { required: false, depends_on: ['implement'], permissions: ['repo:write'], max_attempts: Math.max(1, limits.verify - 1), success_when: recorded('fix'), success_to: 'verify' }),
+    node('review', 'review', 'gate', { depends_on: ['verify'], max_attempts: limits.review, success_when: evidence('review'), success_to: 'complete', failure_to: 'fix' }),
+  ];
+  if (question) nodes.unshift(node(STANDARD_WAIT_ID, 'question', 'action', { authority: 'human', permissions: [], success_when: [{ type: 'event', event_type: 'human_answer', correlation_id: STANDARD_WAIT_ID }], success_to: 'implement' }));
+  return {
+    schema_version: 1, graph_id: taskId, task_id: taskId, run_id: runId, spec: { source, revision },
+    limits: { max_total_attempts: nodes.reduce((sum, item) => sum + item.max_attempts, 0), max_same_cause_failures: 3 },
+    requirement_ids: requirementIds, nodes,
+  };
+}
+/** The wait a standard Graph enters at once when the issue named a question for before implementation. */
+function standardWait(question) {
+  return { wait_id: STANDARD_WAIT_ID, reason: 'human_decision', question, allowed_actors: [{ kind: 'human', id: 'operator' }], resume_on: [{ type: 'human_answer', correlation_id: STANDARD_WAIT_ID, required_fields: ['answer'] }], resume_mode: 'continue_attempt' };
+}
+
+module.exports = { createGraph, readGraph, transition, wait, resume, ingest, revise, revalidate, result, validateDefinition, definitionRevision, assertCurrentCompletion, assertReadyGatesFresh, standardDefinition, standardWait };

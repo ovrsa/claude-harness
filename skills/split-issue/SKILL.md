@@ -62,7 +62,7 @@ gh api -X POST repos/<owner/repo>/issues/<子>/dependencies/blocked_by -F issue_
 他の管理先でも同じ本文を使い、親子と依存はその管理先の機能で結ぶ。
 
 - 親 Issue の本文は変えず、閉じない
-- 分割しない場合は子 Issue を作らない。親 Issue の本文に `受け入れ条件` と `検証方法` の節があるかを
+- 分割しない場合は子 Issue を作らない。親 Issue の本文に `受け入れ条件`・`検証方法`・`Graph` の節があるかを
   `--check` で確かめ、足りなければ足す案を示す（本文を変えるのは人の確認の後）
 
 ## 5. 伝える
