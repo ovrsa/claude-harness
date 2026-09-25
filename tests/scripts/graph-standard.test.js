@@ -76,6 +76,7 @@ try {
     const defaultNodes = Object.fromEntries(saved(defaults).nodes.map(node => [node.id, node]));
     assert.strictEqual(defaultNodes.verify.max_attempts, 3);
     assert.strictEqual(defaultNodes.review.max_attempts, 2);
+    assert.strictEqual(defaultNodes.fix.max_attempts, 2, 'each verification retry follows one fix');
   });
 
   test('a question for before implementation starts the Graph waiting on a human node', () => {

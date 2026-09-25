@@ -86,8 +86,8 @@ verify と review の `max_attempts` は Graph 節の上限（省略時は検証
 verify と review は `task` を対象とする evidence で成功する。
 
 人の判断が「実装の前: 〈質問〉」なら、先頭に人が答える `ask` node を置き、`create` の直後にその質問で
-待つ（`standardWait()`）。回答は `human_answer` event の `payload.answer` に入れ、`ingest` → `resume` →
-`succeed` の順で `ask` を終える。ほかの時点で聞く Graph は型を個別にする。
+待つ（`standardWait()`）。回答は actor が `{"kind":"human","id":"operator"}` の `human_answer` event で、
+`payload.answer` に入れる。`ingest` → `resume` → `succeed` の順で `ask` を終える。ほかの時点で聞く Graph は型を個別にする。
 `revise` は型によらず、新しい全定義を `--graph-input` で受け取る。
 
 ## 識別子と関係

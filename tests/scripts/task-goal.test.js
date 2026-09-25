@@ -130,9 +130,12 @@ try {
     for (const [lines, reason] of [
       [null, /Graph/],
       ['- 型: 並列', /型/],
+      ['- Type: nonexistent', /型/],
       ['- 型: 個別', /理由/],
       ['- 型: 標準\n- 人の判断: レビューの前: 公開してよいか', /実装の前/],
       ['- 型: 標準\n- 上限: 検証 0回 / レビュー 2回', /上限/],
+      ['- 型: 標準\n- 上限: 検証 -1回 / レビュー 2回', /上限/],
+      ['- 型: 標準\n- 上限: 検証 三回 / レビュー 2回', /上限/],
     ]) {
       const result = run(dir, withGraph(lines), '--check');
       assert.strictEqual(result.status, 1, `${lines}: ${result.stdout}`);

@@ -77,6 +77,8 @@ function parseIssue(body) {
 const blockText = block => [...block.items, ...block.notes].join(' ');
 
 const startsWithAny = (text, aliases) => aliases.find(alias => text.toLowerCase().startsWith(alias.toLowerCase()));
+/** "なし（理由）" is なし, but "nonexistent" is not "none": a value ends at a space, a bracket or the end. */
+const isValue = (text, aliases) => aliases.some(alias => new RegExp(`^${alias}(?=$|[\\s（(])`, 'i').test(text));
 
 /** "上限: 検証 3回" → the text after "<alias>:", or undefined when the line has another key. */
 function valueAfter(text, aliases) {
@@ -98,7 +100,7 @@ function parseGraph(block) {
     }
   }
   if (fields.type === undefined) return { issues: ['Graph の節が無いか、型の行が無い（型: なし / 標準 / 個別（理由: 〜））'] };
-  const type = Object.keys(GRAPH_TYPES).find(name => startsWithAny(fields.type, GRAPH_TYPES[name]));
+  const type = Object.keys(GRAPH_TYPES).find(name => isValue(fields.type, GRAPH_TYPES[name]));
   if (!type) return { issues: [`Graph の型は「なし」「標準」「個別（理由: 〜）」のどれか: ${fields.type}`] };
   if (type === 'none') return { plan: { type }, issues: [] };
   if (type === 'custom') {
@@ -110,16 +112,20 @@ function parseGraph(block) {
   const issues = [];
   const limits = { ...DEFAULT_LIMITS };
   if (fields.limits !== undefined) {
-    const counts = [['verify', /(?:検証|verification)\s*(\d+)/i], ['review', /(?:レビュー|review)\s*(\d+)/i]];
-    let matched = 0;
-    for (const [name, pattern] of counts) {
-      const match = fields.limits.match(pattern);
-      if (match) { limits[name] = Number(match[1]); matched++; }
+    // A count that is named but unreadable is refused, never replaced by the default.
+    let named = 0;
+    let unreadable = false;
+    for (const [name, keyword] of [['verify', '(?:検証|verification)'], ['review', '(?:レビュー|review)']]) {
+      if (!new RegExp(keyword, 'i').test(fields.limits)) continue;
+      named++;
+      const match = fields.limits.match(new RegExp(`${keyword}\\s*(-?\\d+)`, 'i'));
+      if (match) limits[name] = Number(match[1]);
+      else unreadable = true;
     }
-    if (!matched || limits.verify < 1 || limits.review < 1) issues.push(`Graph の上限は「検証 N回 / レビュー M回」で、どちらも1回以上: ${fields.limits}`);
+    if (!named || unreadable || limits.verify < 1 || limits.review < 1) issues.push(`Graph の上限は「検証 N回 / レビュー M回」で、どちらも1回以上: ${fields.limits}`);
   }
   let question = null;
-  if (fields.human !== undefined && !startsWithAny(fields.human, NO_HUMAN_DECISION)) {
+  if (fields.human !== undefined && !isValue(fields.human, NO_HUMAN_DECISION)) {
     question = valueAfter(fields.human, BEFORE_IMPLEMENTATION) || null;
     if (!question) issues.push('標準型で扱える人の判断は「なし」か「実装の前: 〈何を聞くか〉」。ほかの時点で聞くなら型を個別にする');
   }
