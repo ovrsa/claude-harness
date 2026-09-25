@@ -146,15 +146,17 @@ try {
     const { runDir, attemptId } = pausedRun('duplicate-answers');
     const runtime = fakeRuntime(runDir);
     const first = answer(attemptId, 'answer-1');
+    runtime.deliver(answer('attempt-of-an-earlier-run', 'answer-stale'));
     runtime.deliver(first);
     runtime.deliver(first);
     runtime.deliver(answer(attemptId, 'answer-2'));
-    runtime.deliver(answer('attempt-of-an-earlier-run', 'answer-stale'));
     assert.strictEqual(runtime.started.length, 1);
+    assert.deepStrictEqual(runtime.started.map(event => event.event_id), ['answer-1']);
     const [resumed] = runtime.runStarted();
     assert.strictEqual(resumed.status, 0, resumed.stderr);
     runtime.deliver(answer(attemptId, 'answer-after-resume'));
-    assert.strictEqual(runtime.started.length, 1);
+    runtime.deliver({ event_id: 'work-1', type: 'work_recorded', correlation_id: 'implement', attempt_id: attemptId, actor: { kind: 'agent', id: 'session-1' }, occurred_at: '2026-09-18T09:05:00Z', payload: {} });
+    assert.strictEqual(runtime.started.length, 1, 'events of the running session never start another');
     const graph = JSON.parse(fs.readFileSync(path.join(runDir, 'graph.json'), 'utf8'));
     assert.strictEqual(graph.attempts.length, 1, 'the paused attempt continues; no second attempt runs');
   });
@@ -178,10 +180,11 @@ try {
     assert.throws(() => assertStillPaused(runDir, runtime, before), /sessions started without an answer/);
   });
 
-  test('a resume event of another kind does not stand in for the answer', () => {
+  test('a resume event of another kind, or an answer from someone other than the operator, does not stand in for the answer', () => {
     const { runDir, attemptId } = pausedRun('other-kind');
     const runtime = fakeRuntime(runDir);
     runtime.deliver({ ...answer(attemptId, 'granted'), type: 'permission_granted' });
+    runtime.deliver({ ...answer(attemptId, 'self-answer'), actor: { kind: 'agent', id: 'worker' } });
     assert.strictEqual(runtime.started.length, 0);
     assert.strictEqual(run('status', runDir).json.state, 'waiting');
   });
