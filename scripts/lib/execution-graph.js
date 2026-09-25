@@ -334,24 +334,40 @@ function resume(runDir, event, options = {}) {
   else { pair.attempt.state = 'cancelled'; pair.attempt.ended_at = now(); graph.current = []; startAttempt(graph, pair.node.id, options.session, options.subjectFingerprint); }
   return save(runDir, graph, before, `resume:${event.event_id}`);
 }
+/**
+ * Why an event does not wake a waiting Graph, or null when it is the first complete answer to the
+ * wait. Notifications, timeouts and heartbeats have no resume rule, so they land here too.
+ */
+function holdReason(graph, event, existing) {
+  const w = graph.wait;
+  const rule = w.resume_on.find(r => r.type === event.type && r.correlation_id === event.correlation_id);
+  if (!rule) return `${event.type} does not resume ${w.wait_id}`;
+  if (event.attempt_id !== w.attempt_id) return 'event belongs to another attempt';
+  if (!w.allowed_actors.some(actor => actor.kind === event.actor.kind && actor.id === event.actor.id)) return 'event actor is not allowed';
+  const missing = (rule.required_fields || []).find(field => event.payload[field] === null || event.payload[field] === undefined || event.payload[field] === '');
+  if (missing) return `missing required field ${missing}`;
+  if (existing.some(row => row.correlation_id === w.wait_id && row.attempt_id === w.attempt_id && !graph.consumed_event_ids.includes(row.event_id))) return 'an answer is already waiting to resume this attempt';
+  if (graph.consumed_event_ids.includes(event.event_id) || existing.some(row => row.event_id === event.event_id)) return 'event id was already used';
+  return null;
+}
 function ingest(runDir, event) {
   const graph = recover(runDir);
   if (!event || !event.event_id || !event.type || !event.correlation_id || !event.attempt_id || !event.actor?.kind || !event.actor?.id || !event.occurred_at || !event.payload || typeof event.payload !== 'object') fail('event envelope is incomplete');
-  if (graph.consumed_event_ids.includes(event.event_id)) fail('event already consumed');
   const file = paths(runDir).events;
   const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map(line => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean) : [];
-  if (existing.some(row => row.event_id === event.event_id)) fail('event id already exists');
   if (graph.state === 'waiting') {
-    const w = graph.wait;
-    if (!RESUME_EVENTS.has(event.type) || event.correlation_id !== w.wait_id || event.attempt_id !== w.attempt_id || !w.allowed_actors.some(actor => actor.kind === event.actor.kind && actor.id === event.actor.id)) fail('event does not match current wait');
+    const reason = holdReason(graph, event, existing);
+    if (reason) return { graph, wake: false, reason };
   } else {
+    if (graph.consumed_event_ids.includes(event.event_id)) fail('event already consumed');
+    if (existing.some(row => row.event_id === event.event_id)) fail('event id already exists');
     const pair = current(graph);
     if (pair.node.authority === 'human' && event.actor.kind !== 'human') fail('event actor does not match human node authority');
     if (event.attempt_id !== pair.attempt.attempt_id || !pair.node.success_when.some(condition => condition.type === 'event' && condition.event_type === event.type && condition.correlation_id === event.correlation_id)) fail('event does not match current node');
   }
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.appendFileSync(file, `${JSON.stringify(event)}\n`);
-  return graph;
+  return { graph, wake: graph.state === 'waiting' };
 }
 function revise(runDir, definition, eventId, options = {}) {
   const graph = recover(runDir);

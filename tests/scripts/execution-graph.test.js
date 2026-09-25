@@ -117,8 +117,9 @@ try {
     r = run('status', undefined, '--run-dir', other, '--session', 's2'); assert.strictEqual(r.json.wait.question, 'choose'); assert.strictEqual(r.json.next, null);
     const base = { event_id: 'answer-1', type: 'human_answer', correlation_id: 'w1', attempt_id: currentAttempt(other), actor: { kind: 'human', id: 'operator' }, occurred_at: new Date().toISOString(), payload: {} };
     r = run('resume', base, '--run-dir', other, '--session', 's2'); assert.notStrictEqual(r.status, 0);
-    assert.strictEqual(run('ingest', base, '--run-dir', other).status, 0);
-    r = run('resume', base, '--run-dir', other, '--session', 's2'); assert.notStrictEqual(r.status, 0); assert.match(r.stderr, /required field/);
+    r = run('ingest', base, '--run-dir', other);
+    assert.strictEqual(r.status, 4, r.stderr); assert.strictEqual(r.json.wake, false); assert.match(r.json.reason, /required field/);
+    r = run('resume', base, '--run-dir', other, '--session', 's2'); assert.notStrictEqual(r.status, 0); assert.match(r.stderr, /not persisted/);
     const answer = { ...base, event_id: 'answer-2', payload: { choice: 'A' } };
     assert.strictEqual(run('ingest', answer, '--run-dir', other).status, 0);
     r = run('resume', answer, '--run-dir', other, '--session', 's2'); assert.strictEqual(r.status, 0, r.stderr);

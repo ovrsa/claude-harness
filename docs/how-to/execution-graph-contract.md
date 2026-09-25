@@ -225,6 +225,14 @@ wait 作成時に tracker の operator または node の authority から固定
 `session_started`, timeout、heartbeat、process の alive/dead、同じ質問の再送は再開イベントにならない。
 session start hook は waiting Graph を発見して文脈を示せるが、状態を `active` に変えてはならない。
 
+LLM セッションを起こすかは、起こす前に `ingest` が決める。ランタイムは waiting の Graph に届いたイベントを
+すべて `ingest` に渡し、終了コード 0 かつ `wake: true` の時だけ新しいセッションを起こす。そのセッションが
+同じイベントで `resume` する。上の条件を満たさないイベント、同じ wait に再開待ちの回答がすでにある時の
+2件目以降の回答は、保存せず終了コード 4（`status: "HOLD"`, `wake: false`, `reason`）を返す。HOLD は
+エラーではなく、起こさずに待ち続ける合図である。起こしてから無視する方式は、起動の抑制として扱わない。
+wait には途中成果の参照を任意の `evidence` として置ける。別セッションは `status` でそれを質問・再開条件と
+一緒に読み戻す。ゴールは、Graph が人の回答待ちになった時点で【停止】として終える。
+
 仕様が変わった場合は `task-goal.js` の既存 `SPEC_CHANGED` を使い、人が受け入れた
 `spec_change_accepted` の後だけ新 revision を採用する。再開時は Graph、tracker 仕様、git、Run の
 証拠を読み、保存済み `revision` に対する比較交換で1回だけ遷移する。

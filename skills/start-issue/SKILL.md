@@ -114,7 +114,8 @@ node ~/.claude/scripts/task-goal.js graph status --run-dir <runs/run-id の絶�
 `capture` に `{"kind":"verification"}` / `{"kind":"review"}` を渡して Run evidence に保存する。
 Graph の証拠参照は `{"evidence":{"kind":"verification","subject":"task","subject_revision":"<現在のtaskFingerprint>"}}`
 の形にし、`capture` した本文 hash と現在の成果物 fingerprint を照合する。
-runtime が人の実回答を確認してから `ingest` で永続 event を登録し、別 session が `resume` でその event を指定する。
+runtime は waiting の Graph に届いた event をすべて `ingest` に渡し、終了コード 0 かつ `wake: true` の時だけ
+別 session を起こす。その session が `resume` でその event を指定する。終了コード 4（HOLD）は保存も起動もしない。
 CLI は回答者の真正性を証明しない。`resume` は actor の許可、wait/attempt の相関、必須回答欄、event ID の
 再利用を機械的に検査する。実装と review は別 runtime session ID で行う。終了時は既存
 `task-completion.js` の実結果が必要で、payload の自己申告値では通らない。
@@ -152,8 +153,8 @@ gh pr comment <PR> --body-file <停止コメント>      # 【停止】。PR が
   `Revision` に記録し、`task-completion.js` を実行して出力を会話に示す
 - Codex は【完了】【停止】のどちらでも終了状態に達したら `update_goal` を `complete` にする。
   止まったことは PR の状態（Draft と停止コメント）と報告で区別する
-- Graph が人間待ちになったら待機状態を Run に保存してターンを終了する。新しい session、timeout、
-  heartbeat は再開理由にせず、Graph に記録した許可イベントを受けてから再開する
+- Graph が人間待ちになったら待機状態を Run に保存し、ゴールを【停止】として終える（質問は停止コメントに書く）。
+  新しい session、timeout、heartbeat は再開理由にせず、Graph に記録した許可イベントを受けてから再開する
 - 会話での報告は短くする。完了か停止か、PR のリンク、検証結果、残る懸念だけを書く
 
 ## しないこと
