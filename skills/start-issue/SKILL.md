@@ -107,7 +107,8 @@ node ~/.claude/scripts/task-goal.js graph status --run-dir <runs/run-id の絶�
 ```
 
 `succeed`, `fail`, `wait`, `resume`, `ingest`, `capture`, `revise` も同じ引数に操作ごとの JSON を `--graph-input` で足す。
-`revalidate` は JSON 不要で、成果物変更により stale になった gate から上限内で再開する。
+`revalidate` は JSON 不要で、成果物変更により stale になった gate から再開する。このやり直しは成功する限り上限に数えない。
+上限で `stopped` になった Graph は、人の判断を確かめてから `limit_override` の event を `ingest` し、`resume` で再開する。
 `status` は保存した次 node・attempt・wait を返す。`waiting` なら、回答が来るまでそのターンを終える。
 `completed` でも現在の成果物や証拠が古ければ成功を返さず、`revalidate` で再検証に戻す。
 検証・レビュー後は既存の `verification-summary.md` / `review-summary.md` を完成させ、

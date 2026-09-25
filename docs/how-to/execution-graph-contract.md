@@ -8,7 +8,7 @@
 `logs/events.ndjson` が遷移と取込 event の台帳である。node の shell や外部操作は自動実行しない。
 呼び出し例と人回答の取込境界は `skills/start-issue/SKILL.md` を参照する。
 完了済み Graph の `status` も現在の task-completion と gate 証拠を再検査し、stale なら完了として返さない。
-`revalidate` は stale な最初の gate と後続 gate を失効させ、上限内なら新 attempt からやり直す。
+`revalidate` は stale な最初の gate と後続 gate を失効させ、新 attempt からやり直す。やり直しは成功する限り上限に数えない。
 session hook が同じ Run の gate 証拠を再退避する時も Graph の仕様・定義 revision と成果物 fingerprint を付ける。
 
 この文書は、管理先に仕様を置く1つの Task を、ランタイムをまたいで実行・休止・再開するための
@@ -133,7 +133,8 @@ field shape の例であり、Task 全体の node を列挙した完全な Graph
 
 必須項目は top-level の `schema_version`, `revision`, `graph_id`, `task_id`, `run_id`, `spec`,
 `definition_revision`, `state`, `current`, `limits`, `nodes`, `attempts`, `wait`, `consumed_event_ids`,
-`last_transition`, `updated_at`。
+`last_transition`, `updated_at`。上限で止まった時の `stop` と、人が上限を越えさせた記録の `limit_overrides` は
+任意で、無い Graph は `null` / 空として扱う。
 各 node は `id`, `kind`, `role`, `required`, `requirement_ids`, `depends_on`, `authority`, `permissions`,
 `max_attempts`, `success_when` を持つ。
 遷移先がある場合は `success_to` / `failure_to` に node ID または終端 `complete` / `stop` を置く。
@@ -144,7 +145,8 @@ field shape の例であり、Task 全体の node を列挙した完全な Graph
 ランタイム側の許可がより狭ければ停止し、より広くても node の宣言を越えて使わない。
 
 attempt は `attempt_id`, `node_id`, `number`, `state`, `session_ids`, `started_at`, `ended_at`,
-`evidence_refs`, `input_revision` を持つ。`input_revision` は最低でも開始時の `spec.revision` と
+`evidence_refs`, `input_revision` を持つ。`revalidate` が取り消した attempt は `cancelled_by: "revalidate"`、
+そのやり直しの attempt は `started_by: "revalidate"` を持つ。`input_revision` は最低でも開始時の `spec.revision` と
 `definition_revision`、対象成果物の fingerprint を含む。
 
 `definition_revision` は `schema_version`, `graph_id`, `task_id`, `limits`, `nodes` だけから成る object を、
@@ -186,6 +188,17 @@ evidence / fingerprint が stale になれば未達へ戻し、その gate と�
 node を新 attempt で再実行する。検証失敗は attempt を `failed` にして
 `failure_to` へ進む。再試行は `max_attempts` と Graph の `max_total_attempts` の両方を超えられない。
 上限到達時は `stopped` へ移り、人の判断を必要とする。
+
+上限に数えないのは、`revalidate` によるやり直しだけである。成果物の変更で失効した gate と、その時に
+取り消した後続の gate を、次に始める attempt が `started_by: "revalidate"` になる。仕上げの編集は検証の
+失敗ではないので、やり直しは成功する限り `max_attempts` にも `max_total_attempts` にも数えない。やり直しの
+attempt が失敗したら、その attempt は数える。`revalidate` は失効した gate が無ければ拒否する（完了後に
+完了検査が通らなくなった時を除く）ので、編集なしにやり直しを繰り返すことはできない。
+
+上限で止まった時は `stop` に `stop_id`、理由（`max_attempts` / `max_total_attempts` /
+`max_same_cause_failures`）、次に始めるはずだった `node_id`、直前の `attempt_id` を記録する。
+`success_to` / `failure_to` の `stop` や、`failure_to` の無い node の失敗で止まった時は上限ではないので、
+`stop` は null のまま再開できない。
 
 `max_total_attempts` は Graph 内の attempt 数であり、既存 goal の30ターン上限とは別に数える。
 同じ正規化 cause が3回連続した場合は `max_same_cause_failures` により、attempt 上限が残っていても停止する。
@@ -243,6 +256,29 @@ node に新しい `running` attempt を作る。どちらも `event_id` を top-
 回答イベントと状態更新を同じ transition で確定する。
 `continue_attempt` で消費した回答は、同じ attempt の `success_when` がその回答 event を要求する場合に限り
 1回だけ成功条件として参照できる。別 attempt の再利用はできない。
+
+### 上限で止まった Graph の再開
+
+上限で止まった Graph は、人の判断を記録してから再開する。判断は `limit_override` イベントで、
+`correlation_id` は `stop.stop_id`、`attempt_id` は `stop.attempt_id`、actor は `kind: "human"`、
+`payload.reason` に続ける理由を書く。ランタイムは wait と同じく `ingest` に渡し、`wake: true` の時だけ
+`resume` する。上限で止まっていない、actor が人でない、理由が空、別の判断が再開待ち、のどれかなら
+保存せず HOLD を返す。
+
+`resume` は判断を `limit_overrides` に残し、`stop.node_id` に新しい attempt を作る。それまでの attempt は
+消さない。上限は、`max_same_cause_failures` の連続も含めて、この判断より後の attempt から数え直す。
+
+```json
+{
+  "event_id": "override-1",
+  "type": "limit_override",
+  "correlation_id": "<stop.stop_id>",
+  "attempt_id": "<stop.attempt_id>",
+  "actor": {"kind":"human","id":"operator"},
+  "occurred_at": "2026-09-25T10:00:00Z",
+  "payload": {"reason": "失敗はテスト基盤の不調だった。続ける"}
+}
+```
 
 ## 証拠の有効性
 

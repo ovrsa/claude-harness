@@ -155,17 +155,39 @@ function instruction(graph) {
   const { attempt, node: n } = current(graph);
   return { node_id: n.id, kind: n.kind, role: n.role, requirement_ids: n.requirement_ids, permissions: n.permissions, success_when: n.success_when, attempt_id: attempt.attempt_id };
 }
+/** Attempts since a person last overrode a limit. Limits count only these. */
+function attemptsSinceOverride(graph) {
+  return graph.attempts.slice(graph.limit_overrides?.at(-1)?.attempts_before ?? 0);
+}
+/**
+ * Attempts that limits count. A re-run that revalidate caused is not a failed try, so it counts
+ * only if it fails.
+ */
+function countedAttempts(graph) {
+  return attemptsSinceOverride(graph).filter(attempt => attempt.started_by !== 'revalidate' || attempt.state === 'failed');
+}
 function startAttempt(graph, nodeId, session, subject) {
   const n = node(graph, nodeId);
-  const currentAttempts = graph.attempts.filter(attempt => attempt.input_revision.spec_revision === graph.spec.revision);
-  const count = currentAttempts.filter(attempt => attempt.node_id === nodeId).length;
+  const nodeAttempts = graph.attempts.filter(attempt => attempt.node_id === nodeId && attempt.input_revision.spec_revision === graph.spec.revision);
   for (const dependency of n.depends_on) {
     const latest = [...graph.attempts].reverse().find(attempt => attempt.node_id === dependency && attempt.input_revision.spec_revision === graph.spec.revision);
     if (!latest || latest.state !== 'succeeded') fail(`dependency ${dependency} is not satisfied for ${nodeId}`);
   }
-  if (graph.attempts.length >= graph.limits.max_total_attempts || count >= n.max_attempts) { graph.state = 'stopped'; graph.current = []; return; }
-  const attempt = { attempt_id: randomUUID(), node_id: nodeId, number: count + 1, state: 'running', session_ids: session ? [session] : [], started_at: now(), ended_at: null, evidence_refs: [], input_revision: { spec_revision: graph.spec.revision, definition_revision: graph.definition_revision, subject_fingerprint: subject || null } };
+  const rerun = nodeAttempts.at(-1)?.cancelled_by === 'revalidate';
+  if (!rerun) {
+    const counted = countedAttempts(graph);
+    const reason = counted.length >= graph.limits.max_total_attempts ? 'max_total_attempts'
+      : counted.filter(attempt => attempt.node_id === nodeId && attempt.input_revision.spec_revision === graph.spec.revision).length >= n.max_attempts ? 'max_attempts' : null;
+    if (reason) { stopAtLimit(graph, reason, nodeId); return; }
+  }
+  const attempt = { attempt_id: randomUUID(), node_id: nodeId, number: nodeAttempts.length + 1, state: 'running', session_ids: session ? [session] : [], started_at: now(), ended_at: null, evidence_refs: [], input_revision: { spec_revision: graph.spec.revision, definition_revision: graph.definition_revision, subject_fingerprint: subject || null } };
+  if (rerun) attempt.started_by = 'revalidate';
   graph.attempts.push(attempt); graph.current = [nodeId]; graph.state = 'active';
+}
+/** Stops at a limit and records where to continue if a person overrides it. */
+function stopAtLimit(graph, reason, nodeId) {
+  graph.state = 'stopped'; graph.current = [];
+  graph.stop = { stop_id: randomUUID(), reason, node_id: nodeId, attempt_id: graph.attempts.at(-1)?.attempt_id ?? null, stopped_at: now() };
 }
 function createGraph(definition, options = {}) {
   validateDefinition(definition); if (definition.run_id !== path.basename(safeRunDir(options.runDir))) fail('run_id does not match run directory');
@@ -177,7 +199,7 @@ function createGraph(definition, options = {}) {
     if (meta.repository_identity && meta.repository_identity !== definition.task_id.slice(0, definition.task_id.lastIndexOf(':'))) fail('Run repository identity collision');
     if (meta.branch && meta.branch !== options.branch) fail('Run branch identity collision');
   }
-  const graph = { ...JSON.parse(JSON.stringify(definition)), revision: 0, definition_revision: definitionRevision(definition), permission_ceiling: [...new Set(options.permissions || [])], state: 'active', current: [], attempts: [], wait: null, consumed_event_ids: [], last_transition: null, updated_at: now() };
+  const graph = { ...JSON.parse(JSON.stringify(definition)), revision: 0, definition_revision: definitionRevision(definition), permission_ceiling: [...new Set(options.permissions || [])], state: 'active', current: [], attempts: [], wait: null, stop: null, limit_overrides: [], consumed_event_ids: [], last_transition: null, updated_at: now() };
   const first = graph.nodes.find(n => n.depends_on.length === 0); if (!first) fail('graph has no entry node');
   const granted = new Set(options.permissions || []); for (const n of graph.nodes) if (n.permissions.some(pn => !granted.has(pn))) fail(`permission ceiling does not allow node ${n.id}: ${n.permissions.join(',')}`);
   startAttempt(graph, first.id, options.session, options.subjectFingerprint);
@@ -247,12 +269,13 @@ function revalidate(runDir, subjectFingerprint, completion, options = {}) {
   for (const attempt of graph.attempts.slice(target.index)) {
     if (node(graph, attempt.node_id).role === 'gate' && attempt.state === 'succeeded') {
       attempt.state = 'cancelled';
+      attempt.cancelled_by = 'revalidate';
       attempt.invalidated_at = now();
     }
   }
   if (graph.state === 'active') {
     const active = current(graph).attempt;
-    active.state = 'cancelled'; active.ended_at = now();
+    active.state = 'cancelled'; active.cancelled_by = 'revalidate'; active.ended_at = now();
   }
   graph.current = [];
   startAttempt(graph, target.gate.id, options.session, subjectFingerprint);
@@ -266,10 +289,12 @@ function transition(runDir, operation, input = {}, options = {}) {
   if (operation === 'fail') {
     if (!/^[a-z][a-z0-9_]*$/.test(input.cause || '')) fail('failure cause must be lowercase snake_case');
     attempt.state = 'failed'; attempt.failure_cause_code = input.cause; attempt.ended_at = now(); graph.current = [];
-    const failures = graph.attempts.filter(a => a.node_id === n.id && a.input_revision.spec_revision === graph.spec.revision).slice(-graph.limits.max_same_cause_failures);
+    const failures = attemptsSinceOverride(graph).filter(a => a.node_id === n.id && a.input_revision.spec_revision === graph.spec.revision).slice(-graph.limits.max_same_cause_failures);
     const repeated = failures.length >= graph.limits.max_same_cause_failures && failures.every(a => a.failure_cause_code === input.cause);
     const target = repeated ? 'stop' : (n.failure_to || 'stop');
-    if (target === 'stop') graph.state = 'stopped'; else startAttempt(graph, target, null, input.subject_fingerprint);
+    if (target !== 'stop') startAttempt(graph, target, null, input.subject_fingerprint);
+    else if (repeated && graph.nodes.some(item => item.id === n.failure_to)) stopAtLimit(graph, 'max_same_cause_failures', n.failure_to);
+    else graph.state = 'stopped';
     return save(runDir, graph, before, `${n.id}:failed`);
   }
   if (operation !== 'succeed') fail(`unsupported transition ${operation}`);
@@ -317,16 +342,35 @@ function wait(runDir, value) {
   graph.wait = { ...value, attempt_id: attempt.attempt_id, requested_at: now() };
   return save(runDir, graph, before, `wait:${value.wait_id}`);
 }
+function isPersisted(runDir, event) {
+  const file = paths(runDir).events;
+  return fs.existsSync(file) && fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).some(line => {
+    try { const saved = JSON.parse(line); return saved.event_id === event.event_id && saved.type === event.type && saved.correlation_id === event.correlation_id && saved.attempt_id === event.attempt_id && canonical(saved.actor) === canonical(event.actor) && canonical(saved.payload) === canonical(event.payload); } catch { return false; }
+  });
+}
+/** Continues a Graph stopped by a limit, from a person's persisted decision. Limits count again from here. */
+function resumeFromStop(runDir, graph, before, event, options) {
+  const stop = graph.stop;
+  if (!stop) fail('graph was not stopped by a limit');
+  if (!event || graph.consumed_event_ids.includes(event.event_id)) fail('event is missing or already consumed');
+  if (event.type !== 'limit_override' || event.correlation_id !== stop.stop_id || event.attempt_id !== stop.attempt_id) fail('event does not match the current stop');
+  if (!isPersisted(runDir, event)) fail('resume event is not persisted');
+  if (event.actor?.kind !== 'human') fail('only a person can override a limit');
+  if (typeof event.payload?.reason !== 'string' || !event.payload.reason.trim()) fail('event is missing required field reason');
+  graph.consumed_event_ids.push(event.event_id);
+  graph.limit_overrides = [...(graph.limit_overrides || []), { event_id: event.event_id, reason: event.payload.reason, actor: event.actor, stop, attempts_before: graph.attempts.length, overridden_at: now() }];
+  graph.stop = null;
+  startAttempt(graph, stop.node_id, options.session, options.subjectFingerprint);
+  return save(runDir, graph, before, `override:${event.event_id}`);
+}
 function resume(runDir, event, options = {}) {
-  const graph = recover(runDir), before = graph.revision; if (graph.state !== 'waiting' || !graph.wait) fail('graph is not waiting');
+  const graph = recover(runDir), before = graph.revision;
+  if (graph.state === 'stopped') return resumeFromStop(runDir, graph, before, event, options);
+  if (graph.state !== 'waiting' || !graph.wait) fail('graph is not waiting');
   const w = graph.wait, pair = current(graph); if (!event || graph.consumed_event_ids.includes(event.event_id)) fail('event is missing or already consumed');
   if (pair.node.role === 'gate' && pair.attempt.input_revision.subject_fingerprint && pair.attempt.input_revision.subject_fingerprint !== options.subjectFingerprint) fail('waiting gate subject is stale');
   const rule = w.resume_on.find(r => r.type === event.type && r.correlation_id === event.correlation_id); if (!rule || event.attempt_id !== w.attempt_id) fail('event does not match the current wait');
-  const file = paths(runDir).events;
-  const persisted = fs.existsSync(file) && fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).some(line => {
-    try { const saved = JSON.parse(line); return saved.event_id === event.event_id && saved.type === event.type && saved.correlation_id === event.correlation_id && saved.attempt_id === event.attempt_id && canonical(saved.actor) === canonical(event.actor) && canonical(saved.payload) === canonical(event.payload); } catch { return false; }
-  });
-  if (!persisted) fail('resume event is not persisted');
+  if (!isPersisted(runDir, event)) fail('resume event is not persisted');
   if (!w.allowed_actors.some(a => a.kind === event.actor?.kind && a.id === event.actor?.id)) fail('event actor is not allowed');
   for (const field of rule.required_fields || []) if (event.payload?.[field] === null || event.payload?.[field] === undefined || event.payload[field] === '') fail(`event is missing required field ${field}`);
   graph.consumed_event_ids.push(event.event_id); graph.wait = null;
@@ -350,13 +394,25 @@ function holdReason(graph, event, existing) {
   if (graph.consumed_event_ids.includes(event.event_id) || existing.some(row => row.event_id === event.event_id)) return 'event id was already used';
   return null;
 }
+/** Why an event does not wake a Graph stopped by a limit, or null for a person's complete decision. */
+function overrideHoldReason(graph, event, existing) {
+  const stop = graph.stop;
+  if (!stop) return 'graph was not stopped by a limit';
+  if (event.type !== 'limit_override' || event.correlation_id !== stop.stop_id) return `${event.type} does not override ${stop.stop_id}`;
+  if (event.attempt_id !== stop.attempt_id) return 'event belongs to another attempt';
+  if (event.actor.kind !== 'human') return 'only a person can override a limit';
+  if (typeof event.payload.reason !== 'string' || !event.payload.reason.trim()) return 'missing required field reason';
+  if (existing.some(row => row.type === 'limit_override' && row.correlation_id === stop.stop_id && !graph.consumed_event_ids.includes(row.event_id))) return 'a decision is already waiting to resume this stop';
+  if (graph.consumed_event_ids.includes(event.event_id) || existing.some(row => row.event_id === event.event_id)) return 'event id was already used';
+  return null;
+}
 function ingest(runDir, event) {
   const graph = recover(runDir);
   if (!event || !event.event_id || !event.type || !event.correlation_id || !event.attempt_id || !event.actor?.kind || !event.actor?.id || !event.occurred_at || !event.payload || typeof event.payload !== 'object') fail('event envelope is incomplete');
   const file = paths(runDir).events;
   const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map(line => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean) : [];
-  if (graph.state === 'waiting') {
-    const reason = holdReason(graph, event, existing);
+  if (graph.state === 'waiting' || graph.state === 'stopped') {
+    const reason = graph.state === 'waiting' ? holdReason(graph, event, existing) : overrideHoldReason(graph, event, existing);
     if (reason) return { graph, wake: false, reason };
   } else {
     if (graph.consumed_event_ids.includes(event.event_id)) fail('event already consumed');
@@ -367,7 +423,7 @@ function ingest(runDir, event) {
   }
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.appendFileSync(file, `${JSON.stringify(event)}\n`);
-  return { graph, wake: graph.state === 'waiting' };
+  return { graph, wake: graph.state === 'waiting' || graph.state === 'stopped' };
 }
 function revise(runDir, definition, eventId, options = {}) {
   const graph = recover(runDir);
@@ -395,6 +451,6 @@ function revise(runDir, definition, eventId, options = {}) {
   startAttempt(graph, first.id, options.session, options.subjectFingerprint);
   return save(runDir, graph, before, `revise:${eventId}`);
 }
-function result(graph) { return { state: graph.state, revision: graph.revision, graph_id: graph.graph_id, wait: graph.wait, next: instruction(graph) }; }
+function result(graph) { return { state: graph.state, revision: graph.revision, graph_id: graph.graph_id, wait: graph.wait, stop: graph.stop || null, next: instruction(graph) }; }
 
 module.exports = { createGraph, readGraph, transition, wait, resume, ingest, revise, revalidate, result, validateDefinition, definitionRevision, assertCurrentCompletion, assertReadyGatesFresh };
