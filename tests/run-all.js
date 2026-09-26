@@ -55,6 +55,8 @@ const testFiles = [
   { file: 'scripts/skill-create-output.test.js' },
   { file: 'scripts/eval-batch.test.js' },
   { file: 'scripts/runs-cli.test.js' },
+  { file: 'scripts/runtime-session.test.js' },
+  { file: 'scripts/sync-codex-bridge.test.js' },
   { file: 'scripts/statusline.test.js' },
   { file: 'lib/health-loop.test.js' },
   { file: 'lib/guardrail-candidates.test.js' },

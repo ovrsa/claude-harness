@@ -9,10 +9,7 @@
  * derivable from the transcript, which Claude Code writes either way.
  */
 
-const { getRuntimeSessionId } = require('../lib/utils');
-const { getRepoRoot } = require('../lib/task-artifacts');
-const { resolveRunSlug, resolveBranch } = require('../lib/run-record');
-const { recordLifecycleGates } = require('../lib/lifecycle-record');
+const { captureRuntimeSession, hookSessionId } = require('../lib/runtime-session');
 
 const MAX_STDIN = 1024 * 1024;
 let raw = '';
@@ -24,22 +21,10 @@ process.stdin.on('data', chunk => {
   }
 });
 process.stdin.on('end', () => {
-  const sessionId = getRuntimeSessionId() || undefined;
-  const repoRoot = getRepoRoot(process.cwd()) || '';
-
-  if (repoRoot) {
-    try {
-      const branch = resolveBranch(repoRoot);
-      recordLifecycleGates({
-        repoRoot,
-        runId: resolveRunSlug({ repoRoot, branch, sessionId }),
-        sessionId,
-        branch,
-        cwd: process.cwd(),
-      });
-    } catch {
-      // A hook that fails must not swallow the payload it is passing through.
-    }
+  try {
+    captureRuntimeSession('end', { sessionId: hookSessionId(raw) });
+  } catch {
+    // Preserve the passthrough contract even if recording fails.
   }
 
   process.stdout.write(raw);

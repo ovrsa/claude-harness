@@ -16,7 +16,6 @@ const {
   getDateString,
   getTimeString,
   getSessionIdShort,
-  getRuntimeSessionId,
   ensureDir,
   readFile,
   writeFile,
@@ -24,8 +23,7 @@ const {
   log
 } = require('../lib/utils');
 const { getRepoRoot } = require('../lib/task-artifacts');
-const { resolveRunSlug, resolveBranch } = require('../lib/run-record');
-const { recordLifecycleGates } = require('../lib/lifecycle-record');
+const { captureRuntimeSession, hookSessionId } = require('../lib/runtime-session');
 
 const SUMMARY_START_MARKER = '<!-- ECC:SUMMARY:START -->';
 const SUMMARY_END_MARKER = '<!-- ECC:SUMMARY:END -->';
@@ -147,7 +145,7 @@ async function main() {
   const today = getDateString();
   const shortId = getSessionIdShort();
   const sessionFile = path.join(sessionsDir, `${today}-${shortId}-session.tmp`);
-  const sessionId = getRuntimeSessionId() || undefined;
+  const sessionId = hookSessionId(stdinData);
 
   ensureDir(sessionsDir);
 
@@ -232,14 +230,7 @@ ${summarySection}
   const repoRoot = getRepoRoot(process.cwd());
   if (repoRoot) {
     try {
-      const branch = resolveBranch(repoRoot);
-      recordLifecycleGates({
-        repoRoot,
-        runId: resolveRunSlug({ repoRoot, branch, sessionId }),
-        sessionId,
-        branch,
-        cwd: process.cwd(),
-      });
+      captureRuntimeSession('end', { sessionId });
     } catch {
       // Recording must never keep a session from ending.
     }

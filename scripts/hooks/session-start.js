@@ -14,7 +14,6 @@ const {
   findFiles,
   ensureDir,
   readFile,
-  getRuntimeSessionId,
   log,
   output
 } = require('../lib/utils');
@@ -22,14 +21,13 @@ const { getPackageManager, getSelectionPrompt } = require('../lib/package-manage
 const { listAliases } = require('../lib/session-aliases');
 const { detectProjectType } = require('../lib/project-detect');
 const { getRepoRoot } = require('../lib/task-artifacts');
-const { recordSessionStart, resolveRunSlug, resolveBranch } = require('../lib/run-record');
+const { captureRuntimeSession, hookSessionId, readHookInput } = require('../lib/runtime-session');
 const { resolveResumeState } = require('../lib/run-log');
-const { recordLifecycleGates } = require('../lib/lifecycle-record');
 
-async function main() {
+async function main(raw) {
   const sessionsDir = getSessionsDir();
   const repoRoot = getRepoRoot(process.cwd());
-  const sessionId = getRuntimeSessionId() || undefined;
+  const sessionId = hookSessionId(raw);
 
   // The SQLite run_state row is gone. Measured 2026-08-20 with all three gate
   // artifacts present: every non-empty field it contributed already appeared in
@@ -106,21 +104,7 @@ async function main() {
     // Recording must never keep a session from starting, so both writes are
     // guarded. Gate evidence first: it is the copy that survives ExitWorktree.
     try {
-      const branch = resolveBranch(repoRoot);
-      const runId = resolveRunSlug({ repoRoot, branch, sessionId });
-
-      recordLifecycleGates({ repoRoot, runId, sessionId, branch, cwd: process.cwd() });
-
-      recordSessionStart({
-        repoRoot,
-        runId,
-        sessionId,
-        branch,
-        resumeExpected: resume.expected,
-        resumeSuccess: resume.success,
-        resumeReason: resume.reason,
-        resumeSource: resume.source,
-      });
+      captureRuntimeSession('start', { sessionId });
     } catch {
       // Intentionally silent.
     }
@@ -129,7 +113,7 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(err => {
+readHookInput().then(main).catch(err => {
   console.error('[SessionStart] Error:', err.message);
   process.exit(0); // Don't block on errors
 });
