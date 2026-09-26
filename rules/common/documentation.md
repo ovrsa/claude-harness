@@ -45,6 +45,7 @@ design doc は親 Issue の本文にだけ置き、`docs/design/` には置か�
 | `AGENTS.md` | `/repo-map` |
 | `docs/` 一式、または親 Issue の本文 | `/docs-build`（**`/grill-me` を通してから**） |
 | 子 Issue | `split-issue` スキル（本文は `task-issue-template.md`） |
+| Issue の無い1タスク | `draft-issue` スキル（本文は `task-issue-template.md`。人の承認の後に起票） |
 | 書くべきかの判定 | `writing-reference-docs` スキル |
 
 ## `TODO.md` は実行状態ではない

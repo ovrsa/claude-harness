@@ -116,6 +116,15 @@ try {
     assertAdvised(write(path.join(dir, 'a.md'), id), 'main');
   });
 
+  test('a file_path that is not a string exits 0 without advice', () => {
+    for (const filePath of [42, { a: 1 }, ['a.md']]) {
+      const body = JSON.stringify({ session_id: newSession(), cwd: repo(), tool_input: { file_path: filePath } });
+      const result = spawnSync(process.execPath, [hook], { input: body, encoding: 'utf8', env, cwd: root });
+      assert.strictEqual(result.status, 0, `${JSON.stringify(filePath)}: ${result.stderr}`);
+      assert.strictEqual(result.stdout.trim(), '');
+    }
+  });
+
   test('a detached HEAD is not advised', () => {
     const dir = repo();
     git(dir, '-c', 'user.email=t@example.com', '-c', 'user.name=t', 'commit', '-q', '--allow-empty', '-m', 'init');

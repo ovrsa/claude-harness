@@ -40,7 +40,7 @@ function isLinkedWorktree(repo) {
 (async () => {
   const input = await readStdin();
   const fp = input.tool_input && input.tool_input.file_path;
-  if (!fp) process.exit(0);
+  if (typeof fp !== 'string' || !fp) process.exit(0);
 
   // Any file, not only source: writing is where work without an issue begins. Stderr from a hook
   // that exits 0 never reaches the agent, so this advice goes out as additionalContext.

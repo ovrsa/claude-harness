@@ -36,6 +36,7 @@ const testFiles = [
   { file: 'hooks/hooks.test.js' },
   { file: 'hooks/suggest-compact.test.js' },
   { file: 'hooks/git-push-guard.test.js' },
+  { file: 'hooks/draft-issue-advisory.test.js' },
   { file: 'integration/hooks.test.js' },
   { file: 'ci/validators.test.js' },
   { file: 'scripts/claw.test.js' },

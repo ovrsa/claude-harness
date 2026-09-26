@@ -14,6 +14,21 @@ ends by presenting a final understanding and waiting for the operator to confirm
 does not authorize file changes: wait for an explicit next instruction. When the operator asks to
 continue, resume the distribution lifecycle below.
 
+### Work Without An Issue
+
+In a project that declares a tracker (`.claude/tracker.json`), work that has no issue enters through
+`skills/draft-issue` before any implementation: draft the task issue, pass it through
+`stop-ai-slop-jp` and `task-goal.js --check`, show it to the operator, and file it only after they
+approve. Then start it with `start-issue`.
+
+The Grill may be skipped only when every field of that draft can be filled from the request and the
+environment without guessing. Otherwise ask about the fields that cannot be filled, and nothing
+else. Work too large for one conversation still goes through the Grill, `/docs-build`, and
+`split-issue`.
+
+The first write on a branch whose name carries no issue number gets one advisory per session from
+`hooks/lifecycle-pre-edit.js`. It does not stop the write.
+
 ## Core Rule
 
 `~/.claude` is the source of truth for the local control layer.
