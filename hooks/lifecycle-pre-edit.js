@@ -4,6 +4,7 @@ const {
   findLatestPipelineEvidence,
   formatMissingPipelineEvidenceWarning,
 } = require('../scripts/lib/pipeline-evidence');
+const { issueBranchAdvisory } = require('../scripts/lib/issue-branch-advisory');
 
 function readStdin() {
   return new Promise(resolve => {
@@ -40,6 +41,17 @@ function isLinkedWorktree(repo) {
   const input = await readStdin();
   const fp = input.tool_input && input.tool_input.file_path;
   if (!fp) process.exit(0);
+
+  // Any file, not only source: writing is where work without an issue begins. Stderr from a hook
+  // that exits 0 never reaches the agent, so this advice goes out as additionalContext.
+  const advice = issueBranchAdvisory({ filePath: fp, sessionId: input.session_id, cwd: input.cwd });
+  if (advice) {
+    process.stdout.write(JSON.stringify({
+      systemMessage: advice,
+      hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: advice },
+    }));
+  }
+
   if (!/\.(ts|tsx|js|jsx|py|go|rs|java|kt|swift|rb|php|c|cc|cpp|h|hpp|cs)$/i.test(fp)) process.exit(0);
   const dir = path.dirname(fp);
   const repo = getRepoRoot(dir) || getRepoRoot(process.cwd());
