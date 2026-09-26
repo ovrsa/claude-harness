@@ -25,7 +25,7 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 | **Doc file warning** | `Write` | Warns about non-standard `.md`/`.txt` files (allows README, CLAUDE, CONTRIBUTING, CHANGELOG, LICENSE, SKILL, docs/, skills/); cross-platform path handling | 0 (warns) |
 | **Strategic compact** | `Edit\|Write` | Suggests manual `/compact` at logical intervals (every ~50 tool calls) | 0 (warns) |
 | **Continuous learning observe** | `*` | Captures tool-use observations for continuous learning (async) | 0 (never blocks) |
-| **Lifecycle pre-edit** | `Edit\|Write` | Advisory only: warns when a linked worktree has no recent pipeline run evidence | 0 (warns) |
+| **Lifecycle pre-edit** | `Edit\|Write` | Advisory only: warns when a linked worktree has no recent pipeline run evidence. Once per session, points the agent to `draft-issue` when a repository with a declared tracker is written on a branch without an issue number (sent as `additionalContext`) | 0 (warns) |
 | **Lifecycle pre-commit** | `Bash` (on `git commit`) | Advisory only: warns about missing or incomplete verification/review/observation evidence; captures guardrail candidates | 0 (warns) |
 
 ### PermissionRequest Hooks
