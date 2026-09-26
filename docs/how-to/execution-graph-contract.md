@@ -279,7 +279,9 @@ loop に属する全 node は有限の `max_attempts` を持ち、成功によ�
 守ったかは規約と別コンテキストレビューで確認する。
 
 別コンテキストレビューは review attempt の `session_ids` が、対象成果物を作った attempt の
-`session_ids` と非重複であることを機械的に検査する。review evidence は対象の `spec.revision`,
+`session_ids` と非重複であることを機械的に検査する。session ID は CLI が実行中のランタイムから読み
+（`scripts/lib/utils.js` の `getCurrentSessionId`。Claude Code と Codex で読める）、読めた時はそれと異なる
+`--session` を拒否する。読めない環境では `--session` の値をそのまま使う。review evidence は対象の `spec.revision`,
 `definition_revision`, `subject_fingerprint` を記録し、いずれかが変われば stale にする。
 
 | 項目 | #9 時点 | #10 で機械化するもの |

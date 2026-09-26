@@ -204,6 +204,51 @@ function runTests() {
     }
   })) passed++; else failed++;
 
+  // Runs fn with exactly these runtime session variables set, then restores the originals.
+  function withSessionEnv(values, fn) {
+    const names = ['CLAUDE_SESSION_ID', 'CLAUDE_CODE_SESSION_ID', 'CODEX_SESSION_ID', 'CODEX_THREAD_ID'];
+    const originals = Object.fromEntries(names.map(name => [name, process.env[name]]));
+    for (const name of names) delete process.env[name];
+    Object.assign(process.env, values);
+    try {
+      fn();
+    } finally {
+      for (const name of names) {
+        if (originals[name] === undefined) delete process.env[name];
+        else process.env[name] = originals[name];
+      }
+    }
+  }
+
+  if (test('getRuntimeSessionId ignores CLAUDE_CODE_SESSION_ID, so hooks keep their session file and Run names', () => {
+    withSessionEnv({ CLAUDE_CODE_SESSION_ID: '7c010143-8bf0-46be-b12a-e1c43a11ea91' }, () => {
+      assert.strictEqual(utils.getRuntimeSessionId(), '');
+      assert.strictEqual(utils.getRuntimeKind(), 'unknown');
+    });
+  })) passed++; else failed++;
+
+  if (test('getCurrentSessionId reads CLAUDE_CODE_SESSION_ID as-is', () => {
+    withSessionEnv({ CLAUDE_CODE_SESSION_ID: '7c010143-8bf0-46be-b12a-e1c43a11ea91' }, () => {
+      assert.strictEqual(utils.getCurrentSessionId(), '7c010143-8bf0-46be-b12a-e1c43a11ea91');
+    });
+    withSessionEnv({}, () => {
+      assert.strictEqual(utils.getCurrentSessionId(), '');
+      assert.strictEqual(utils.getCurrentSessionId('fallback'), 'fallback');
+    });
+  })) passed++; else failed++;
+
+  if (test('getCurrentSessionId keeps the Codex result when a Claude Code ID is inherited', () => {
+    withSessionEnv({ CLAUDE_CODE_SESSION_ID: 'claude-parent', CODEX_THREAD_ID: 'thread-1' }, () => {
+      assert.strictEqual(utils.getCurrentSessionId(), 'codex-thread-thread-1');
+    });
+    withSessionEnv({ CLAUDE_CODE_SESSION_ID: 'claude-parent', CODEX_SESSION_ID: 'session-1' }, () => {
+      assert.strictEqual(utils.getCurrentSessionId(), 'codex-session-session-1');
+    });
+    withSessionEnv({ CLAUDE_CODE_SESSION_ID: 'claude-code', CLAUDE_SESSION_ID: 'claude-explicit' }, () => {
+      assert.strictEqual(utils.getCurrentSessionId(), 'claude-explicit');
+    });
+  })) passed++; else failed++;
+
   // File operations tests
   console.log('\nFile Operations:');
 

@@ -56,6 +56,12 @@ export function getRuntimeKind(): 'claude' | 'codex' | 'unknown';
 export function getRuntimeSessionId(fallback?: string): string;
 
 /**
+ * Get the ID of the runtime session running this command, for checks against a supplied ID.
+ * Same as getRuntimeSessionId, then Claude Code's CLAUDE_CODE_SESSION_ID as-is.
+ */
+export function getCurrentSessionId(fallback?: string): string;
+
+/**
  * Get short session ID from runtime environment variables.
  * Returns last 8 characters, falls back to project name then the provided fallback.
  */
