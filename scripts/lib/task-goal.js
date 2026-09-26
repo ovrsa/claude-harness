@@ -17,7 +17,16 @@ const SECTION_ALIASES = {
   blockedBy: ['先行Issue', 'Blocked by'],
   constraints: ['制約', 'Constraints'],
   nonGoals: ['対象外', 'Non-goals', 'Out of scope'],
+  graph: ['Graph'],
 };
+
+// The Graph section records, when the issue is written, whether the task runs on a Graph.
+// Keys and values have an English alias, as the headings do.
+const GRAPH_KEYS = { type: ['型', 'Type'], limits: ['上限', 'Limits'], human: ['人の判断', 'Human decision'] };
+const GRAPH_TYPES = { none: ['なし', 'none'], standard: ['標準', 'standard'], custom: ['個別', 'custom'] };
+const NO_HUMAN_DECISION = ['なし', 'none'];
+const BEFORE_IMPLEMENTATION = ['実装の前', 'before implementation'];
+const DEFAULT_LIMITS = { verify: 3, review: 2 };
 
 const normalizeHeading = text => text.replace(/\s+/g, ' ').replace(/[:：]\s*$/, '').trim();
 const flatten = text => text.replace(/\s+/g, ' ').trim();
@@ -67,6 +76,62 @@ function parseIssue(body) {
 
 const blockText = block => [...block.items, ...block.notes].join(' ');
 
+const startsWithAny = (text, aliases) => aliases.find(alias => text.toLowerCase().startsWith(alias.toLowerCase()));
+/** "なし（理由）" is なし, but "nonexistent" is not "none": a value ends at a space, a bracket or the end. */
+const isValue = (text, aliases) => aliases.some(alias => new RegExp(`^${alias}(?=$|[\\s（(])`, 'i').test(text));
+
+/** "上限: 検証 3回" → the text after "<alias>:", or undefined when the line has another key. */
+function valueAfter(text, aliases) {
+  const alias = startsWithAny(text, aliases);
+  const rest = alias ? text.slice(alias.length) : '';
+  return /^\s*[:：]/.test(rest) ? rest.replace(/^\s*[:：]\s*/, '').trim() : undefined;
+}
+
+/**
+ * The Graph plan the issue decided, or the reasons it cannot be read. Limits and the human decision
+ * only shape the standard Graph; a custom Graph brings its own definition.
+ */
+function parseGraph(block) {
+  const fields = {};
+  for (const line of [...block.items, ...block.notes]) {
+    for (const [key, aliases] of Object.entries(GRAPH_KEYS)) {
+      const value = valueAfter(line, aliases);
+      if (value !== undefined && !(key in fields)) fields[key] = value;
+    }
+  }
+  if (fields.type === undefined) return { issues: ['Graph の節が無いか、型の行が無い（型: なし / 標準 / 個別（理由: 〜））'] };
+  const type = Object.keys(GRAPH_TYPES).find(name => isValue(fields.type, GRAPH_TYPES[name]));
+  if (!type) return { issues: [`Graph の型は「なし」「標準」「個別（理由: 〜）」のどれか: ${fields.type}`] };
+  if (type === 'none') return { plan: { type }, issues: [] };
+  if (type === 'custom') {
+    const reason = fields.type.match(/[（(]\s*(?:理由|reason)\s*[:：]\s*(.*?)\s*[）)]\s*$/i);
+    if (!reason?.[1]) return { issues: ['Graph の型が個別なら理由を書く: 個別（理由: 〜）'] };
+    return { plan: { type, reason: reason[1] }, issues: [] };
+  }
+
+  const issues = [];
+  const limits = { ...DEFAULT_LIMITS };
+  if (fields.limits !== undefined) {
+    // A count that is named but unreadable is refused, never replaced by the default.
+    let named = 0;
+    let unreadable = false;
+    for (const [name, keyword] of [['verify', '(?:検証|verification)'], ['review', '(?:レビュー|review)']]) {
+      if (!new RegExp(keyword, 'i').test(fields.limits)) continue;
+      named++;
+      const match = fields.limits.match(new RegExp(`${keyword}\\s*(-?\\d+)`, 'i'));
+      if (match) limits[name] = Number(match[1]);
+      else unreadable = true;
+    }
+    if (!named || unreadable || limits.verify < 1 || limits.review < 1) issues.push(`Graph の上限は「検証 N回 / レビュー M回」で、どちらも1回以上: ${fields.limits}`);
+  }
+  let question = null;
+  if (fields.human !== undefined && !isValue(fields.human, NO_HUMAN_DECISION)) {
+    question = valueAfter(fields.human, BEFORE_IMPLEMENTATION) || null;
+    if (!question) issues.push('標準型で扱える人の判断は「なし」か「実装の前: 〈何を聞くか〉」。ほかの時点で聞くなら型を個別にする');
+  }
+  return { plan: { type, limits, question }, issues };
+}
+
 /** "参照: 設計判断 > ゴールと停止条件、受け入れ条件" in the parent section names parent headings. */
 function referencedPaths(doc) {
   const line = [...doc.parent.items, ...doc.parent.notes].find(text => /^(?:参照|Refs?)\s*[:：]/i.test(text));
@@ -92,7 +157,7 @@ function renderSpec(task, doc, parent) {
   const lines = [`# ${task.ref} ${task.title || ''}`.trim(),
     ...renderBlock('目的', doc.objective), ...renderBlock('実現する動作', doc.behavior),
     ...renderBlock('受け入れ条件', doc.acceptance), ...renderBlock('検証方法', doc.verification),
-    ...renderBlock('対象外', doc.nonGoals), ...renderBlock('制約', doc.constraints)];
+    ...renderBlock('対象外', doc.nonGoals), ...renderBlock('制約', doc.constraints), ...renderBlock('Graph', doc.graph)];
   if (parent) {
     lines.push(`# 親 ${parent.ref}`, ...renderBlock('目的', parent.doc.objective),
       ...renderBlock('受け入れ条件', parent.doc.acceptance), ...renderBlock('対象外', parent.doc.nonGoals));
@@ -140,6 +205,8 @@ function prepareGoal({ task: input, parent, repo, branch }) {
   for (const reference of references) {
     if (parent && !reference.lines) issues.push(`親Issueに参照先の見出しが無い: ${reference.path.join(' > ')}`);
   }
+  const graph = parseGraph(doc.graph);
+  issues.push(...graph.issues);
   if (issues.length) return { issues };
 
   const parentView = parent ? { ref: parent.ref, doc: parentDoc, references } : null;
@@ -150,7 +217,7 @@ function prepareGoal({ task: input, parent, repo, branch }) {
   if (chars > MAX_GOAL_CHARS) {
     return { issues: [`ゴール文面が ${chars} 字で、上限の 4,000 字を超える。受け入れ条件・検証方法・対象外を短くするか、Issue を分ける`] };
   }
-  return { issues, goal, revision, spec };
+  return { issues, goal, revision, spec, graph: graph.plan };
 }
 
 /** Line diff of two spec renderings: "  " kept, "- " removed, "+ " added. */

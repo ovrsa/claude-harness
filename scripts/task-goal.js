@@ -101,6 +101,17 @@ function main(argv) {
   return 0;
 }
 
+/** The issue's Graph section picks the definition: 標準 builds it, 個別 brings it, なし has no Graph. */
+function createDefinition(plan, input, identity) {
+  if (plan.type === 'none') throw new Error('the issue decided 型: なし, so it has no Graph');
+  if (plan.type === 'custom') {
+    if (input === undefined) throw new Error('a 型: 個別 Graph needs its definition in --graph-input');
+    return input;
+  }
+  if (input !== undefined) throw new Error('a 型: 標準 Graph is built from the issue; pass a definition only for 型: 個別');
+  return executionGraph.standardDefinition({ ...identity, limits: plan.limits, question: plan.question });
+}
+
 function graphMain(argv) {
   const operation = argv.shift();
   let runDir = null;
@@ -144,15 +155,21 @@ function graphMain(argv) {
     if (meta.repository_identity && meta.repository_identity !== repositoryIdentity) throw new Error('Run repository identity collision');
     if (meta.branch && meta.branch !== (taskInput.branch || null)) throw new Error('Run branch identity collision');
   }
+  let definition;
   if (operation === 'create' || operation === 'revise') {
-    const definition = operation === 'revise' ? input?.definition : input;
+    const requiredIds = parseIssue(taskInput.task.body).acceptance.items.map((_, index) => `${prepared.revision}:AC-${index + 1}`);
+    const source = tracker.tracker.kind === 'github' && /^#\d+$/.test(taskInput.task.ref)
+      ? `https://github.com/${tracker.tracker.repo}/issues/${taskInput.task.ref.slice(1)}`
+      : taskId;
+    definition = operation === 'revise'
+      ? input?.definition
+      : createDefinition(prepared.graph, input, { taskId, runId: path.basename(runDir), source, revision: prepared.revision, requirementIds: requiredIds });
     if (definition?.spec?.revision !== prepared.revision) throw new Error(`graph spec revision does not match task-goal revision ${prepared.revision}`);
     if (operation === 'revise') {
       const saved = executionGraph.readGraph(runDir);
       if (saved.task_id !== definition.task_id) throw new Error('revised task identity differs from saved graph');
     }
     if (definition.task_id !== taskId) throw new Error('graph task_id does not match declared repository identity and task ref');
-    const requiredIds = parseIssue(taskInput.task.body).acceptance.items.map((_, index) => `${prepared.revision}:AC-${index + 1}`);
     if (JSON.stringify(definition.requirement_ids) !== JSON.stringify(requiredIds)) throw new Error('graph requirement_ids do not match task acceptance criteria');
   } else {
     const saved = executionGraph.readGraph(runDir);
@@ -186,8 +203,9 @@ function graphMain(argv) {
     const descriptor = fs.openSync(lock, 'wx');
     try {
       if (operation === 'create') {
-        graph = executionGraph.createGraph(input, options);
-        writeRunMeta({ runsDir: path.dirname(runDir), runId: path.basename(runDir), fields: { task_id: input.task_id, repository_identity: input.task_id.slice(0, input.task_id.lastIndexOf(':')), branch: taskInput.branch || null }, addSessionId: session });
+        graph = executionGraph.createGraph(definition, options);
+        writeRunMeta({ runsDir: path.dirname(runDir), runId: path.basename(runDir), fields: { task_id: definition.task_id, repository_identity: definition.task_id.slice(0, definition.task_id.lastIndexOf(':')), branch: taskInput.branch || null }, addSessionId: session });
+        if (prepared.graph.question) graph = executionGraph.wait(runDir, executionGraph.standardWait(prepared.graph.question));
       } else if (operation === 'succeed' || operation === 'fail') graph = executionGraph.transition(runDir, operation, input, options);
       else if (operation === 'capture') {
         const kind = input?.kind;

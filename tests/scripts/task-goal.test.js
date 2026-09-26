@@ -124,6 +124,45 @@ try {
     assert.strictEqual(run(dir, childInput()).json.state, 'new', 'rejected runs must not leave a snapshot behind');
   });
 
+  test('an issue that has not decided whether to use a Graph cannot start, and the decision is checked', () => {
+    const dir = repo();
+    const withGraph = lines => childInput({ task: { ref: '#12', title: 't', body: fixture('child.md').replace(/## Graph[\s\S]*$/, lines === null ? '' : `## Graph\n\n${lines}\n`) } });
+    for (const [lines, reason] of [
+      [null, /Graph/],
+      ['- 型: 並列', /型/],
+      ['- Type: nonexistent', /型/],
+      ['- 型: 個別', /理由/],
+      ['- 型: 標準\n- 人の判断: レビューの前: 公開してよいか', /実装の前/],
+      ['- 型: 標準\n- 上限: 検証 0回 / レビュー 2回', /上限/],
+      ['- 型: 標準\n- 上限: 検証 -1回 / レビュー 2回', /上限/],
+      ['- 型: 標準\n- 上限: 検証 三回 / レビュー 2回', /上限/],
+    ]) {
+      const result = run(dir, withGraph(lines), '--check');
+      assert.strictEqual(result.status, 1, `${lines}: ${result.stdout}`);
+      assert.ok(result.json.issues.some(issue => reason.test(issue)), `${lines}: ${JSON.stringify(result.json.issues)}`);
+    }
+    for (const lines of [
+      '- 型: なし（ゴールの停止条件で足りる）',
+      '- 型: 標準\n- 上限: 検証 3回 / レビュー 2回\n- 人の判断: なし',
+      '- 型: 標準\n- 人の判断: 実装の前: 互換性を壊してよいか',
+      '- 型: 個別（理由: 並列の node が要る）',
+      '- Type: standard\n- Human decision: before implementation: may we break compatibility',
+    ]) {
+      const result = run(dir, withGraph(lines), '--check');
+      assert.strictEqual(result.status, 0, `${lines}: ${result.stdout}`);
+    }
+  });
+
+  test('changing the Graph decision is a spec change', () => {
+    const dir = repo();
+    run(dir, childInput());
+    const edited = childInput();
+    edited.task.body = edited.task.body.replace('- 型: なし（ゴールの停止条件で足りる）', '- 型: 標準');
+    const result = run(dir, edited);
+    assert.strictEqual(result.status, 3, result.stdout);
+    assert.match(result.json.diff, /^\+ - 型: 標準$/m);
+  });
+
   test('a goal over the 4,000-character runtime limit is refused rather than truncated', () => {
     const dir = repo();
     const long = Array.from({ length: 100 }, (_, i) => `- [ ] 条件${i}: 画面の各状態で表示と操作の結果が仕様どおりであることを確認する`).join('\n');

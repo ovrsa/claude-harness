@@ -24,3 +24,7 @@ Issue 本文から、両ランタイム共通のゴール文面を作る。
 ## Constraints
 
 - Issue 本文を書き換えない
+
+## Graph
+
+- Type: none

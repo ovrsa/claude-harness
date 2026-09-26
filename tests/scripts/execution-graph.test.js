@@ -17,7 +17,7 @@ fs.writeFileSync(path.join(repoDir, '.claude', 'tracker.json'), JSON.stringify({
 fs.writeFileSync(path.join(repoDir, 'work.js'), 'module.exports = 1;\n');
 spawnSync('git', ['-C', repoDir, 'add', 'work.js', '.claude/tracker.json']); spawnSync('git', ['-C', repoDir, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'initial']);
 fs.appendFileSync(path.join(repoDir, 'work.js'), '// change\n');
-const taskInput = { tracker: 'github', branch: 'issue-1', task: { ref: '#1', title: 'graph task', body: '## 目的\nGraphを試す。\n\n## 受け入れ条件\n- [ ] Graphで完了する。\n\n## 検証方法\n- テストを実行する。\n' } };
+const taskInput = { tracker: 'github', branch: 'issue-1', task: { ref: '#1', title: 'graph task', body: '## 目的\nGraphを試す。\n\n## 受け入れ条件\n- [ ] Graphで完了する。\n\n## 検証方法\n- テストを実行する。\n\n## Graph\n- 型: 個別（理由: テストが定義の JSON を渡す）\n' } };
 const taskFile = jsonFileLater('task.json', taskInput);
 let passed = 0;
 function test(name, fn) { fn(); passed++; console.log(`  ✓ ${name}`); }
