@@ -16,13 +16,19 @@ const fs = require('fs');
 
 const { listRunRecords, readRunRecord, getRunsDir } = require('./lib/run-record');
 const { listTranscriptFiles } = require('./lib/transcript-log');
+const { findCodexRollouts } = require('./lib/codex-transcripts');
+
+// trace exits 2 when a run's transcripts are not all found: a partial trace read as the whole run
+// is the failure this exit code guards against. 1 stays for bad input.
+const EXIT_TRACE_INCOMPLETE = 2;
 
 function parseArgs(argv) {
-  const options = { command: '', args: [], runsDir: '', transcriptDir: '', limit: 0, json: false };
+  const options = { command: '', args: [], runsDir: '', transcriptDir: '', codexHome: '', limit: 0, json: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--runs-dir') options.runsDir = argv[++i] || '';
     else if (arg === '--transcript-dir') options.transcriptDir = argv[++i] || '';
+    else if (arg === '--codex-home') options.codexHome = argv[++i] || '';
     else if (arg === '--limit') options.limit = Number(argv[++i] || 0) || 0;
     else if (arg === '--json') options.json = true;
     else if (arg === '--help' || arg === '-h') options.command = 'help';
@@ -47,7 +53,11 @@ function printHelp() {
     '',
     'Options:',
     '  --runs-dir <path>        override the run record directory',
-    '  --transcript-dir <path>  override where trace resolves transcripts',
+    '  --transcript-dir <path>  override where trace resolves Claude Code transcripts',
+    '  --codex-home <path>      override the Codex home trace searches (default: $CODEX_HOME or ~/.codex)',
+    '',
+    'trace exits 0 when every session resolves, 2 when the run is unlinked, missing or partial,',
+    'and 1 on bad input.',
     '',
   ].join('\n'));
 }
@@ -151,6 +161,36 @@ function commandDiff(options) {
   return 0;
 }
 
+/**
+ * The model a transcript used, at each line where it changed (1-based JSONL lines). Claude Code
+ * records it per assistant message, Codex per turn_context. `<synthetic>` is Claude Code's
+ * placeholder for messages no model produced.
+ */
+function modelChanges(filePath) {
+  const changes = [];
+  let previous = null;
+  let content = '';
+  try {
+    content = fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return changes;
+  }
+  content.split('\n').forEach((line, index) => {
+    let record;
+    try {
+      record = JSON.parse(line);
+    } catch {
+      return;
+    }
+    const model = record?.type === 'turn_context' ? record.payload?.model
+      : record?.type === 'assistant' ? record.message?.model : null;
+    if (typeof model !== 'string' || model === '<synthetic>' || model === previous) return;
+    changes.push({ line: index + 1, model });
+    previous = model;
+  });
+  return changes;
+}
+
 function commandTrace(options) {
   const runsDir = resolveRunsDir(options);
   const runId = options.args[0] || '';
@@ -162,8 +202,8 @@ function commandTrace(options) {
 
   const sessionIds = Array.isArray(record.session_ids) ? record.session_ids : [];
   if (sessionIds.length === 0) {
-    process.stdout.write(`${runId}: no session ids recorded, so no transcript can be resolved\n`);
-    return 0;
+    process.stdout.write(`${runId}: unlinked (no session ids recorded, so no transcript can be resolved)\n`);
+    return EXIT_TRACE_INCOMPLETE;
   }
 
   const files = listTranscriptFiles(
@@ -174,13 +214,21 @@ function commandTrace(options) {
     if (!bySession.has(file.sessionId)) bySession.set(file.sessionId, []);
     bySession.get(file.sessionId).push(file.path);
   }
+  for (const [sessionId, paths] of findCodexRollouts(sessionIds, { codexHome: options.codexHome })) {
+    bySession.set(sessionId, [...(bySession.get(sessionId) || []), ...paths]);
+  }
 
-  for (const sessionId of sessionIds) {
-    const paths = bySession.get(sessionId) || [];
+  const sessions = sessionIds.map(sessionId => ({ sessionId, paths: bySession.get(sessionId) || [] }));
+  const resolvedCount = sessions.filter(session => session.paths.length > 0).length;
+  const status = resolvedCount === sessions.length ? 'resolved' : resolvedCount > 0 ? 'partial' : 'missing';
+  process.stdout.write(`${runId}: ${status} (${resolvedCount}/${sessions.length} sessions)\n`);
+
+  const models = [];
+  for (const { sessionId, paths } of sessions) {
     if (paths.length === 0) {
-      // Transcript retention is Claude Code's, not the harness's: an older run
+      // Transcript retention is the runtime's, not the harness's: an older run
       // legitimately has no trace left. Say so instead of omitting the session.
-      process.stdout.write(`${sessionId}: no transcript found (retention or different machine)\n`);
+      process.stdout.write(`${sessionId}: missing (no transcript found; retention or different machine)\n`);
       continue;
     }
     for (const filePath of paths) {
@@ -191,9 +239,14 @@ function commandTrace(options) {
         size = '';
       }
       process.stdout.write(`${sessionId}: ${filePath}${size}\n`);
+      for (const change of modelChanges(filePath)) {
+        process.stdout.write(`  line ${change.line}: model=${change.model}\n`);
+        if (!models.includes(change.model)) models.push(change.model);
+      }
     }
   }
-  return 0;
+  if (models.length > 0) process.stdout.write(`models: ${models.join(', ')}\n`);
+  return status === 'resolved' ? 0 : EXIT_TRACE_INCOMPLETE;
 }
 
 function main(argv = process.argv.slice(2)) {
