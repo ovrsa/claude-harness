@@ -3,7 +3,7 @@
 **今どうなっているか**だけを置く1枚。なぜそうなったかは `docs/design/` に日付順で残っている。
 トラック・成果物・Git 規約・doc 規約は `CLAUDE.md` と `rules/`。
 
-最終更新: 2026-09-14
+最終更新: 2026-09-26
 
 ## 層と所有
 
@@ -11,7 +11,7 @@
 |---|---|---|
 | 入口 | `CLAUDE.md` | 常時ロードされる不変則。トラック選択と完了条件 |
 | 強制 | `hooks/` `scripts/hooks/` | 保護ブランチ push のブロック。許可境界。他は助言 |
-| トレース | `projects/**/*.jsonl` | ツール呼び出しと結果の生ログ。Claude Code が書く。harness は読むだけ |
+| トレース | Claude の `projects/**/*.jsonl` と Codex の rollouts | 各ランタイムが書く生ログ。`runs-cli trace` が Run のIDから解決する |
 | 証拠 | `runs/<date>-<slug>/` | ゲートの証拠本文、resume の成否、task↔session↔branch の結合。git 追跡。**状態と履歴はここと生ログの2つだけ**（2026-08-20 に SQLite を撤去） |
 | 成果物 | `templates/` | 成果物の構造と各ゲートの契約 |
 | 入口（コマンド） | `commands/` | 手順の入口。`commands/COMMANDS.md` は要約であって置き換えではない |
@@ -20,6 +20,17 @@
 
 `~/.claude` が制御レイヤの正本。ミラー・アーカイブ・プラグイン・upstream リポジトリは参照層または配布層であって、
 ライフサイクルの権威ではない。
+
+## Codex との共有
+
+`~/.codex/AGENTS.md` の管理ブロックから正本の `CLAUDE.md` と `rules/` を読む。
+スキル本文は `skills/claude-imported` のリンクで共有する。
+`sync-codex-bridge.js` が入口・リンク・記録フックの差分を検査し、適用時は既存設定を保持する。
+Claude の開始・終了フック、Codex の SessionStart/Stop、手動入口は
+`scripts/lib/runtime-session.js` の同じ記録処理を使う。
+Codexの新規フックは `/hooks` で信頼するまで発火しない。
+権限、MCP、モデル、スキル自動選択の制御はランタイムごとに残る。
+手順は [共通ハーネス](how-to/shared-runtime-harness.md) にある。
 
 ## 流れ
 

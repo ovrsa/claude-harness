@@ -17,8 +17,7 @@
  * the decision record and the evidence record share a name.
  *
  * Raw traces are NOT copied here. meta.json carries session_ids, which resolve
- * to projects/<slug>/<session-id>.jsonl (see transcript-log.js) or to Codex
- * rollouts (see codex-transcripts.js).
+ * to Claude projects/ or Codex rollouts (see runs-cli.js trace).
  */
 
 const fs = require('fs');

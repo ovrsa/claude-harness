@@ -1,0 +1,15 @@
+{
+  "repo_root": "/Users/kyo/development/.claude/shared-runtime-harness",
+  "branch": "fix/shared-runtime-harness",
+  "run_id": "2026-09-26-shared-runtime-harness",
+  "started_at": "2026-09-26T10:19:24.265Z",
+  "updated_at": "2026-09-26T10:19:24.268Z",
+  "gates": [
+    "observation",
+    "review",
+    "verification"
+  ],
+  "session_ids": [
+    "codex-session-01a0dc64-ea1a-7823-b3b8-505bd62aba66"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "kind": "verification",
+  "source_path": "/Users/kyo/development/.claude/shared-runtime-harness/verification-summary.md",
+  "captured_at": "2026-09-26T10:19:24.268Z",
+  "fingerprint": "",
+  "state": {
+    "scope": [
+      "共通記録処理、Claude/Codexの入口、Codexの管理ブロック・スキル・フック配線の同期、Runから両ランタイムのログ解決。"
+    ],
+    "commandsRun": [
+      "`node tests/scripts/runs-cli.test.js`: 13 passed。",
+      "`node tests/scripts/runtime-session.test.js`: passed。公開フックstdin、legacy Claude入口、manual環境変数、runs-cli showの往復。",
+      "`node tests/scripts/sync-codex-bridge.test.js`: passed。公開CLIのcheck/apply、再実行、既存設定保護、壊れた入口とスキル実体の保護。",
+      "Node 22で `node tests/run-all.js`: 1464件中1462件成功、2件失敗。未集計なし。",
+      "既存失敗は `all hook commands use node or approved shell wrappers` と `passes on real project hooks.json`。今回変更していないsettings.jsonのOrca定義に対する検査。9月24〜26日の既存Runと同一。",
+      "最初のNode 21での全体検証はSQLite API非対応による7件と、新規ソースのgit未登録による1件が追加失敗した。対応Node 22とgit登録後は上記2件だけ。",
+      "ESLint: 変更したJS成功。",
+      "`audit-harness-contract.js`, `validate-runtime-surface.js`, `validate-commands.js`, `validate-text-sources.js`, `git diff --check`: 成功。"
+    ],
+    "verificationOutcome": [
+      "変更面は成功。全体の既存失敗2件は残っているため全体成功とは扱わない。"
+    ],
+    "assessment": [
+      "受け入れ判断と残るランタイム承認はreview-summary.mdに記録する。"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "missingValues": [],
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Verification Summary\n\n## Scope\n\n共通記録処理、Claude/Codexの入口、Codexの管理ブロック・スキル・フック配線の同期、Runから両ランタイムのログ解決。\n\n## Commands Run\n\n- `node tests/scripts/runs-cli.test.js`: 13 passed。\n- `node tests/scripts/runtime-session.test.js`: passed。公開フックstdin、legacy Claude入口、manual環境変数、runs-cli showの往復。\n- `node tests/scripts/sync-codex-bridge.test.js`: passed。公開CLIのcheck/apply、再実行、既存設定保護、壊れた入口とスキル実体の保護。\n- Node 22で `node tests/run-all.js`: 1464件中1462件成功、2件失敗。未集計なし。\n- 既存失敗は `all hook commands use node or approved shell wrappers` と `passes on real project hooks.json`。今回変更していないsettings.jsonのOrca定義に対する検査。9月24〜26日の既存Runと同一。\n- 最初のNode 21での全体検証はSQLite API非対応による7件と、新規ソースのgit未登録による1件が追加失敗した。対応Node 22とgit登録後は上記2件だけ。\n- ESLint: 変更したJS成功。\n- `audit-harness-contract.js`, `validate-runtime-surface.js`, `validate-commands.js`, `validate-text-sources.js`, `git diff --check`: 成功。\n\n## RED Evidence\n\n- 9837654のtraceテストを現行実装に実行: 8成功/5失敗。実装の再利用後13成功。\n- 新しいフックの往復テスト: runtime-session.js不存在で失敗。共有処理・adapter実装後に成功。\n- 同期CLI: 不存在で期待終了コード2に対して1。実装後check/apply往復成功。\n\n## Verification Outcome\n\n変更面は成功。全体の既存失敗2件は残っているため全体成功とは扱わない。\n\n## Guardrail Candidates\n\n- none\n\n## Assessment\n\n受け入れ判断と残るランタイム承認はreview-summary.mdに記録する。\n"
+}
