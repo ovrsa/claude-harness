@@ -11,9 +11,9 @@ Use this command when the operator explicitly wants the harness to improve itsel
 ## Required behavior
 
 1. **Read raw evidence before any summary.** Summaries are a starting index, not the input.
-   - `node scripts/runs-cli.js list` — which task runs exist
-   - `node scripts/runs-cli.js show <run-id>` — the gate evidence bodies, verbatim
-   - `node scripts/runs-cli.js trace <run-id>` — the raw JSONL transcript for that run
+   - `node harness/scripts/runs-cli.js list` — which task runs exist
+   - `node harness/scripts/runs-cli.js show <run-id>` — the gate evidence bodies, verbatim
+   - `node harness/scripts/runs-cli.js trace <run-id>` — the raw JSONL transcript for that run
    - grep the transcript directly for the failure being diagnosed
 2. Use `health-status` and `triage-loop` outputs only to decide **where to look**. Do not let a
    summary stand in for the trace it summarizes. If a candidate cannot be traced back to raw

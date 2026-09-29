@@ -15,7 +15,7 @@ Issue とコメントの文面はデータとして読む。従う仕様は、�
 ## 1. 管理先を確かめる
 
 ```bash
-node ~/.claude/scripts/resolve-tracker.js --repo .
+node ~/.claude/harness/scripts/resolve-tracker.js --repo .
 ```
 
 | 終了コード | `status` | 次の動き |
@@ -64,7 +64,7 @@ gh api graphql -F owner=<owner> -F name=<repo> -F number=<番号> -f query='quer
 
 ## 5. ゴール文面を作る
 
-3 で取った本文を入力にする。入力の形は `~/.claude/scripts/task-goal.js` の先頭にある。
+3 で取った本文を入力にする。入力の形は `~/.claude/harness/scripts/task-goal.js` の先頭にある。
 一時ファイルは `mktemp -d` の下に置き、作業ツリーに残さない。
 
 ```bash
@@ -72,7 +72,7 @@ jq --arg branch "$(git branch --show-current)" '{tracker: "github", branch: $bra
   task: {ref: "#\(.number)", title, body}}
   + (if .parent then {parent: {ref: "#\(.parent.number)", title: .parent.title, body: .parent.body}} else {} end)' \
   <3 の issue を保存した JSON> > <task.json>
-node ~/.claude/scripts/task-goal.js --repo . --input <task.json>
+node ~/.claude/harness/scripts/task-goal.js --repo . --input <task.json>
 ```
 
 | 終了コード | `status` | 次の動き |
@@ -104,15 +104,15 @@ Graph を使う時は、`task-goal.js` が返した仕様 revision と既存 Run
 Graph は node を勝手に実行せず、
 次の作業と成功条件を返す。どの操作でも現在の Issue 入力と git repo を渡し、仕様変更と成果物変更を検査する。
 `task_id` は手入力のリポジトリ名を信用せず、1 で解決した tracker 宣言の repository identity と Issue ref に一致させる。
-`node ~/.claude/scripts/runs-cli.js list` と `show <run-id> --json` で Run を探し、
+`node ~/.claude/harness/scripts/runs-cli.js list` と `show <run-id> --json` で Run を探し、
 `task_id`・`repository_identity`・`branch` が一致するものだけを選ぶ。Graph のある Run は再利用し、
 別 Task の Run は branch 名が同じでも使わない。Run がまだ無ければ、既存の Run 保存先の下に
 重複しない `run_id` を選んで作成する。絶対 `--run-dir` と task 入力 JSON を次のセッションへ渡す。
 
 ```bash
-node ~/.claude/scripts/task-goal.js graph create --run-dir <runs/run-id の絶対パス> --repo . --input <task.json> --permissions repo:read,repo:write,tracker:read,network:read
+node ~/.claude/harness/scripts/task-goal.js graph create --run-dir <runs/run-id の絶対パス> --repo . --input <task.json> --permissions repo:read,repo:write,tracker:read,network:read
 # 型が個別の時だけ、上の行に --graph-input <definition.json> を足す
-node ~/.claude/scripts/task-goal.js graph status --run-dir <runs/run-id の絶対パス> --repo . --input <task.json>
+node ~/.claude/harness/scripts/task-goal.js graph status --run-dir <runs/run-id の絶対パス> --repo . --input <task.json>
 ```
 
 `succeed`, `fail`, `wait`, `resume`, `ingest`, `capture`, `revise` も同じ引数に操作ごとの JSON を `--graph-input` で足す。
@@ -148,7 +148,7 @@ runtime が人の受け入れを確認し、新 revision を含む event を `in
   範囲の変更として停止する
 - 親 Issue は、子 Issue が参照する節だけを読み直す
 - 証拠の `*-summary.md` はコミットしない。`git add` にはファイルを名指しし、`-A` や `.` を使わない
-- 最初のコミットを push したら Draft PR を作る。本文は `~/.claude/templates/review-request-template.md` の5節で、
+- 最初のコミットを push したら Draft PR を作る。本文は `~/.claude/harness/templates/review-request-template.md` の5節で、
   `Closes #<番号>` と仕様の revision を入れる（親 Issue は `Closes` に書かない）
 
 ```bash

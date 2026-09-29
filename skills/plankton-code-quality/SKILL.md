@@ -95,7 +95,7 @@ No install command, no plugin config. The hooks in `.claude/settings.json` are p
 
 To use Plankton hooks in your own project:
 
-1. Copy `.claude/hooks/` directory to your project
+1. Copy `.claude/harness/hooks/` directory to your project
 2. Copy `.claude/settings.json` hook configuration
 3. Copy linter config files (`.ruff.toml`, `biome.json`, etc.)
 4. Install the linters for your languages
@@ -142,7 +142,7 @@ If running both ECC and Plankton hooks:
 
 ## Configuration Reference
 
-Plankton's `.claude/hooks/config.json` controls all behavior:
+Plankton's `.claude/harness/hooks/config.json` controls all behavior:
 
 ```json
 {

@@ -16,5 +16,5 @@ Focus: Implementation, coding, building features
 
 ## Tools to favor
 - Edit, Write for code changes
-- Bash for running tests/builds
+- Bash for running harness/tests/builds
 - Grep, Glob for finding code

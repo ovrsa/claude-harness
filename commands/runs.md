@@ -1,6 +1,6 @@
 ---
 name: runs
-description: Inspect the JSON run records under runs/ - gate evidence bodies, lifecycle events, and the transcripts they resolve to.
+description: Inspect the JSON run records under harness/data/runs/ - gate evidence bodies, lifecycle events, and the transcripts they resolve to.
 command: true
 ---
 
@@ -8,12 +8,12 @@ command: true
 
 Use this command to read what actually happened on a past task.
 
-`runs/<YYYY-MM-DD>-<slug>/` holds the durable record. The slug matches
+`harness/data/runs/<YYYY-MM-DD>-<slug>/` holds the durable record. The slug matches
 `docs/design/YYYY-MM-DD-<slug>.md`, so the decision and the evidence share a name.
 
 ## Required behavior
 
-1. Run `node scripts/runs-cli.js list` to see the run records, newest first.
+1. Run `node harness/scripts/runs-cli.js list` to see the run records, newest first.
 2. For a specific run, use the subcommand that answers the question:
    - `show <run-id>` — gate evidence bodies, printed verbatim
    - `show <run-id> --json` — the same record, machine-readable
@@ -39,4 +39,4 @@ Use this command to read what actually happened on a past task.
 - do not summarize evidence bodies when the question is why something failed
 - do not treat a missing transcript as a missing run. Transcript retention belongs to
   Claude Code, so an older run can legitimately have no trace left
-- do not edit files under `runs/`. It is an append-only record of what happened
+- do not edit files under `harness/data/runs/`. It is an append-only record of what happened

@@ -1,7 +1,7 @@
 # Documentation
 
 永続リファレンス（`docs/` に置くもの）の分類と配置を定める。
-ライフサイクル成果物（`review-summary.md` / `verification-summary.md` 等）は対象外 — それらは `~/.claude/docs/architecture.md` と `~/.claude/templates/` を参照。
+ライフサイクル成果物（`review-summary.md` / `verification-summary.md` 等）は対象外 — それらは `~/.claude/docs/architecture.md` と `~/.claude/harness/templates/` を参照。
 
 ## 中核原則: 維持コストゼロ (CRITICAL)
 
@@ -33,12 +33,12 @@ docs/
 コード内                契約（型 + コメント）／Tutorial（実行可能コマンド）
 ```
 
-テンプレートは `~/.claude/templates/` にある（`readme-` / `repo-map-` / `todo-` / `architecture-` / `design-doc-initial-` / `design-doc-increment-` / `how-to-` / `task-issue-`）。
+テンプレートは `~/.claude/harness/templates/` にある（`readme-` / `repo-map-` / `todo-` / `architecture-` / `design-doc-initial-` / `design-doc-increment-` / `how-to-` / `task-issue-`）。
 
 **design doc の置き場所は管理先の宣言で分かれる。** プロジェクトの `.claude/tracker.json` で管理先を宣言したら、
 design doc は親 Issue の本文にだけ置き、`docs/design/` には置かない（同じ決定を2箇所に置かない）。
 宣言が `none` なら上の `docs/design/` に置く。宣言が無ければ、最初の起票の前に人が選ぶ。
-解決は `scripts/resolve-tracker.js` が行い、GitHub を全プロジェクトに強制せず、管理先へのアクセス手段も固定しない。
+解決は `harness/scripts/resolve-tracker.js` が行い、GitHub を全プロジェクトに強制せず、管理先へのアクセス手段も固定しない。
 
 | 対象 | 入口 |
 |---|---|
@@ -54,7 +54,7 @@ design doc は親 Issue の本文にだけ置き、`docs/design/` には置か�
 |---|---|---|
 | git（ブランチ・`log`・`diff`） | 実際に何が起きたか。**復帰の一次根拠** | — |
 | design doc（`docs/design/` の最新1枚。管理先があればブランチ名の Issue から辿る親 Issue の本文） | 決定された意図 | 人間 |
-| `runs/<date>-<slug>/` | ゲートの証拠本文。worktree を消しても残る（git 追跡） | フック |
+| `harness/data/runs/<date>-<slug>/` | ゲートの証拠本文。worktree を消しても残る（git 追跡） | フック |
 | `TODO.md` | 人間の作業メモ・現在地（使い捨て・gitignore・完了時に削除） | 人間 |
 
 **`TODO.md` に実行状態を持たせない。** compaction で失われるのは会話の方なので、

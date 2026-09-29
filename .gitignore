@@ -19,7 +19,7 @@ ide/
 image-cache/
 jobs/
 mcp-needs-auth-cache.json
-metrics/
+/metrics/
 paste-cache/
 plans/
 plugins/
@@ -62,7 +62,15 @@ node_modules/
 # agents/** はここに置かない。rules/common/agents.md と commands/ が名指しで参照しており、
 # 無視すると worktree から agents 14件が消えて validate-commands.js が落ちる。
 examples/**
-scripts/codemaps/**
-scripts/hooks/pre-bash-dev-server-block.js
-scripts/hooks/pre-write-doc-warn.js
-scripts/release.sh
+harness/scripts/codemaps/**
+harness/scripts/hooks/pre-bash-dev-server-block.js
+harness/scripts/hooks/pre-write-doc-warn.js
+harness/scripts/release.sh
+
+# Harness-owned runtime data; evidence remains tracked.
+/harness/data/state/
+/harness/data/sessions/
+/harness/data/archive/
+/harness/data/reports/
+/harness/data/backups/
+/harness/data/migrations/

@@ -34,7 +34,7 @@ Use this command when local durable review evidence is needed.
 
    **If one was touched, reading the code is not enough. Run it with adversarial input and
    record the input/output table in `Security`.** The 2026-08-18 auto-allow bypass in
-   `scripts/lib/permission-resolver.js` survived every prior review precisely because reviews
+   `harness/scripts/lib/permission-resolver.js` survived every prior review precisely because reviews
    read the code; it was found in minutes by executing the classifier. Probe at least:
    case, flag order, chaining across `;` `&&` `||` `|`, quoting, command substitution,
    and boundary values (empty, oversized).
@@ -54,7 +54,7 @@ Use this command when local durable review evidence is needed.
    not a failure.
 7. Finish the task's changed code, prose, and comments before completion. Update stale operational
    instructions and resolved design Open Issues. Follow `docs/how-to/run-a-task.md` → 完了前の仕上げ.
-   Fill the `Code Quality` finishing fields in `templates/review-summary-template.md` with targets
+   Fill the `Code Quality` finishing fields in `harness/templates/review-summary-template.md` with targets
    and reasons. Keep Verification pending until checks run after the final cleanup; record the
    fingerprint only after reviewing that final diff and evidence. Never invent cleanup changes.
 8. Record findings first using the canonical sections:
@@ -75,7 +75,7 @@ Use this command when local durable review evidence is needed.
    - `LOW:`
    - `INFO:`
 10. Move accepted or non-blocking concerns to `Residual Risks`.
-11. Treat review as approval-ready only when no `CRITICAL:` or `HIGH:` finding remains. `MEDIUM:` and below are recorded, not blocking — that is what `scripts/lib/task-artifacts.js` enforces.
+11. Treat review as approval-ready only when no `CRITICAL:` or `HIGH:` finding remains. `MEDIUM:` and below are recorded, not blocking — that is what `harness/scripts/lib/task-artifacts.js` enforces.
 12. If verification has not run yet, leave `Next Action` pointing to verification instead of treating the task as approval-ready.
 13. Treat review as the primary input to `/eval`, not as a substitute for `/verify`.
 14. Separate review dimensions:

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "eslint.config.js",
+    "harness/hooks/*.js",
+    "harness/scripts/*.js",
+    "harness/scripts/ci/*.js",
+    "harness/scripts/hooks/*.js",
+    "harness/tests/**/*.js",
+    "harness/scripts/provider-adapters/**/*.js"
+  ],
+  "project": [
+    "*.js",
+    "harness/hooks/**/*.js",
+    "harness/scripts/**/*.js",
+    "harness/tests/**/*.js"
+  ],
+  "ignore": [
+    ".claude-plugin/**",
+    "plugins/**",
+    "skills/**",
+    "agents/**",
+    "projects/**",
+    "file-history/**",
+    "session-env/**",
+    "sessions/**",
+    "shell-snapshots/**",
+    "cache/**",
+    "backups/**",
+    "debug/**",
+    "paste-cache/**",
+    "examples/**",
+    "harness/scripts/codemaps/**",
+    "harness/scripts/hooks/pre-bash-dev-server-block.js",
+    "harness/scripts/hooks/pre-write-doc-warn.js"
+  ]
+}

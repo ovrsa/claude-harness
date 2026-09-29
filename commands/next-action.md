@@ -5,22 +5,22 @@ Operator-facing status surface for answering what to do next in the current harn
 ## Usage
 
 ```bash
-node ~/.claude/scripts/harness-status.js
+node ~/.claude/harness/scripts/harness-status.js
 ```
 
 JSON output for automation:
 
 ```bash
-node ~/.claude/scripts/harness-status.js --format json
+node ~/.claude/harness/scripts/harness-status.js --format json
 ```
 
 ## Reads
 
 - git branch, working tree, latest commit, and remote presence
 - lifecycle artifacts: `research.md`, `docs/design/` の最新の1枚, `review-summary.md`, `verification-summary.md`, `observation-summary.md`
-- latest pipeline evidence under `~/.claude/runs`
+- latest pipeline evidence under `~/.claude/harness/data/runs`
 - task queue state under `~/.claude/tasks/index.json`
-- the latest run record's recorded next action and residual risks, from `runs/<id>/evidence/review.json`
+- the latest run record's recorded next action and residual risks, from `harness/data/runs/<id>/evidence/review.json`
 
 ## Recommendation Priority
 

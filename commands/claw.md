@@ -9,7 +9,7 @@ Start an interactive AI agent session with persistent markdown history and opera
 ## Usage
 
 ```bash
-node scripts/claw.js
+node harness/scripts/claw.js
 ```
 
 Or via npm:

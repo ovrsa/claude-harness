@@ -12,13 +12,13 @@ This is a status-first helper. When the operator wants one concise self-improvem
 
 ## Required behavior
 
-1. Read `~/.claude/.state/guardrail-candidates.jsonl` if it exists.
-2. Merge telemetry-derived health candidates from the JSON logs: `runs/*/logs/events.ndjson` for
+1. Read `~/.claude/harness/data/state/guardrail-candidates.jsonl` if it exists.
+2. Merge telemetry-derived health candidates from the JSON logs: `harness/data/runs/*/logs/events.ndjson` for
    resume outcomes. (Was `~/.claude/telemetry/telemetry.db`, retired 2026-08-20.)
 3. Group repeated candidate patterns by stable candidate key.
 4. Summarize the current local harness health by count, recency, and grouped state.
 5. Distinguish `new`, `recurring`, `promotion-ready`, `stale`, and `resolved` groups.
-6. If useful for continuity, write `health-summary.md` using `~/.claude/templates/health-summary-template.md`.
+6. If useful for continuity, write `health-summary.md` using `~/.claude/harness/templates/health-summary-template.md`.
 7. Avoid making promotion decisions; this command is status-first.
 
 ## Hard guardrails

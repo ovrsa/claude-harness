@@ -46,7 +46,7 @@ project/
     │   ├── pm2-{port}-restart.md     # Restart single
     │   ├── pm2-logs.md               # View all logs
     │   └── pm2-status.md             # View status
-    └── scripts/
+    └── harness/scripts/
         ├── pm2-logs-{port}.ps1       # Single service logs
         └── pm2-monit.ps1             # PM2 monitor
 ```
@@ -203,7 +203,7 @@ Based on `$ARGUMENTS`, execute init:
 2. Generate `ecosystem.config.cjs`
 3. Generate `{backend}/start.cjs` for Python services (if applicable)
 4. Generate command files in `.claude/commands/`
-5. Generate script files in `.claude/scripts/`
+5. Generate script files in `.claude/harness/scripts/`
 6. **Update project CLAUDE.md** with PM2 info (see below)
 7. **Display completion summary** with terminal commands
 

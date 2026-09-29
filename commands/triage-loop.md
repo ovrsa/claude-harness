@@ -16,7 +16,7 @@ This is a follow-up helper. When the operator wants one combined recommendation 
 2. Review grouped patterns by state, recency, and likely layer.
 3. Identify which items should become the next follow-up tasks.
 4. Recommend the narrowest durable destination for each selected group.
-5. If useful for continuity, write `triage-summary.md` using `~/.claude/templates/triage-summary-template.md`.
+5. If useful for continuity, write `triage-summary.md` using `~/.claude/harness/templates/triage-summary-template.md`.
 6. Keep the output focused on next follow-up tasks rather than immediate implementation.
 
 ## Hard guardrails

@@ -11,7 +11,7 @@ command: true
 Two sources, both JSON:
 
 - Claude Code's own transcripts (`~/.claude/projects/**/*.jsonl`) — tool failures, token usage, human turn counts
-- the run records (`runs/<date>-<slug>/`) — which gates left evidence, and what review found
+- the run records (`harness/data/runs/<date>-<slug>/`) — which gates left evidence, and what review found
 
 The output is the canonical periodic input for `/improve-harness`. It does not replace ad-hoc candidate review — it anchors prioritization on a fixed cadence so that recurring failures get summarized into next-task candidates.
 
@@ -25,9 +25,9 @@ This is **not** a per-task gate. Verification still belongs to `/verify`; accept
 
 ## Required behavior
 
-1. Run `node scripts/eval-batch.js [--week <ISO-week>] [--output-dir <path>] [--transcript-dir <path>] [--runs-dir <path>]`.
+1. Run `node harness/scripts/eval-batch.js [--week <ISO-week>] [--output-dir <path>] [--transcript-dir <path>] [--runs-dir <path>]`.
 2. Default output directory is `telemetry/` under the active repo root.
-3. Defaults read `~/.claude/projects` and the run store resolved by `scripts/lib/run-record.js`.
+3. Defaults read `~/.claude/projects` and the run store resolved by `harness/scripts/lib/run-record.js`.
 4. Read the resulting JSON and Markdown, summarize the top movers in chat, and offer to feed them into `/improve-harness`.
 
 ## Output structure (JSON)
@@ -40,8 +40,8 @@ This is **not** a per-task gate. Verification still belongs to `/verify`; accept
   "previousWindow": { "start": "<ISO>", "end": "<ISO>" },
   "gateCoverage": {
     "current": {
-      "runs": [ { "runId": "...", "verification": true, "verificationComplete": true, "review": true, "observation": false } ],
-      "totals": { "runs": <n>, "verification": <n>, "review": <n>, "observation": <n> }
+      "harness/data/runs": [ { "runId": "...", "verification": true, "verificationComplete": true, "review": true, "observation": false } ],
+      "totals": { "harness/data/runs": <n>, "verification": <n>, "review": <n>, "observation": <n> }
     },
     "previous": { ... }
   },
