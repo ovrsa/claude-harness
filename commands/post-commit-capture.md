@@ -15,7 +15,7 @@ Use this command after commit, PR, or merge.
    - command follow-up
    - hook follow-up
    - skill candidate
-3. For reusable workflow candidates, use `~/.claude/templates/skill-candidate-template.md`.
+3. For reusable workflow candidates, use `~/.claude/harness/templates/skill-candidate-template.md`.
 4. Keep one-off knowledge in task docs or notes.
 5. Prefer the narrowest durable destination that would have prevented the failure.
 6. Treat captured candidates as feedstock for the later triage and health loop rather than as immediate automatic promotions.

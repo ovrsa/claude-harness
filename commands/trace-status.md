@@ -8,10 +8,10 @@ command: true
 
 Use this command to inspect what the harness has actually recorded. Two sources, both JSON:
 
-- `runs/<date>-<slug>/` — which gates left evidence, resume outcomes, task↔session↔branch
+- `harness/data/runs/<date>-<slug>/` — which gates left evidence, resume outcomes, task↔session↔branch
 - `projects/**/*.jsonl` — Claude Code's own transcripts: token usage, human turns, tool failures
 
-`node scripts/trace-status.js`
+`node harness/scripts/trace-status.js`
 
 ## Required behavior
 
@@ -45,5 +45,5 @@ because every table had become write-only, and four of its KPIs were structurall
 | `token_data_coverage_rate` | all 3,113 `token_usage_observed` rows carried `input_tokens=null`, so coverage was 0% for the metric's whole life. The transcripts hold the real numbers |
 | `estimated_cost_usd` | needs a unit-price table, which would be a maintained value in the harness |
 
-The archive of the retired store is at `runs/_archive/telemetry-sqlite-2026-08-20.json`.
+The archive of the retired store is at `harness/data/runs/_archive/telemetry-sqlite-2026-08-20.json`.
 See `docs/design/2026-08-20-retire-sqlite.md` for the measurements.

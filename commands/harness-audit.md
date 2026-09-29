@@ -32,7 +32,7 @@ Return:
 
 ## Checklist
 
-- Inspect `hooks/hooks.json`, `scripts/hooks/`, and hook tests.
+- Inspect `harness/hooks/hooks.json`, `harness/scripts/hooks/`, and hook tests.
 - Inspect `skills/`, command coverage, and agent coverage.
 - Verify cross-harness parity for `.cursor/`, `.opencode/`, `.codex/`.
 - Flag broken or stale references.
@@ -46,8 +46,8 @@ Harness Audit (repo): 52/70
 - Cost Efficiency: 4/10
 
 Top 3 Actions:
-1) Report token usage from the transcripts via scripts/lib/transcript-log.js
-2) Add pass@k docs and templates under templates/
+1) Report token usage from the transcripts via harness/scripts/lib/transcript-log.js
+2) Add pass@k docs and templates under harness/templates/
 3) Add command parity for /harness-audit in .opencode/commands/
 ```
 

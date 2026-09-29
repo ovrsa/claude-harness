@@ -12,7 +12,7 @@ Claude Code は `/split-issue <親Issue>`、Codex は `$split-issue <親Issue>` 
 ## 1. 管理先を確かめる
 
 ```bash
-node ~/.claude/scripts/resolve-tracker.js --repo .
+node ~/.claude/harness/scripts/resolve-tracker.js --repo .
 ```
 
 - `configured` なら次へ進む
@@ -41,14 +41,14 @@ node ~/.claude/scripts/resolve-tracker.js --repo .
 
 ## 4. 子 Issue を作る（確認の後）
 
-先行の無いものから順に作る。本文は `~/.claude/templates/task-issue-template.md` に沿って書き、
+先行の無いものから順に作る。本文は `~/.claude/harness/templates/task-issue-template.md` に沿って書き、
 `親Issue` 節に親の番号と、子が読むべき親の見出し（`参照:`）を書く。
 
-作る前に、下書きからゴール文面を作れるか確かめる。入力の形は `~/.claude/scripts/task-goal.js` の先頭にある。
+作る前に、下書きからゴール文面を作れるか確かめる。入力の形は `~/.claude/harness/scripts/task-goal.js` の先頭にある。
 `INVALID` なら直してから作る。
 
 ```bash
-node ~/.claude/scripts/task-goal.js --repo . --check --input <下書きと親の本文.json>
+node ~/.claude/harness/scripts/task-goal.js --repo . --check --input <下書きと親の本文.json>
 ```
 
 GitHub では、本文のリンクに加えて親子関係と依存関係も付ける。API が受け取るのは Issue の番号ではなく `id`。

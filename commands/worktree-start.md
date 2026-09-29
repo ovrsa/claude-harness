@@ -208,7 +208,7 @@ echo "claude --dangerous"
 ## Enforcement Notes
 
 - `lifecycle-pre-edit` warns (does not block) when editing inside a linked worktree that has no recent pipeline run evidence. **It does not read any plan metadata** — until 2026-08-20 this section claimed it warned on `worktree_required: true` plans, and it never read that field.
-- **The only hard block in the lifecycle is `hooks/git-push-guard.js`** on `main`/`master`. This section named `lifecycle-progress-complete.js`, which was removed on 2026-08-17 for never firing.
+- **The only hard block in the lifecycle is `harness/hooks/git-push-guard.js`** on `main`/`master`. This section named `lifecycle-progress-complete.js`, which was removed on 2026-08-17 for never firing.
 - If the advisory fires, prefer `/execute-plan` or a task-queue run so the pipeline records run evidence.
 - Documentation-only edits in the parent session should keep the plan/review coordination role clear.
 

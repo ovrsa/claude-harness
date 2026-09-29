@@ -76,7 +76,7 @@ worktree 作成が承認より前なのは、design doc を書くこと自体が
 ## Git Safety
 
 - `main` / `master` への直接 `push` は常時禁止(PR / CI の有無に関係なく禁止)。
-  **これは規律ではなくフックで止まる** — `hooks/git-push-guard.js` がリポジトリから対象ブランチを解決するので、
+  **これは規律ではなくフックで止まる** — `harness/hooks/git-push-guard.js` がリポジトリから対象ブランチを解決するので、
   引数なしの `git push` も捕まる。プロファイルで無効化できない
 - `main` / `master` への直接コミット禁止(こちらは規律。フックは止めない)
 - `main` / `master` へのマージは remote の有無で分ける。`git remote` で判定する

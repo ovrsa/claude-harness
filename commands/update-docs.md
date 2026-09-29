@@ -15,7 +15,7 @@ Sync documentation with the codebase, generating from source-of-truth files.
 ## Step 2: Generate Script Reference
 
 1. Read `package.json` (or `Makefile`, `Cargo.toml`, `pyproject.toml`)
-2. Extract all scripts/commands with their descriptions
+2. Extract all harness/scripts/commands with their descriptions
 3. Generate a reference table:
 
 ```markdown

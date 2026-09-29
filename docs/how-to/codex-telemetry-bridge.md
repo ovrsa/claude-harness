@@ -1,5 +1,8 @@
 # Codex Telemetry Bridge
 
+> 2026-09-26追記: Codexとの共通入口・自動記録・両ランタイムのログ解決は
+> [共通ハーネスの手順](shared-runtime-harness.md)を参照。以下は更新前の運用記録。
+
 `Codex` は現時点で Claude Code のような hook parity を持っていません。
 そのため、この harness ではセッション境界での記録を `manual bridge` で補います。
 

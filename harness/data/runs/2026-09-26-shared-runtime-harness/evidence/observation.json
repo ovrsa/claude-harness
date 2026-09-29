@@ -1,0 +1,41 @@
+{
+  "kind": "observation",
+  "source_path": "/Users/kyo/development/.claude/shared-runtime-harness/observation-summary.md",
+  "captured_at": "2026-09-26T10:19:24.268Z",
+  "fingerprint": "",
+  "state": {
+    "behaviorChecked": [
+      "RunからClaude/Codex生ログの解決、フックIDの共有ストアへの退避、共通入口と配線の同期。"
+    ],
+    "method": [
+      "stdout: 変更版runs-cliで実在Run2件をtrace。",
+      "stdout: native hook stdin → runs-cli show の往復を使い捨てrepo/homeで実行。",
+      "stdout: bridge check/applyを使い捨てCodex homeで実行し、2回目の適用で変更なしを確認。"
+    ],
+    "evidence": [
+      "trace: 2026-09-24-fix-trace-entry-20260924 がresolved (1/1)、Codex rolloutのsession_meta ID一致、line 8のgpt-6-astraを表示。",
+      "trace: 2026-09-25-issue-7 がresolved (1/1)、Claude transcriptとline 29のclaude-opus-5-5を表示。",
+      "stdout: 継承Claude IDがあるCodex hookでもcodex-session-native-idを記録。Claude native/legacy/manualも同じRunへ正しいIDを記録。",
+      "stdout: 既存AGENTSとStopフックを保持して管理ブロック/フックを追加し、二度目は同じ内容。既存config.toml不変。"
+    ],
+    "remainingUncertainty": [
+      "Codex本体による新規フックの自動発火は、利用者の信頼承認前なので未観測。公開フック入力の往復と配線までを検証した。"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "missingValues": [],
+    "concreteEvidenceLines": [
+      "stdout: 変更版runs-cliで実在Run2件をtrace。",
+      "stdout: native hook stdin → runs-cli show の往復を使い捨てrepo/homeで実行。",
+      "stdout: bridge check/applyを使い捨てCodex homeで実行し、2回目の適用で変更なしを確認。",
+      "trace: 2026-09-24-fix-trace-entry-20260924 がresolved (1/1)、Codex rolloutのsession_meta ID一致、line 8のgpt-6-astraを表示。",
+      "trace: 2026-09-25-issue-7 がresolved (1/1)、Claude transcriptとline 29のclaude-opus-5-5を表示。",
+      "stdout: 継承Claude IDがあるCodex hookでもcodex-session-native-idを記録。Claude native/legacy/manualも同じRunへ正しいIDを記録。",
+      "stdout: 既存AGENTSとStopフックを保持して管理ブロック/フックを追加し、二度目は同じ内容。既存config.toml不変。"
+    ],
+    "hasConcreteEvidence": true,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Observation Summary\n\n## Behavior Checked\n\nRunからClaude/Codex生ログの解決、フックIDの共有ストアへの退避、共通入口と配線の同期。\n\n## Method\n\n- stdout: 変更版runs-cliで実在Run2件をtrace。\n- stdout: native hook stdin → runs-cli show の往復を使い捨てrepo/homeで実行。\n- stdout: bridge check/applyを使い捨てCodex homeで実行し、2回目の適用で変更なしを確認。\n\n## Evidence\n\n- trace: 2026-09-24-fix-trace-entry-20260924 がresolved (1/1)、Codex rolloutのsession_meta ID一致、line 8のgpt-6-astraを表示。\n- trace: 2026-09-25-issue-7 がresolved (1/1)、Claude transcriptとline 29のclaude-opus-5-5を表示。\n- stdout: 継承Claude IDがあるCodex hookでもcodex-session-native-idを記録。Claude native/legacy/manualも同じRunへ正しいIDを記録。\n- stdout: 既存AGENTSとStopフックを保持して管理ブロック/フックを追加し、二度目は同じ内容。既存config.toml不変。\n\n## Local Installation\n\n- stdout: 正本へ検証済みファイルを反映後、`node ~/.claude/scripts/sync-codex-bridge.js --apply` でAGENTS.mdとhooks.jsonを更新。続く `--check` はaligned / changed=[]。\n- trace: 正本のCLIから実在Codex Runをresolvedと確認。\n- runtime health: 生成した共通AGENTSブロックが、この会話の次の入力に実際に含まれた。ルール入口の読み込みを観測できた。\n- backup: 正本の旧ファイルは `~/.codex/backups/shared-source-20260926-191728/`。Codex hooksの旧設定は `backups/shared-harness-1790417848246-e189f56b-b5dd-439b-8fd6-c668ce102a06/`。\n- settings: Claudeのpermission modeはauto、Codexのapproval_policy/sandbox_modeはconfig.tomlのトップレベルで未指定。これは実効権限の同一性を意味しない。Codexのhooks featureはtrue。権限とMCPの変更はしていない。\n\n## Remaining Uncertainty\n\nCodex本体による新規フックの自動発火は、利用者の信頼承認前なので未観測。公開フック入力の往復と配線までを検証した。\n\n## Guardrail Candidates\n\n- none\n"
+}

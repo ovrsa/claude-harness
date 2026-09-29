@@ -8,7 +8,7 @@ Use this command to inspect the local guardrail candidate registry and decide wh
 
 ## Required behavior
 
-1. Read `~/.claude/.state/guardrail-candidates.jsonl` if it exists.
+1. Read `~/.claude/harness/data/state/guardrail-candidates.jsonl` if it exists.
 2. Summarize:
    - total candidates
    - newest candidates

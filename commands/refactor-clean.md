@@ -9,7 +9,7 @@ Run analysis tools based on project type:
 | Tool | What It Finds | Command |
 |------|--------------|---------|
 | knip | Unused exports, files, dependencies | `npm run lint:unused` |
-| dependency-cruiser | Cycles and architecture drift in scripts/hooks | `npm run lint:architecture` |
+| dependency-cruiser | Cycles and architecture drift in harness/scripts/hooks | `npm run lint:architecture` |
 | depcheck | Unused npm dependencies | `npx depcheck` |
 | ts-prune | Unused TypeScript exports | `npx ts-prune` |
 | vulture | Unused Python code | `vulture src/` |

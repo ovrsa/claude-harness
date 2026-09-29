@@ -57,13 +57,13 @@ Use the local pipeline by default for standard and heavy-risky implementation an
 書かれている。エージェントが黙って書くのが実挙動なので、段の名前を成果物側に置いた。
 コマンドは残す — 成果物のスキーマを説明する場所として機能しており、
 撤去は 2026-08-12 の [pipeline-trim](../docs/design/2026-08-12-pipeline-trim.md) で却下済み。
-**機構はパーサとテンプレート**（`scripts/lib/task-artifacts.js` と `templates/`）であって、
+**機構はパーサとテンプレート**（`harness/scripts/lib/task-artifacts.js` と `harness/templates/`）であって、
 コマンドを打ったかどうかを見ているものは無い。
 
 **`plan.md` と `progress.md` はこの列に無い。** 2026-08-17 に撤去した。承認は 5 の design doc に対して
 会話で与える。**状態の要約を保存する仕組みは無い** — 復帰の根拠は git（ブランチ・log・diff）と
 design doc（管理先があればブランチ名の Issue 番号から辿る Issue と親 Issue の本文、無ければ `docs/design/` の最新1枚）、
-そして `runs/<date>-<slug>/` に残るゲートの証拠。
+そして `harness/data/runs/<date>-<slug>/` に残るゲートの証拠。
 **compact の前にコミットする。** 経緯は
 [docs/design/2026-08-17-lifecycle-five-steps.md](../docs/design/2026-08-17-lifecycle-five-steps.md)
 と [docs/design/2026-08-20-retire-sqlite.md](../docs/design/2026-08-20-retire-sqlite.md)。
@@ -93,7 +93,7 @@ Standard and heavy-risky work should leave pipeline run evidence through `/execu
 ### 管理先があるプロジェクトの流れ
 
 プロジェクトの `.claude/tracker.json` で管理先を宣言したプロジェクトでは、上の段を Issue と会話の単位に割り当てる。
-宣言の解決は `scripts/resolve-tracker.js`、ゴール文面の組み立ては `scripts/task-goal.js` が持つ。
+宣言の解決は `harness/scripts/resolve-tracker.js`、ゴール文面の組み立ては `harness/scripts/task-goal.js` が持つ。
 Task 内の実行順、休止、別セッション再開を Graph で扱う場合の共通契約と接続点は
 [`docs/how-to/execution-graph-contract.md`](../docs/how-to/execution-graph-contract.md) が持つ。
 
@@ -111,15 +111,15 @@ G  マージ        人が行う。次の start-issue が Issue のクローズ�
 ```
 
 - **起票の入口。** Issue の無い作業を頼まれたら、実装の前に `draft-issue` で下書きし、人が承認してから起票する。
-  Issue 番号の無いブランチに初めて書き込むと、`hooks/lifecycle-pre-edit.js` が `draft-issue` を案内する
+  Issue 番号の無いブランチに初めて書き込むと、`harness/hooks/lifecycle-pre-edit.js` が `draft-issue` を案内する
   （セッションに1回。書き込みは止めない）
 - **Grill を省いてよい条件。** 下書きの欄（実現する動作・受け入れ条件・検証方法・制約・Graph）を、依頼の文面と
   環境の調査だけで推測なしに埋められる時だけ。埋められない欄があれば、その欄だけを聞く。
   1つの会話で終わらない依頼は A〜C を通す
 - ゴール文面の停止条件（同じ原因で3回連続の失敗 / 30ターン / 受け入れ条件や範囲の変更 / 権限や外部依存）の正本は
-  `scripts/lib/task-goal.js`。ゴール機能が使えない時は、同じ文面を終了条件にして会話の中で繰り返す
+  `harness/scripts/lib/task-goal.js`。ゴール機能が使えない時は、同じ文面を終了条件にして会話の中で繰り返す
 - ゴールの開始は、作業ブランチの push と PR の作成・更新・状態変更の指示を兼ねる。マージは含まない（`rules/common/git-workflow.md`）
-- 機械で止まるのは main/master への push（`hooks/git-push-guard.js`）だけ。完了検査を呼ぶこと、
+- 機械で止まるのは main/master への push（`harness/hooks/git-push-guard.js`）だけ。完了検査を呼ぶこと、
   マージしないこと、マージ前に次のタスクへ進まないことは規律に依存する
 - **キュー経路（`task-queue.js run/retry/watch`、`pipeline-runner.js --execute`）はこの流れに未対応。**
   管理先の宣言もゴール文面も読まない

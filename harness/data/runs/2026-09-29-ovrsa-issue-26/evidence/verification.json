@@ -1,0 +1,34 @@
+{
+  "kind": "verification",
+  "source_path": "/Users/kyo/development/.claude/issue-26/verification-summary.md",
+  "captured_at": "2026-09-29T07:58:10.480Z",
+  "fingerprint": "",
+  "state": {
+    "scope": [
+      "Issue #26 配置変更と移行CLI、フック、Codex bridge、履歴参照。"
+    ],
+    "commandsRun": [
+      "npm test: 1479成功、0失敗、0skip、0uncounted（/tmp/issue26-test-checkpoint.log）。テスト全体を一時HOMEで実行。",
+      "npm run lint:repo: 成功。既存eqeqeq警告1件、knipの未使用export助言あり。依存違反0（89modules/99dependencies）。",
+      "node harness/scripts/ci/audit-harness-contract.js: PASS。",
+      "node harness/scripts/ci/validate-no-personal-paths.js: 14共有面PASS。",
+      "node harness/scripts/ci/validate-commands.js: 54ファイルPASS。",
+      "git diff --check: 成功。",
+      "git show 9f0531e:<旧path>とのバイト比較: runs/metrics全22ファイル一致。"
+    ],
+    "verificationOutcome": [
+      "passed: 最後のコード修正後に全検査を実行。稼働切替やUI要件の受容は含めない。"
+    ],
+    "assessment": [
+      "実装checkpointの検査は成功。Issue全体はreview-summary.mdの未達項目が残る。"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [
+      "unrecognized candidate line: - HOME分離の再発候補はreview-summary.mdに記録。"
+    ],
+    "missingValues": [],
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Verification Summary\n\n## Scope\n\n- Issue #26 配置変更と移行CLI、フック、Codex bridge、履歴参照。\n\n## Commands Run\n\n- npm test: 1479成功、0失敗、0skip、0uncounted（/tmp/issue26-test-checkpoint.log）。テスト全体を一時HOMEで実行。\n- npm run lint:repo: 成功。既存eqeqeq警告1件、knipの未使用export助言あり。依存違反0（89modules/99dependencies）。\n- node harness/scripts/ci/audit-harness-contract.js: PASS。\n- node harness/scripts/ci/validate-no-personal-paths.js: 14共有面PASS。\n- node harness/scripts/ci/validate-commands.js: 54ファイルPASS。\n- git diff --check: 成功。\n- git show 9f0531e:<旧path>とのバイト比較: runs/metrics全22ファイル一致。\n\n## RED Evidence\n\n- layout.test.js: CLI未実装時に失敗（/tmp/issue26-layout-red.log）。\n- sync-codex-bridge.test.js: 旧管理フックの重複を検出（/tmp/issue26-bridge-red.log）。\n- alias移動後参照: 旧パスが残って参照失敗（/tmp/issue26-alias-red.log）。\n- 外部配置worktree: 自身の記録先を選べず失敗（/tmp/issue26-worktree-red.log）。\n- pipeline-evidence.test.js: harness worktreeのglobal記録がfound:false。追加テスト実行で5成功1失敗、修正後6成功0失敗。\n\n## Verification Outcome\n\n- passed: 最後のコード修正後に全検査を実行。稼働切替やUI要件の受容は含めない。\n\n## Guardrail Candidates\n\n- HOME分離の再発候補はreview-summary.mdに記録。\n\n## Assessment\n\n- 実装checkpointの検査は成功。Issue全体はreview-summary.mdの未達項目が残る。\n"
+}

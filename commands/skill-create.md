@@ -105,7 +105,7 @@ This project uses **conventional commits**:
 ```
 src/
 ├── components/     # React components (PascalCase.tsx)
-├── hooks/          # Custom hooks (use*.ts)
+├── harness/hooks/          # Custom hooks (use*.ts)
 ├── utils/          # Utility functions
 ├── types/          # TypeScript type definitions
 └── services/       # API and external services

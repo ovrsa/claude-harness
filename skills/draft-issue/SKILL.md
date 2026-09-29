@@ -15,7 +15,7 @@ Claude Code は `/draft-issue <依頼>`、Codex は `$draft-issue <依頼>` で�
 ## 1. 管理先を確かめる
 
 ```bash
-node ~/.claude/scripts/resolve-tracker.js --repo .
+node ~/.claude/harness/scripts/resolve-tracker.js --repo .
 ```
 
 - `configured` なら次へ進む
@@ -36,7 +36,7 @@ gh issue list --repo <owner/repo> --state open --search "<依頼の要点>"
 
 ## 3. 欄を埋める
 
-`~/.claude/templates/task-issue-template.md` の欄を、依頼の文面と環境（コード、テスト、既存の Issue）の
+`~/.claude/harness/templates/task-issue-template.md` の欄を、依頼の文面と環境（コード、テスト、既存の Issue）の
 調査で埋める。事実は自分で調べ、人に聞かない。
 
 欄ごとに、推測なしで埋められるかを判定する。**推測なし**とは、書いた内容の根拠を依頼の文面か環境の
@@ -65,7 +65,7 @@ gh issue list --repo <owner/repo> --state open --search "<依頼の要点>"
 3. ゴール文面を作れるか確かめる。`INVALID` なら直して、もう一度確かめる
 
 ```bash
-node ~/.claude/scripts/task-goal.js --repo . --check --input <下書き.json>
+node ~/.claude/harness/scripts/task-goal.js --repo . --check --input <下書き.json>
 # 下書き.json: {"tracker":"github","task":{"ref":"draft","title":"<タイトル>","body":"<本文>"}}
 ```
 

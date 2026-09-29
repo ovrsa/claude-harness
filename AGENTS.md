@@ -17,7 +17,7 @@ For non-trivial work, resolve the managed `grilling` skill before entering the d
 lifecycle:
 
 ```bash
-node ~/.claude/scripts/resolve-managed-skill.js grilling
+node ~/.claude/harness/scripts/resolve-managed-skill.js grilling
 ```
 
 Read the returned `SKILL.md` completely and follow it. Present the final understanding and wait
@@ -30,18 +30,18 @@ When running in `Codex`, execute these commands every session:
 Start:
 
 ```bash
-node ~/.claude/scripts/hooks/runtime-session-start.js
+node ~/.claude/harness/scripts/hooks/runtime-session-start.js
 ```
 
 End:
 
 ```bash
-node ~/.claude/scripts/hooks/runtime-session-end.js
+node ~/.claude/harness/scripts/hooks/runtime-session-end.js
 ```
 
-This captures the gate evidence into `runs/<date>-<slug>/`, shared with Claude Code sessions.
+This captures the gate evidence into `harness/data/runs/<date>-<slug>/`, shared with Claude Code sessions.
 The SQLite store these hooks used to write was retired on 2026-08-20; the archive of it is at
-`runs/_archive/telemetry-sqlite-2026-08-20.json`.
+`harness/data/runs/_archive/telemetry-sqlite-2026-08-20.json`.
 
 ## Improvement Rule
 

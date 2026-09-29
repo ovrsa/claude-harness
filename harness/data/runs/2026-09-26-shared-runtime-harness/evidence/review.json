@@ -1,0 +1,39 @@
+{
+  "kind": "review",
+  "source_path": "/Users/kyo/development/.claude/shared-runtime-harness/review-summary.md",
+  "captured_at": "2026-09-26T10:19:24.268Z",
+  "fingerprint": "",
+  "state": {
+    "reviewScope": [
+      "合意した共通ルール入口、スキル共有、セッション記録、trace、差分検査。権限・MCP・モデル設定は対象外。"
+    ],
+    "findings": [],
+    "residualRisks": [
+      "正本へのローカル反映は済んだが、mainへのコミット・マージはしていない。検証済み変更はfix/shared-runtime-harnessブランチに保全する。",
+      "既存フック設定検査2件が失敗している。",
+      "Codex native hooksは追加後に利用者の /hooks 信頼確認が必要。自動発火は承認後の新規セッションで確認する。信頼を待つ間は手動入口を使用できる。",
+      "スキル本文は共有するが、ランタイム別の自動選択制御は一致を保証しない。commands/agentsリンクはネイティブ登録ではない。",
+      "CLIの同期は管理対象3項目の静的検査で、任意の既存AGENTS本文との意味的な矛盾は判定しない。",
+      "native adapterは入力を厳密に検査するが、手動入口は既存の環境変数優先順を保つ。複数ランタイムの明示IDがある場合は環境確認が要る。",
+      "証拠のない新規会話で空のRunは作らない。過去の未関連付けRunは推測補完しない。"
+    ],
+    "nextAction": "none",
+    "guardrailCandidates": [
+      {
+        "failure_pattern": "生ログ解決を修正した実行証拠があっても、未統合ブランチの実装は通常の正本から使われない",
+        "source": "2026-09-24-fix-trace-entry-20260924と未統合9837654、今回の正本trace失敗",
+        "recommended_layer": "command",
+        "confidence": "high"
+      }
+    ],
+    "guardrailCandidateWarnings": [],
+    "parsedFindings": [],
+    "invalidFindings": [],
+    "missingValues": [],
+    "blockingFindings": [],
+    "hasBlockingFindings": false,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Review Summary\n\n## Review Scope\n\n合意した共通ルール入口、スキル共有、セッション記録、trace、差分検査。権限・MCP・モデル設定は対象外。\n\n## Design Compliance\n\n正本は.claudeのまま。Codexは正本参照とnative stdinの変換だけを持つ。既存trace修正9837654を再利用。両ランタイムの記録は同じライブラリを使う。管理対象以外の設定は保持し、信頼ハッシュを生成しない。\n\n## Security\n\n使い捨てリポジトリで公開入口に壊れたJSON、null、配列、相対cwd、パストラバーサルID、1MiB超入力を渡し、正常なRunの内容が不変であることを確認。継承されたClaude IDがあってもCodex stdinのIDを使う。同期CLIはoverrideファイル、管理ブロックの競合、実体のあるスキルフォルダを上書きしない。既存のフック・config.tomlは保持。シェルへのパスは単一引用符でエスケープし、入口指示に危険な引用文字を含むrootは拒否する。Codex rolloutはファイル名ではなくsession_metaのIDで照合する既存テストを再利用。\n\n## Comment Adequacy\n\n共通処理の責務、継承環境よりnative IDを使う理由、失敗してもセッションを止めない理由、既存設定を拒否する理由をコメント化。legacy一時ファイル名に関するgetRuntimeSessionId契約は保持した。\n\n## Code Quality\n\n- Refactoring: changed | Claude/Codex/manualのゲート退避と復帰記録をscripts/lib/runtime-session.jsに集約。\n- Documents: changed | 既存手順書へ新手順の案内を追記し、shared-runtime-harness.mdに同期対象・信頼承認・戻し方を記録。architectureを現状へ更新。stop-ai-slop-jpで文面を確認。\n- Comments: changed | native IDの出典と設定保護の判断を説明。重複した記録実装の説明は除去。\n- Verification: passed | trace13件、native/manual記録と同期CLI往復、ESLint、契約監査、runtime surface、commands/text検査が成功。全体の既存失敗2件は下記。\n- Observation: recorded | observation-summary.mdに実在RunのClaude/Codexログ解決と設定反映を記録。\n- Revision: ab5204c9cba5e3294aac4a03ebeef1fc9fce324d15ba72dd793d1884be8b708e\n\n## Test Adequacy\n\n公開CLIとフックstdinを検証し、内部関数のmockは使用していない。全テストのHOME/cwdは使い捨て。legacy ClaudeのpassthroughとID記録も検証した。REDからGREENの観測はverification-summary.mdを参照。\n\n## Findings\n\n- none\n\n## Residual Risks\n\n- 正本へのローカル反映は済んだが、mainへのコミット・マージはしていない。検証済み変更はfix/shared-runtime-harnessブランチに保全する。\n\n- 既存フック設定検査2件が失敗している。\n- Codex native hooksは追加後に利用者の /hooks 信頼確認が必要。自動発火は承認後の新規セッションで確認する。信頼を待つ間は手動入口を使用できる。\n- スキル本文は共有するが、ランタイム別の自動選択制御は一致を保証しない。commands/agentsリンクはネイティブ登録ではない。\n- CLIの同期は管理対象3項目の静的検査で、任意の既存AGENTS本文との意味的な矛盾は判定しない。\n- native adapterは入力を厳密に検査するが、手動入口は既存の環境変数優先順を保つ。複数ランタイムの明示IDがある場合は環境確認が要る。\n- 証拠のない新規会話で空のRunは作らない。過去の未関連付けRunは推測補完しない。\n\n## Guardrail Candidates\n\n- failure_pattern: 生ログ解決を修正した実行証拠があっても、未統合ブランチの実装は通常の正本から使われない\n  source: 2026-09-24-fix-trace-entry-20260924と未統合9837654、今回の正本trace失敗\n  recommended_layer: command\n  confidence: high\n\n## Next Action\n\n- none\n"
+}

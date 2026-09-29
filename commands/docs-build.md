@@ -9,7 +9,7 @@ command: true
 Use this command to construct `docs/` から永続リファレンスを組み立てるとき。
 
 標準は `~/.claude/rules/common/documentation.md`、判定は `writing-reference-docs` スキル、
-雛形は `~/.claude/templates/` が正本。このコマンドは**構築の実行**だけを担う。
+雛形は `~/.claude/harness/templates/` が正本。このコマンドは**構築の実行**だけを担う。
 
 `AGENTS.md` はこのコマンドの対象外。`/repo-map` を使う。
 
@@ -18,12 +18,12 @@ Use this command to construct `docs/` から永続リファレンスを組み立
 grilling を通っていることを確かめたら（Required behavior 1）、書く前に管理先の宣言を解決する。
 
 ```bash
-node ~/.claude/scripts/resolve-tracker.js --repo .
+node ~/.claude/harness/scripts/resolve-tracker.js --repo .
 ```
 
 - `configured`: design doc を**親 Issue の本文**に書き、`docs/design/` には書かない。新しい仕様なら起票し、既存の Issue なら本文を更新する。
   テンプレートの節は選んで使い、不要な見出しと説明は省く。Required behavior 3（規模ゲート）と 4（初回・追加の分岐）は適用しない。
-  1つのタスクとして着手するなら `受け入れ条件` と `検証方法` の節を入れる（`scripts/task-goal.js` が読む）。
+  1つのタスクとして着手するなら `受け入れ条件` と `検証方法` の節を入れる（`harness/scripts/task-goal.js` が読む）。
   書いたら、次は `split-issue` で分割案を示す
 - `none`: Required behavior のとおり `docs/` に書く
 - `unconfigured`（終了コード 2）: `candidates` を示して人に選んでもらい、`expected_path` に書いてから再実行する。

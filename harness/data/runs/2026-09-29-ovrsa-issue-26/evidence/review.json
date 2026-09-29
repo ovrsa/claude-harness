@@ -1,0 +1,59 @@
+{
+  "kind": "review",
+  "source_path": "/Users/kyo/development/.claude/issue-26/review-summary.md",
+  "captured_at": "2026-09-29T07:58:10.474Z",
+  "fingerprint": "",
+  "state": {
+    "reviewScope": [
+      "Issue #26の配置・移行実装を9f0531eとの差分でレビュー。実装checkpointでありIssue全体の完了ではない。"
+    ],
+    "findings": [
+      "HIGH: 稼働環境の切替と切替後の両ランタイム実測が未実施。",
+      "HIGH: Orcaのワークスペース限定表示除外はアプリ側に機能がなく未達。"
+    ],
+    "residualRisks": [
+      "移行はセッション停止中に実行する。未知のnative項目は移動しない。",
+      "pluginsの保存先変更は既存絶対パスとの整合が未検証のため保持。"
+    ],
+    "nextAction": "人によるマージ後、切替手順に従って稼働側を適用・観測する。Orca表示除外の扱いを確定する。",
+    "guardrailCandidates": [
+      {
+        "failure_pattern": "standaloneテストが途中でHOMEを復元し実環境にfixtureを書いた",
+        "source": "session-aliases.test.jsとsession-manager.test.jsの今回の観測。新規生成分はtmpへ退避、既存データは保持。",
+        "recommended_layer": "command",
+        "confidence": "high"
+      }
+    ],
+    "guardrailCandidateWarnings": [],
+    "parsedFindings": [
+      {
+        "severity": "HIGH",
+        "message": "稼働環境の切替と切替後の両ランタイム実測が未実施。",
+        "raw": "HIGH: 稼働環境の切替と切替後の両ランタイム実測が未実施。"
+      },
+      {
+        "severity": "HIGH",
+        "message": "Orcaのワークスペース限定表示除外はアプリ側に機能がなく未達。",
+        "raw": "HIGH: Orcaのワークスペース限定表示除外はアプリ側に機能がなく未達。"
+      }
+    ],
+    "invalidFindings": [],
+    "missingValues": [],
+    "blockingFindings": [
+      {
+        "severity": "HIGH",
+        "message": "稼働環境の切替と切替後の両ランタイム実測が未実施。",
+        "raw": "HIGH: 稼働環境の切替と切替後の両ランタイム実測が未実施。"
+      },
+      {
+        "severity": "HIGH",
+        "message": "Orcaのワークスペース限定表示除外はアプリ側に機能がなく未達。",
+        "raw": "HIGH: Orcaのワークスペース限定表示除外はアプリ側に機能がなく未達。"
+      }
+    ],
+    "hasBlockingFindings": true,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Review Summary\n\n## Review Scope\n\n- Issue #26の配置・移行実装を9f0531eとの差分でレビュー。実装checkpointでありIssue全体の完了ではない。\n\n## Design Compliance\n\n- 7実装ディレクトリと開発設定をharnessへ集約。Claudeが読む入口はルートに維持。\n- 履歴22ファイルの同一性、過去docs/designの無変更を確認。\n- Standards/Specの独立レビューで見つかったmetricsのignore、棚卸し漏れ、pipeline保存先不整合は修正・再確認済み。\n\n## Security\n\n- 対象はlayout CLIのパス構築とデータ移動。隔離fixtureで敵対入力を実行。\n\n| 入力 | 観測結果 |\n|---|---|\n| 同名移動先あり | 全移動の前に失敗し、双方の内容を維持 |\n| 移動元のsymlink | 拒否し、外側のファイルを変更しない |\n| 移動先親のsymlink | 拒否し、外側に書き込まない |\n| 再度apply | 移動候補0、既存内容を維持 |\n\n## Comment Adequacy\n\n- 落とした: 移動により不正確になった参照を修正。無関係な経緯コメントは変更しない。\n- 残した: nativeとの混在、テストHOME分離など判断理由。\n- 足した: pipelineがworktreeでもグローバル保存する理由、native backupを残す理由。\n- 比率: JS追加865行中コメント140行。パス変更と移動を含むため、比率でなく非自明な判断の説明を確認。\n\n## Code Quality\n\n- Refactoring: changed | 保存先、相対参照、worktree判定、旧aliasとbridge移行を更新。\n- Documents: changed | README、architecture、切替手順を実装と未達事項に合わせた。\n- Comments: changed | 移行対象の所有者とpipeline保存先の判断を説明。\n- Verification: passed | npm test:1479成功/0失敗/0skip。npm run lint:repo、契約監査、共有パス・commands検査、git diff --check成功。\n- Observation: recorded | observation-summary.mdに隔離実行とOrca観測を記録。稼働切替は未実施。\n- Revision: b226c79c30983fe769deb3a42d8d57a1044fcec9ab0d0fa16628d532e15312cd\n\n## Test Adequacy\n\n- RED/GREEN evidence: 新CLI不在、旧bridge重複、alias参照、外部worktree、pipeline worktree参照の失敗を確認後に修正。\n- BDD scenarios: 衝突・symlink拒否、再実行、native保持、履歴同一性。\n- integration/E2E evidence: 隔離HOMEのClaude/Codexフックとbridge。稼働アプリの切替確認は残る。\n- observe evidence: observation-summary.md。\n\n## Findings\n\n- HIGH: 稼働環境の切替と切替後の両ランタイム実測が未実施。\n- HIGH: Orcaのワークスペース限定表示除外はアプリ側に機能がなく未達。\n\n## Residual Risks\n\n- 移行はセッション停止中に実行する。未知のnative項目は移動しない。\n- pluginsの保存先変更は既存絶対パスとの整合が未検証のため保持。\n\n## Guardrail Candidates\n\n- failure_pattern: standaloneテストが途中でHOMEを復元し実環境にfixtureを書いた\n  source: session-aliases.test.jsとsession-manager.test.jsの今回の観測。新規生成分はtmpへ退避、既存データは保持。\n  recommended_layer: command\n  confidence: high\n\n## Next Action\n\n- 人によるマージ後、切替手順に従って稼働側を適用・観測する。Orca表示除外の扱いを確定する。\n"
+}

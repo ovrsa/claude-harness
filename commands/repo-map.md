@@ -14,7 +14,7 @@ The preferred target is root `AGENTS.md`.
 
 1. Read the existing root `AGENTS.md` if it exists.
 2. Read the repository `README.md` and only the highest-signal local docs needed for orientation.
-3. Use `~/.claude/templates/repo-map-template.md` as the default structure.
+3. Use `~/.claude/harness/templates/repo-map-template.md` as the default structure.
 4. Keep the file short and readable by default.
 5. Point to the real truth sources instead of duplicating them.
 6. Link to codemaps or deeper architecture docs only when they exist and matter.

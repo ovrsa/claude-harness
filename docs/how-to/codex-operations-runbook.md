@@ -1,5 +1,8 @@
 # Codex Operations Runbook
 
+> 2026-09-26追記: Codexとの共通入口・自動記録・両ランタイムのログ解決は
+> [共通ハーネスの手順](shared-runtime-harness.md)を参照。以下は更新前の運用記録。
+
 `Codex` で thin `.claude` control layer を使うときの最小運用手順。
 
 目的は 2 つです。

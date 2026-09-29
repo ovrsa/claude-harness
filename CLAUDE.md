@@ -6,7 +6,7 @@ This file is the thin operating entrypoint for my personal agent harness.
 
 Non-trivial work starts with the managed read-only plugin's `grilling` skill before this
 harness's local pipeline begins. Claude Code uses the managed plugin directly. Codex resolves the
-same installation with `node ~/.claude/scripts/resolve-managed-skill.js grilling`, then reads the
+same installation with `node ~/.claude/harness/scripts/resolve-managed-skill.js grilling`, then reads the
 returned `SKILL.md` completely.
 
 The Grill closes the unresolved design frontier through questions and environment research. It
@@ -27,17 +27,17 @@ else. Work too large for one conversation still goes through the Grill, `/docs-b
 `split-issue`.
 
 The first write on a branch whose name carries no issue number gets one advisory per session from
-`hooks/lifecycle-pre-edit.js`. It does not stop the write.
+`harness/hooks/lifecycle-pre-edit.js`. It does not stop the write.
 
 ## Core Rule
 
 `~/.claude` is the source of truth for the local control layer.
 Future improvements to telemetry, permissions, adapters, and guardrails should land here directly instead of introducing a second local authority.
 
-- hooks live in `~/.claude/hooks/` and `~/.claude/scripts/hooks/`
+- hooks live in `~/.claude/harness/hooks/` and `~/.claude/harness/scripts/hooks/`
 - reusable commands live in `~/.claude/commands/`
 - broad standards live in `~/.claude/rules/`
-- templates live in `~/.claude/templates/`
+- templates live in `~/.claude/harness/templates/`
 
 `~/.codex` is a runtime bridge, not a second harness.
 External frameworks, plugin packs, and upstream repos may inform local improvements, but they must remain observable through the local control layer.
@@ -53,8 +53,8 @@ Deeper references:
 - `~/.claude/commands/COMMANDS.md` for the grouped command surface and the Ordered Path
 - `~/.claude/docs/design/` for why it is shaped this way (dated, append-only)
 
-Gate contracts live with the artifacts they govern, in `~/.claude/templates/`.
-Permission classes live in `~/.claude/scripts/lib/permission-resolver.js`, not in a doc.
+Gate contracts live with the artifacts they govern, in `~/.claude/harness/templates/`.
+Permission classes live in `~/.claude/harness/scripts/lib/permission-resolver.js`, not in a doc.
 
 Completion model:
 
@@ -100,10 +100,10 @@ replaced it:
 
 - execution trace → `projects/**/*.jsonl`, which Claude Code writes anyway and which carries the real
   `is_error` flag, token usage, and slash-command invocations
-- gate evidence, resume outcome, task↔session↔branch → `runs/<date>-<slug>/`, git-tracked, and it
+- gate evidence, resume outcome, task↔session↔branch → `harness/data/runs/<date>-<slug>/`, git-tracked, and it
   survives `ExitWorktree(action: "remove")` — which the previous arrangement did not
 - the pre-transcript history (oldest transcript record is 2026-07-07) → a one-time archive at
-  `runs/_archive/telemetry-sqlite-2026-08-20.json`
+  `harness/data/runs/_archive/telemetry-sqlite-2026-08-20.json`
 
 The `telemetry.db` file itself is an orphan on disk; deleting it is a human decision.
 
@@ -140,10 +140,10 @@ The pipeline runner separately checks task-finishing evidence before reporting D
 | `git commit` | advisory only. A commit is a checkpoint, not a claim of completion |
 | declaring a task complete | advisory only. Nothing mechanical checks the evidence chain |
 | merging a PR, or starting the next task before a merge | discipline. The goal flow leaves the merge to a person; nothing stops `gh pr merge` |
-| **`git push` to `main`/`master`** | **blocked** by `hooks/git-push-guard.js`, which resolves the target branch from the repository — so bare `git push` on main is caught, not just an explicit refspec |
+| **`git push` to `main`/`master`** | **blocked** by `harness/hooks/git-push-guard.js`, which resolves the target branch from the repository — so bare `git push` on main is caught, not just an explicit refspec |
 
 A row may claim **blocked** only if it names the hook that implements it. The audit
-(`scripts/ci/audit-harness-contract.js`) enforces that, and checks the named hook exists and is
+(`harness/scripts/ci/audit-harness-contract.js`) enforces that, and checks the named hook exists and is
 wired in `settings.json`. An unverifiable blocking claim is how the previous version of this table
 went wrong.
 
@@ -152,7 +152,7 @@ Two removals, both for the same reason — a gate that can be satisfied vacuousl
 - **Edit blocking, removed 2026-07-28.** The block was satisfied by a placeholder `plan.md` nobody
   maintained, so review evidence still appeared in under 3% of sessions while read-only inspection
   of source files was being denied.
-- **The completion gate, removed 2026-08-17.** `hooks/lifecycle-progress-complete.js` exited
+- **The completion gate, removed 2026-08-17.** `harness/hooks/lifecycle-progress-complete.js` exited
   immediately unless the file being written was `progress.md`, and no code in the harness ever
   created `progress.md`. So the gate never fired, while this table claimed completion was blocked.
   Verifying that a hook blocks is not the same as verifying when it fires.
@@ -166,9 +166,9 @@ Before reporting an implementation/fix complete, creating its PR, or moving its 
 read `docs/how-to/run-a-task.md` and finish the task's changed code, prose, and comments.
 Apply needed cleanup, update documentation to the actual finished state, and rerun affected checks.
 Record targets and reasons even when no change is needed; use the `Code Quality` fields in
-`templates/review-summary-template.md`. Do not make unrelated cleanup edits.
+`harness/templates/review-summary-template.md`. Do not make unrelated cleanup edits.
 After reviewing the final diff and verification evidence, record the fingerprint from
-`node ~/.claude/scripts/task-completion.js --repo <repo> --fingerprint`, then run it without
+`node ~/.claude/harness/scripts/task-completion.js --repo <repo> --fingerprint`, then run it without
 `--fingerprint`. Exit zero is required before the completion action. A failed check means continue
 finishing, not ask the operator to request cleanup again. The operator need not invoke a command.
 The standard workflow runs the same check before DONE. Manual execution depends on the agent
@@ -200,7 +200,7 @@ In lifecycle order. Diagnosis belongs to step 1, and the decisions are recorded 
    entrypoints, not the step itself — measured over the full retained transcript window they were
    invoked **0 times** while the artifacts were written 37 / 37 / 16 times. The agent writes them
    without being asked, and what is mechanically read is the artifact
-   (`scripts/lib/task-artifacts.js` against `templates/`), never the invocation.
+   (`harness/scripts/lib/task-artifacts.js` against `harness/templates/`), never the invocation.
    Security is required only when the change touches a decision boundary, untrusted input,
    shell/SQL/path construction, secrets, or a network destination — and then it is evidence from
    running the code adversarially, not from reading it

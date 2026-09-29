@@ -89,7 +89,7 @@ description: 実装前リサーチ。既存コード、関連フロー、ライ�
 
 ## 後続コマンド
 
-- `templates/plan-template.md` — 実装計画の雛形
+- `harness/templates/plan-template.md` — 実装計画の雛形
 
 ## `/research-task` との関係
 

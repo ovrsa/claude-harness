@@ -35,10 +35,10 @@ The flow is:
 
 1. Read the design doc for this work when it exists.
 2. Read `review-summary.md`.
-3. Confirm all canonical sections in `templates/review-summary-template.md` are present and
+3. Confirm all canonical sections in `harness/templates/review-summary-template.md` are present and
    the review passes contain actual judgments. Follow `docs/how-to/run-a-task.md` → 完了前の仕上げ:
    code, prose, and comments must have a target and a reason; verification follows the final edit.
-   Run `node ~/.claude/scripts/task-completion.js --repo <repo>`. Nonzero means NEEDS WORK.
+   Run `node ~/.claude/harness/scripts/task-completion.js --repo <repo>`. Nonzero means NEEDS WORK.
 4. Treat `Findings` as unresolved blockers only.
 5. Treat evaluation as incomplete while a `CRITICAL:` or `HIGH:` finding remains. `MEDIUM:` and below do not hold the chain.
 6. Confirm `verification-summary.md` exists for implementation and bug-fix work.

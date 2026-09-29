@@ -44,6 +44,6 @@ When creating PRs:
 - **マージ。** 人が行う。エージェントは `gh pr merge` を実行しない
 - 人がマージする前に、次のタスクの実装を始めること
 
-この PR の本文は `templates/review-request-template.md` の5節だけにする（上の包括的な要約やテスト計画は書かない）。
-機械で止まるのは `main` / `master` への push（`hooks/git-push-guard.js`）だけで、
-マージしないことと、Ready にする前に完了検査（`scripts/task-completion.js`）を呼ぶことは規律に依存する。
+この PR の本文は `harness/templates/review-request-template.md` の5節だけにする（上の包括的な要約やテスト計画は書かない）。
+機械で止まるのは `main` / `master` への push（`harness/hooks/git-push-guard.js`）だけで、
+マージしないことと、Ready にする前に完了検査（`harness/scripts/task-completion.js`）を呼ぶことは規律に依存する。
