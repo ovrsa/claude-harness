@@ -1,0 +1,45 @@
+{
+  "kind": "observation",
+  "source_path": "/Users/kyo/development/.claude/issue-26/observation-summary.md",
+  "captured_at": "2026-09-29T07:58:10.486Z",
+  "fingerprint": "",
+  "state": {
+    "behaviorChecked": [
+      "隔離HOMEでデータ移行、旧alias参照、Claude/Codexの記録、外部配置worktreeの記録を確認。",
+      "Orca 1.4.215でこのworktreeのルート一覧を表示し、実装フォルダの集約を確認。"
+    ],
+    "method": [
+      "stdout: layout.test.js、runtime-session.test.js、sync-codex-bridge.test.js の一時HOME実行。",
+      "screenshot: OrcaでREADMEを開き、ファイル一覧を観測。",
+      "process state: 配布済みFileExplorerの設定参照を読み、showGitIgnoredFilesが全体設定であることを確認。"
+    ],
+    "evidence": [
+      "logs: /tmp/issue26-test-checkpoint.log",
+      "stdout: /tmp/issue26-live-inventory.json は稼働rootのread-only棚卸し。63項目、未分類0、移動候補545ファイル（取得時点）。",
+      "screenshot: /tmp/issue26-ui*.json にローカルキャプチャの参照。利用者の画面を含むためGitには登録しない。",
+      "trace: 移動前から追跡されたruns/metricsの22ファイルは、9f0531eと移動後の内容がバイト単位で一致。"
+    ],
+    "remainingUncertainty": [
+      "稼働側の切替と、新規Claude/Codexセッションからの実測は未実施。",
+      "Orcaのワークスペース限定表示除外は未対応。全体設定は変更していない。"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [
+      "unrecognized candidate line: - テストのHOME分離についてreview-summary.mdに記録。"
+    ],
+    "missingValues": [],
+    "concreteEvidenceLines": [
+      "stdout: layout.test.js、runtime-session.test.js、sync-codex-bridge.test.js の一時HOME実行。",
+      "screenshot: OrcaでREADMEを開き、ファイル一覧を観測。",
+      "process state: 配布済みFileExplorerの設定参照を読み、showGitIgnoredFilesが全体設定であることを確認。",
+      "logs: /tmp/issue26-test-checkpoint.log",
+      "stdout: /tmp/issue26-live-inventory.json は稼働rootのread-only棚卸し。63項目、未分類0、移動候補545ファイル（取得時点）。",
+      "screenshot: /tmp/issue26-ui*.json にローカルキャプチャの参照。利用者の画面を含むためGitには登録しない。",
+      "trace: 移動前から追跡されたruns/metricsの22ファイルは、9f0531eと移動後の内容がバイト単位で一致。"
+    ],
+    "hasConcreteEvidence": true,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Observation Summary\n\n## Behavior Checked\n\n- 隔離HOMEでデータ移行、旧alias参照、Claude/Codexの記録、外部配置worktreeの記録を確認。\n- Orca 1.4.215でこのworktreeのルート一覧を表示し、実装フォルダの集約を確認。\n\n## Method\n\n- stdout: layout.test.js、runtime-session.test.js、sync-codex-bridge.test.js の一時HOME実行。\n- screenshot: OrcaでREADMEを開き、ファイル一覧を観測。\n- process state: 配布済みFileExplorerの設定参照を読み、showGitIgnoredFilesが全体設定であることを確認。\n\n## Evidence\n\n- logs: /tmp/issue26-test-checkpoint.log\n- stdout: /tmp/issue26-live-inventory.json は稼働rootのread-only棚卸し。63項目、未分類0、移動候補545ファイル（取得時点）。\n- screenshot: /tmp/issue26-ui*.json にローカルキャプチャの参照。利用者の画面を含むためGitには登録しない。\n- trace: 移動前から追跡されたruns/metricsの22ファイルは、9f0531eと移動後の内容がバイト単位で一致。\n\n## Remaining Uncertainty\n\n- 稼働側の切替と、新規Claude/Codexセッションからの実測は未実施。\n- Orcaのワークスペース限定表示除外は未対応。全体設定は変更していない。\n\n## Guardrail Candidates\n\n- テストのHOME分離についてreview-summary.mdに記録。\n"
+}
