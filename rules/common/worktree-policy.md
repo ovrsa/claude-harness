@@ -1,90 +1,40 @@
 # Worktree Policy
 
-## Goal
-
-大きな実装でコンテキスト汚染と変更競合を減らすため、**最初の書き込みの前に** worktree を切る。
-
-このリポジトリにはもう1つ理由がある。フック設定はセッション開始時に読まれるが、
-**フックスクリプト自体は呼び出しのたびに読み直される。** `~/.claude` を直接編集すると、
-壊れた中間状態がその場のツール呼び出しで実行される。worktree はそれを止める唯一の手段。
-
-## Who Creates It
-
-**エージェントが作る。ユーザーがコマンドを打つ必要はない。**
-
-`/grill-me` が収束し、次の動作がリポジトリ内のファイル書き込みなら、エージェントはその場で
-`EnterWorktree` を呼ぶ。許可を求めない(worktree の作成は元に戻せる)。
-read-only のまま終わるなら作らない。
-
-`/worktree-start` は残っているが**上書き用**。既定の挙動から外れたい時だけ打つ:
-
-- Detached Mode(親セッションを実装と並行して別作業に使い続けたい)
-- base branch を既定と変えたい
-- slug をチケット番号などに固定したい
-
-6ヶ月でこのコマンドがユーザーから打たれた回数は2回、最後は 2026-02-14 だった。
-**このコマンドを起点にした手順を書くと、実際には起きないことを書くことになる。**
-
 ## When
+
+最初の書き込みの前に worktree を切る。`~/.claude` では特に守る。フックスクリプトは呼び出しのたびに
+読み直されるので、直接編集すると壊れた中間状態がその場のツール呼び出しで実行される。
 
 - **作る**: 実装コードを複数ファイル書く / `~/.claude` の hooks・scripts・settings を触る / 並行して別タスクが走っている
 - **作らない**: read-only の調査・質問回答・`/grill-me` だけで終わる作業
-- **効かない**: 未追跡ファイルだけを触る作業(origin から切った worktree にそのファイルが無い)
+- **効かない**: 未追跡ファイルだけを触る作業（origin から切った worktree にそのファイルが無い）
 
-`/shape-task` `/route-task` `/grill-me` は read-only なので、タスクを捨てられるフィルタとして機能する。
-worktree を作るのはそれらを通過した後にする(捨てるタスクの worktree を残さない)。
+## Who Creates It
 
-**強制はされない。** フックは worktree を検査しない(2026-07-28 に強制を撤去した)。
-理由: 強制の信号が `plan.md` の `worktree_required` にしか無く、ソース拡張子の編集にしか発火しなかった。
-つまり `.md` だけを書く作業や未追跡ファイルだけを触る作業には最初から効いておらず、
-「例外なく必須」という文言だけが実挙動から乖離していた。**守られていない規則を必須と書き続ける方が危険。**
+エージェントが作る。read-only の段（調査、`/shape-task`、`/route-task`、`/grill-me`）が終わり、次の動作が
+リポジトリ内のファイル書き込みなら、許可を求めずにその場で `EnterWorktree` を呼ぶ。
 
-強制を戻す代わりに、既定の挙動側に寄せた。エージェントが黙って作るなら、忘れる余地が減る。
-
-## Required Flow
-
-1. 調査 → `/grill-me`(ここまで read-only。捨てるならここで捨てる)
-2. 書き込みが発生すると分かった時点で、**エージェントが** `EnterWorktree` を呼ぶ
-3. 以降の書き込み(`docs/design/` / 実装)はすべてその worktree で行う
-4. `/docs-build` が design doc を書き、承認を得てから実装に入る(`--dangerous` はここから)
-5. Detached Mode の場合のみ、親セッションには要約のみ戻す
-   (既定の同一セッション継続では該当しない — 実装後そのまま `/verify` `/review-task` に進む)
-6. 完了後は worktree branch を fork 元のローカルブランチへ取り込む(PR は指示がある時のみ)
-
-worktree 作成が承認より前なのは、design doc を書くこと自体が書き込みだから。
-承認ゲートは「実装の許可」として残り、作成タイミングとは分離する。
-
-**決定の経緯(2026-08-12):** それまでこの節は `/worktree-start <slug>` をユーザーが打つ前提で書かれていた。
-テレメトリ上そのコマンドは6ヶ月で2回しか打たれておらず、実際の worktree はすべてエージェントが
-`EnterWorktree` を呼んで作っていた。手順の起点を実挙動に合わせ、コマンドは上書き用に降格した。
-
-**決定の経緯(2026-07-30):** それまで `/worktree-start` は生の `git worktree add` + 新規ターミナル起動のみを案内し、
-同時期に利用可能だったネイティブ `EnterWorktree`/`ExitWorktree`(同一セッション継続)には一切触れていなかった。
-テレメトリ上、旧来の2セッション手渡しフローが実際に使われた形跡がほぼ無かったため、摩擦の小さい `EnterWorktree` を既定に変更し、
-親セッションを本当に空けておきたい場合のみ Detached Mode として旧フローを残すハイブリッドに統合した。
-`skills/mr-split/SKILL.md` の同時並行複数worktreeチェーンは対象外(別ユースケース)。
+- 以降の書き込み（design doc、実装）はすべてその worktree で行う。作成は承認より前でよく、承認は実装の許可として残る
+- 完了後は worktree のブランチを fork 元のローカルブランチへ取り込む（`main` / `master` は Git Safety に従う）
+- `/worktree-start` は上書き用。Detached Mode、base branch の変更、slug の固定の時だけ使う。
+  Detached Mode では、親セッションには要約のみ戻す
+- `mr-split` スキルの連鎖 worktree は、この方針の対象外
 
 ## Dangerous Mode Policy
 
-- `--dangerous` は以下すべてを満たす時のみ許可
+`--dangerous` は次をすべて満たす時だけ使う。exploratory 調査や未承認要件では使わない。
+
 1. Plan 承認済み
 2. 実装対象が worktree 上
 3. 実行スコープが承認済み仕様の範囲内
 
-- exploratory 調査や未承認要件では使わない
-
 ## Git Safety
 
-- `main` / `master` への直接 `push` は常時禁止(PR / CI の有無に関係なく禁止)。
-  **これは規律ではなくフックで止まる** — `harness/hooks/git-push-guard.js` がリポジトリから対象ブランチを解決するので、
-  引数なしの `git push` も捕まる。プロファイルで無効化できない
-- `main` / `master` への直接コミット禁止(こちらは規律。フックは止めない)
+- `main` / `master` への直接 `push` は常時禁止（PR / CI の有無に関係なく禁止）。`harness/hooks/git-push-guard.js` が止める
+- `main` / `master` への直接コミット禁止（フックは止めない）
 - `main` / `master` へのマージは remote の有無で分ける。`git remote` で判定する
-  - **remote がある**: PR + 必須チェック通過を前提とする
-  - **remote が無い**(`~/.claude` がこれ): fork 元で `git merge --no-ff <branch>` を実行し、
-    `ExitWorktree(action: "remove")` で片付ける。PR を出す先が無いので、
-    ここに PR を要求していた従来の文言は満たしようがなかった
-- `main` / `master` 以外のブランチは、状況に応じて直接マージしてよい(PR は任意)
-- PR の作成・更新・マージは明示指示がある場合のみ実行する。例外は `start-issue` でゴールを始めた時で、
-  push と PR の作成・更新・状態変更だけが指示に含まれる（マージは含まない。`git-workflow.md`）
-- worktree を作る前に dirty state を解消または退避
+  - **remote がある**: PR と必須チェックの通過を前提にする
+  - **remote が無い**: fork 元で `git merge --no-ff <branch>` を実行し、`ExitWorktree(action: "remove")` で片付ける
+- `main` / `master` 以外のブランチは、状況に応じて直接マージしてよい（PR は任意）
+- PR の作成・更新・マージは明示指示がある場合のみ実行する。例外は `start-issue` でゴールを始めた時（`git-workflow.md`）
+- worktree を作る前に dirty state を解消または退避する

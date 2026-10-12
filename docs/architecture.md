@@ -3,7 +3,7 @@
 **今どうなっているか**だけを置く1枚。なぜそうなったかは `docs/design/` に日付順で残っている。
 トラック・成果物・Git 規約・doc 規約は `CLAUDE.md` と `rules/`。
 
-最終更新: 2026-09-29
+最終更新: 2026-10-12
 
 ## 配置
 
@@ -158,7 +158,8 @@ git と design doc から復帰する方を選んだ。`run_state` は 2026-08-2
 
 `CLAUDE.md` と `rules/common/` の4ファイル（`documentation` `performance` `worktree-policy` `git-workflow`）。
 各ファイルが何を定めるかはそのファイル自身が正本なので、ここでは要約しない。
-量は `wc -l rules/common/*.md` で見る（ここに数字を書くと必ず古くなる）。
+合計の字数には上限があり、`harness/scripts/ci/validate-rules.js` が超過で失敗する（`paths` で絞ったルールは数えない）。
+いまの量と上限はその出力で見る（ここに数字を書くと必ず古くなる）。
 
 **新規に自動選択から外す時は `settings.json` の `skillOverrides` を使う**（`SKILL.md` を編集しない）。
 インストーラ管理下のスキルは編集が更新で失われる。詳細は `AGENTS.md` の Mistakes To Avoid。
