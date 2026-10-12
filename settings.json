@@ -142,7 +142,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/git-push-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/harness/hooks/git-push-guard.js\""
           }
         ]
       },
@@ -169,7 +169,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/lifecycle-pre-edit.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/harness/hooks/lifecycle-pre-edit.js\""
           }
         ]
       },
@@ -178,7 +178,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/lifecycle-pre-commit.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/harness/hooks/lifecycle-pre-commit.js\""
           }
         ]
       },
@@ -219,7 +219,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/herdr-agent-state.sh\" session",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/harness/hooks/herdr-agent-state.sh\" session",
             "timeout": 10
           }
         ]

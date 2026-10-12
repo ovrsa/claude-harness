@@ -1,0 +1,45 @@
+{
+  "kind": "review",
+  "source_path": "/Users/kyo/development/.claude/issue-28/review-summary.md",
+  "captured_at": "2026-10-12T10:30:49.155Z",
+  "fingerprint": "",
+  "state": {
+    "reviewScope": [
+      "design compliance, security, comment adequacy, code quality, and test adequacy",
+      "対象は Issue #28（仕様 fa420bc1757a）の差分3ファイル: `settings.json`、`harness/scripts/ci/validate-runtime-surface.js`、`harness/tests/ci/validators.test.js`"
+    ],
+    "findings": [
+      "MEDIUM: `main` 上での `git push -u origin HEAD` と `git push origin HEAD` を push ガードが止めない。refspec の `HEAD` を現在のブランチに解決していない。既存の `git-push-guard.test.js` にもこの形のテストが無い。Issue #28 の制約（フックの判定は変えない）の外なので、別 Issue が要る"
+    ],
+    "residualRisks": [
+      "マージしても、手元の `~/.claude` に取り込むまでフックは古いパスのまま動かない。取り込み後のセッションでエラーが消えることは未確認",
+      "Codex 側は記録用のフック2本が古いパスを指している（`sync-codex-bridge.js --check` が `drift`）。push ガードは Codex 側に配線が無い",
+      "検査が拾えない書き方がある: 大文字の拡張子、ルートを別の変数に入れた形（`$root/hooks/x.js`）、空白を含むパス。実際の `settings.json` には無い",
+      "監査の `blocking-gate-unnamed` はファイル名の一致で判定するまま。パスの実在は `validate-runtime-surface.js` が見る"
+    ],
+    "nextAction": "none",
+    "guardrailCandidates": [
+      {
+        "failure_pattern": "フックが非ブロックのエラーで落ち続けても、誰にも知らされない。今回は Bash のたびに hook_non_blocking_error が出ていたが、12日間気づかれなかった",
+        "source": "Claude Code のセッション記録（2026-10-06 から 10-12 に git-push-guard.js の exitCode 1 が103件）",
+        "recommended_layer": "hook",
+        "confidence": "medium"
+      }
+    ],
+    "guardrailCandidateWarnings": [],
+    "parsedFindings": [
+      {
+        "severity": "MEDIUM",
+        "message": "`main` 上での `git push -u origin HEAD` と `git push origin HEAD` を push ガードが止めない。refspec の `HEAD` を現在のブランチに解決していない。既存の `git-push-guard.test.js` にもこの形のテストが無い。Issue #28 の制約（フックの判定は変えない）の外なので、別 Issue が要る",
+        "raw": "MEDIUM: `main` 上での `git push -u origin HEAD` と `git push origin HEAD` を push ガードが止めない。refspec の `HEAD` を現在のブランチに解決していない。既存の `git-push-guard.test.js` にもこの形のテストが無い。Issue #28 の制約（フックの判定は変えない）の外なので、別 Issue が要る"
+      }
+    ],
+    "invalidFindings": [],
+    "missingValues": [],
+    "blockingFindings": [],
+    "hasBlockingFindings": false,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Review Summary\n\n## Review Scope\n\n- design compliance, security, comment adequacy, code quality, and test adequacy\n- 対象は Issue #28（仕様 fa420bc1757a）の差分3ファイル: `settings.json`、`harness/scripts/ci/validate-runtime-surface.js`、`harness/tests/ci/validators.test.js`\n\n## Design Compliance\n\n- 受け入れ条件 1: `settings.json` の4本を `harness/hooks/` に向けた。`validate-runtime-surface.js` が38ファイルを実在かつ追跡済みと確認した\n- 受け入れ条件 2: `settings.json` のコマンド文字列のまま push ガードを起動し、`main` への push の入力（明示と引数なし）で終了コード 2、作業ブランチへの push の入力で終了コード 0 を観測した\n- 受け入れ条件 3: 検査がルートを前置した形ならどのディレクトリでも実在を確かめる。修正前の `settings.json` に対して終了コード 1 で4本を表示した\n- 受け入れ条件 4: worktree で `node harness/tests/run-all.js` が 1481 件すべて成功。監査は `PASS`（不整合 0 件）\n- 制約: `harness/hooks/` の中身は変えていない。実際の push はしていない。Orca のフックと、リポジトリの外の設定には触れていない\n- 対象外の項目（Codex 側の反映、`diagram-delegation`、文書の古いパス）には手を入れていない\n\n## Security\n\n- 触れた面: 許可の判定（push ガード）の配線と、その配線を確かめる検査がコマンド文字列を読む部分\n- push ガードの判定は変えていない。配線した後の入出力は `observation-summary.md` の表にある（12 通り、期待との不一致 0 件）\n- 検査の実コードに、書き方を変えたコマンドを通した結果:\n\n  | 観点 | コマンド | 検査が報告したパス |\n  |---|---|---|\n  | 標準の形 | `node \"${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/x.js\"` | `hooks/x.js` |\n  | 波括弧のみ / 波括弧なし | `${CLAUDE_PLUGIN_ROOT}/…` / `$CLAUDE_PLUGIN_ROOT/…` | `hooks/x.js` |\n  | `$HOME` / `~` | `bash \"$HOME/.claude/hooks/x.sh\"` / `bash ~/.claude/hooks/x.sh` | `hooks/x.sh` |\n  | 引用符 | 単一引用符、引用符なし | `hooks/x.js` |\n  | 連結 | `true; node \"…/a/x.js\" && node \"…/b/y.js\" \\| cat` | `a/x.js`, `b/y.js` |\n  | コマンド置換 | `node \"$(echo $HOME/.claude/hooks/x.js)\"` | `hooks/x.js` |\n  | `..` を含む | `node \"$HOME/.claude/../outside.js\"` | `../outside.js`（実在しても未追跡として失敗する） |\n  | 境界値 | 空文字、20万字のコマンド | なし（終了コード 0） |\n  | ルートの外 | `$HOME/.orca/…`、`/System/Library/…` | なし（対象外として無視） |\n  | 拾えない形 | 大文字の拡張子 `.JS`、小文字の変数名、`root=…; \"$root/hooks/x.js\"`、空白を含むパス | なし（Residual Risks） |\n\n- 検査はパスの実在と git の追跡を見るだけで、参照先を実行しない。存在するファイルは `require()` の行を探すために読むが、内容は出力しない\n\n## Comment Adequacy\n\n- 落とした: なし\n- 残した: `HOOKS_FILE` の定数名についての既存コメント\n- 足した: `ROOTED_SCRIPT` の3行。ルートを前置した形でディレクトリを限定しない理由を書いた\n- 比率: `validate-runtime-surface.js` は 4%（5/130 行）。`harness/scripts/ci/` 全体の基準は 11%。追加したテスト88行はコメントなしで、同じ節の既存テストと揃えた\n\n## Code Quality\n\n- Refactoring: unchanged | `extractHookEntryFiles` に正規表現1本とループ1つを足しただけで、重複や不要な処理は無い\n- Documents: unchanged | 検査の範囲を説明している文書は無い（リポジトリの `*.md` を検索して確認）。文書に残る古いパスは Issue の対象外\n- Comments: changed | `validate-runtime-surface.js` の `ROOTED_SCRIPT` に、ディレクトリを限定しない理由のコメントを足した\n- Verification: passed | 最後の修正後に `validate-runtime-surface.js`（38 files）、`validators.test.js`（152/152）、`run-all.js`（1481/1481）、`audit-harness-contract.js`（PASS）が成功\n- Observation: recorded | `observation-summary.md` に push ガードの終了コードと標準エラーの表、4本の解決先の実在と構文の確認\n- Revision: 032296afffbd31bc2fea4420dee807791ada8328a61821ea381e364907196406\n\n## Test Adequacy\n\n- RED/GREEN evidence: `verification-summary.md` の RED Evidence に3回分。テストだけ足した時点で2件失敗、検査を広げた時点で実リポジトリの `settings.json` が4本で失敗、波括弧なしの形で1件失敗。いずれも修正後に成功\n- BDD scenarios: 配線が実在しないスクリプトを指すと検査が失敗してパスを表示する / 実在して追跡済みなら件数に数え、ルートの外のコマンドは無視する\n- integration/E2E evidence: 既存の `passes on real project runtime surface` が実リポジトリの `settings.json` を検査する。修正前は4本で失敗し、修正後に成功した\n- observe evidence: `observation-summary.md`\n\n## Findings\n\n- MEDIUM: `main` 上での `git push -u origin HEAD` と `git push origin HEAD` を push ガードが止めない。refspec の `HEAD` を現在のブランチに解決していない。既存の `git-push-guard.test.js` にもこの形のテストが無い。Issue #28 の制約（フックの判定は変えない）の外なので、別 Issue が要る\n\n## Residual Risks\n\n- マージしても、手元の `~/.claude` に取り込むまでフックは古いパスのまま動かない。取り込み後のセッションでエラーが消えることは未確認\n- Codex 側は記録用のフック2本が古いパスを指している（`sync-codex-bridge.js --check` が `drift`）。push ガードは Codex 側に配線が無い\n- 検査が拾えない書き方がある: 大文字の拡張子、ルートを別の変数に入れた形（`$root/hooks/x.js`）、空白を含むパス。実際の `settings.json` には無い\n- 監査の `blocking-gate-unnamed` はファイル名の一致で判定するまま。パスの実在は `validate-runtime-surface.js` が見る\n\n## Guardrail Candidates\n\n- failure_pattern: フックが非ブロックのエラーで落ち続けても、誰にも知らされない。今回は Bash のたびに hook_non_blocking_error が出ていたが、12日間気づかれなかった\n  source: Claude Code のセッション記録（2026-10-06 から 10-12 に git-push-guard.js の exitCode 1 が103件）\n  recommended_layer: hook\n  confidence: medium\n\n## Next Action\n\n- none\n"
+}

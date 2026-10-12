@@ -1,0 +1,4 @@
+{"occurred_at":"2026-10-12T09:35:27.801Z","type":"review_completed","status":"complete","fingerprint":"review-summary.md:1791797595647.67::0"}
+{"occurred_at":"2026-10-12T09:35:27.804Z","type":"verification_completed","status":"complete","fingerprint":"verification-summary.md:1791797662909.4456:"}
+{"occurred_at":"2026-10-12T09:35:27.807Z","type":"observation_completed","status":"complete","fingerprint":"observation-summary.md:1791797541947.5037:"}
+{"occurred_at":"2026-10-12T10:30:49.203Z","type":"session_started","status":"resumed","session_id":"34779bc3-c0a1-4b7c-8fa7-e1870fc226c5","resume_expected":true,"resume_success":true,"resume_reason":"","resume_source":"artifacts"}

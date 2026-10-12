@@ -392,6 +392,94 @@ function runTests() {
     cleanupTestDir(testDir);
   })) passed++; else failed++;
 
+  if (test('fails when a hook points at a missing script outside harness/scripts/hooks', () => {
+    const testDir = createTestDir();
+    const hooksFile = path.join(testDir, 'settings.json');
+    fs.writeFileSync(hooksFile, JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'Bash',
+            hooks: [
+              { type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/git-push-guard.js"' }
+            ]
+          }
+        ],
+        SessionStart: [
+          {
+            hooks: [
+              { type: 'command', command: 'bash "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/hooks/herdr-agent-state.sh" session' }
+            ]
+          }
+        ],
+        Stop: [
+          {
+            hooks: [
+              { type: 'command', command: 'node "$CLAUDE_PLUGIN_ROOT/hooks/lifecycle-pre-commit.js"' }
+            ]
+          }
+        ]
+      }
+    }, null, 2));
+    execFileSync('git', ['init'], { cwd: testDir, stdio: 'ignore' });
+    execFileSync('git', ['add', 'settings.json'], { cwd: testDir, stdio: 'ignore' });
+
+    const result = runValidatorWithDirs('validate-runtime-surface', {
+      HOOKS_FILE: hooksFile,
+      CLAUDE_ROOT: testDir,
+    });
+    assert.strictEqual(result.code, 1, `Should fail when the wired script does not exist, got stdout: ${result.stdout}`);
+    assert.ok(result.stderr.includes('runtime surface file is missing: hooks/git-push-guard.js'), 'Should name the missing .js path');
+    assert.ok(result.stderr.includes('runtime surface file is missing: hooks/herdr-agent-state.sh'), 'Should name the missing .sh path');
+    assert.ok(result.stderr.includes('runtime surface file is missing: hooks/lifecycle-pre-commit.js'), 'Should read the root variable written without braces');
+    cleanupTestDir(testDir);
+  })) passed++; else failed++;
+
+  if (test('counts tracked scripts wired from any directory under the root', () => {
+    const testDir = createTestDir();
+    const hooksDir = path.join(testDir, 'harness/hooks');
+    fs.mkdirSync(hooksDir, { recursive: true });
+    const hooksFile = path.join(testDir, 'settings.json');
+    fs.writeFileSync(hooksFile, JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'Bash',
+            hooks: [
+              { type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude}/harness/hooks/git-push-guard.js"' }
+            ]
+          }
+        ],
+        SessionStart: [
+          {
+            hooks: [
+              { type: 'command', command: 'bash "$HOME/.claude/harness/hooks/herdr-agent-state.sh" session' }
+            ]
+          }
+        ],
+        Stop: [
+          {
+            hooks: [
+              { type: 'command', command: 'afplay /System/Library/Sounds/Pop.aiff &' }
+            ]
+          }
+        ]
+      }
+    }, null, 2));
+    fs.writeFileSync(path.join(hooksDir, 'git-push-guard.js'), 'process.exit(0);\n');
+    fs.writeFileSync(path.join(hooksDir, 'herdr-agent-state.sh'), '#!/bin/sh\n');
+    execFileSync('git', ['init'], { cwd: testDir, stdio: 'ignore' });
+    execFileSync('git', ['add', 'settings.json', 'harness/hooks/git-push-guard.js', 'harness/hooks/herdr-agent-state.sh'], { cwd: testDir, stdio: 'ignore' });
+
+    const result = runValidatorWithDirs('validate-runtime-surface', {
+      HOOKS_FILE: hooksFile,
+      CLAUDE_ROOT: testDir,
+    });
+    assert.strictEqual(result.code, 0, `Should pass when the wired scripts exist and are tracked, got stderr: ${result.stderr}`);
+    assert.ok(result.stdout.includes('Validated runtime surface: 2 files'), `Should count both wired scripts, got stdout: ${result.stdout}`);
+    cleanupTestDir(testDir);
+  })) passed++; else failed++;
+
   if (test('fails when referenced runtime hook file exists but is untracked', () => {
     const testDir = createTestDir();
     const hooksDir = path.join(testDir, 'harness/hooks');
