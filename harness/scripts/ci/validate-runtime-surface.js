@@ -36,11 +36,19 @@ function getTrackedFiles() {
   }
 }
 
+// フックのコマンドがルート配下のスクリプトを指す形は2つある。ルートを前置した形と、
+// run-with-flags.js の引数に渡すルート相対の形。前置した形はディレクトリを限定しない
+// （harness/scripts/hooks/ だけを見ていると、別の場所を指す配線のずれを拾えない）。
+const ROOTED_SCRIPT = /(?:\$\{CLAUDE_PLUGIN_ROOT[^}]*\}|\$CLAUDE_PLUGIN_ROOT|\$HOME\/\.claude|~\/\.claude)\/([A-Za-z0-9._/-]+\.(?:c?js|mjs|sh))/g;
+
 function extractHookEntryFiles(command) {
   const refs = new Set();
   const value = String(command || '');
   for (const match of value.matchAll(/harness\/scripts\/hooks\/[A-Za-z0-9._-]+/g)) {
     refs.add(match[0]);
+  }
+  for (const match of value.matchAll(ROOTED_SCRIPT)) {
+    refs.add(match[1]);
   }
   return refs;
 }
