@@ -1,0 +1,35 @@
+{
+  "kind": "verification",
+  "source_path": "/Users/kyo/development/.claude/issue-30/verification-summary.md",
+  "captured_at": "2026-10-12T14:16:34.850Z",
+  "fingerprint": "",
+  "state": {
+    "scope": [
+      "Issue #30（仕様 5f4e6736d3df）。`CLAUDE.md` と `rules/common/` の4ファイルの書き直し、`harness/scripts/ci/validate-rules.js` の上限の検査、`harness/tests/ci/validators.test.js`、監査のメッセージ、`docs/architecture.md`、`skills/writing-reference-docs/SKILL.md` の参照"
+    ],
+    "commandsRun": [
+      "`npm test`（`test:core`。検査8本、監査、スモーク、`run-all.js`）→ 終了コード 0。`Always-loaded instructions: 11929 / 12000 chars`、`PASS: harness contract audit`、`PASS: harness lifecycle smoke checks`、`Total Tests: 1486 / Passed: 1486 / Failed: 0`",
+      "`node harness/tests/ci/validators.test.js` → `Results: Passed: 157, Failed: 0`、終了コード 0",
+      "`node harness/scripts/ci/validate-rules.js` → `Validated 4 rule files` / `Always-loaded instructions: 11929 / 12000 chars`、終了コード 0",
+      "`node harness/scripts/ci/audit-harness-contract.js` → `PASS: harness contract audit`、終了コード 0",
+      "- worktree では `skills/show-me` のリンク先が解決できず、`diagram-delegation` の検査対象にならない。本体のスキル一覧に対して同じ判定を再現した結果は `review-summary.md` の Design Compliance に置いた",
+      "`npm run lint` → エラー 0、警告 1（`harness/scripts/eval-batch.js:82` の `eqeqeq`。今回触っていないファイルで、着手前からある）、終了コード 0",
+      "`npx markdownlint`（書き直した5ファイル）→ `MD013/line-length` だけ 42 件。変更していない `AGENTS.md` `commands/COMMANDS.md` `docs/architecture.md` でも同じ規則が 55 件出ており、このリポジトリは `npm test` に markdownlint を入れていない",
+      "日付の記載: `cat CLAUDE.md rules/common/*.md | grep -cE '20[0-9]{2}-[0-9]{2}-[0-9]{2}'` → 0（着手前は 19）",
+      "build と型検査は、このリポジトリに配線が無いので実行していない"
+    ],
+    "verificationOutcome": [
+      "passed: 最後の修正（`CLAUDE.md` の Task Finishing と Context And Recovery の文面）の後に `npm test` を取り直し、終了コード 0 だった"
+    ],
+    "assessment": [
+      "再実行可能な検査だけを記録した",
+      "判断基準や制約が消えていないかの確認と、受容に関わる懸念は `review-summary.md` に置いた"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "missingValues": [],
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Verification Summary\n\n## Scope\n\n- Issue #30（仕様 5f4e6736d3df）。`CLAUDE.md` と `rules/common/` の4ファイルの書き直し、`harness/scripts/ci/validate-rules.js` の上限の検査、`harness/tests/ci/validators.test.js`、監査のメッセージ、`docs/architecture.md`、`skills/writing-reference-docs/SKILL.md` の参照\n\n## Commands Run\n\n- `npm test`（`test:core`。検査8本、監査、スモーク、`run-all.js`）→ 終了コード 0。`Always-loaded instructions: 11929 / 12000 chars`、`PASS: harness contract audit`、`PASS: harness lifecycle smoke checks`、`Total Tests: 1486 / Passed: 1486 / Failed: 0`\n- `node harness/tests/ci/validators.test.js` → `Results: Passed: 157, Failed: 0`、終了コード 0\n- `node harness/scripts/ci/validate-rules.js` → `Validated 4 rule files` / `Always-loaded instructions: 11929 / 12000 chars`、終了コード 0\n- `node harness/scripts/ci/audit-harness-contract.js` → `PASS: harness contract audit`、終了コード 0\n  - worktree では `skills/show-me` のリンク先が解決できず、`diagram-delegation` の検査対象にならない。本体のスキル一覧に対して同じ判定を再現した結果は `review-summary.md` の Design Compliance に置いた\n- `npm run lint` → エラー 0、警告 1（`harness/scripts/eval-batch.js:82` の `eqeqeq`。今回触っていないファイルで、着手前からある）、終了コード 0\n- `npx markdownlint`（書き直した5ファイル）→ `MD013/line-length` だけ 42 件。変更していない `AGENTS.md` `commands/COMMANDS.md` `docs/architecture.md` でも同じ規則が 55 件出ており、このリポジトリは `npm test` に markdownlint を入れていない\n- 日付の記載: `cat CLAUDE.md rules/common/*.md | grep -cE '20[0-9]{2}-[0-9]{2}-[0-9]{2}'` → 0（着手前は 19）\n- build と型検査は、このリポジトリに配線が無いので実行していない\n\n## RED Evidence\n\n- command: `node harness/tests/ci/validators.test.js`（テスト5件を足し、検査は未実装）\n- observed failure: `Results: Passed: 152, Failed: 5`。`fails when always-loaded instructions exceed the limit` は検査が終了コード 0 を返して `Should fail one character over the limit`。残りの4件も、合計の表示が無いか、超過を見逃して失敗した\n- command: `node harness/scripts/ci/validate-rules.js`（検査を実装し、5ファイルは書き直す前）\n- observed failure: 終了コード 1。`ERROR: always-loaded instructions are 29943 chars, over the 12000 limit` と、ファイルごとの字数（`13830 CLAUDE.md`、`8445 rules/common/documentation.md`、`3157 rules/common/worktree-policy.md`、`3036 rules/common/performance.md`、`1475 rules/common/git-workflow.md`）。同じ理由で `validators.test.js` の `passes on real project rules` も失敗した（`Passed: 156, Failed: 1`）\n- command: `node harness/tests/ci/validators.test.js`（`paths` の値が空になる書き方を7通り足し、検査は未対応）\n- observed failure: `Results: Passed: 156, Failed: 1`。`Should count a rule with null paths (~)`。`paths: ~` を、絞り込みのあるルールとして数え落としていた\n\n## Verification Outcome\n\n- passed: 最後の修正（`CLAUDE.md` の Task Finishing と Context And Recovery の文面）の後に `npm test` を取り直し、終了コード 0 だった\n\n## Guardrail Candidates\n\n- none\n\n## Assessment\n\n- 再実行可能な検査だけを記録した\n- 判断基準や制約が消えていないかの確認と、受容に関わる懸念は `review-summary.md` に置いた\n"
+}
