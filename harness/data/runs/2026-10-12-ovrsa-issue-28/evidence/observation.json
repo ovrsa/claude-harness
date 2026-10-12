@@ -1,0 +1,56 @@
+{
+  "kind": "observation",
+  "source_path": "/Users/kyo/development/.claude/issue-28/observation-summary.md",
+  "captured_at": "2026-10-12T10:30:49.178Z",
+  "fingerprint": "",
+  "state": {
+    "behaviorChecked": [
+      "`settings.json` に書かれたコマンド文字列のまま push ガードを起動すると、`main` への push の入力で終了コード 2、作業ブランチへの push の入力で終了コード 0 になる",
+      "`settings.json` の4本のコマンド文字列が、実在して構文エラーの無いスクリプトに解決される"
+    ],
+    "method": [
+      "stderr: `sh -c '<settings.json のコマンド文字列>'` を `CLAUDE_PLUGIN_ROOT=<worktree のルート>` で起動し、フックの入力（`{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":...}}`）を標準入力に渡して、終了コードと標準エラーを記録した。cwd は使い捨ての git リポジトリで、`main` と作業ブランチの両方で行った。push は実行していない",
+      "process state: 4本の解決先は `fs.existsSync` と `node --check` / `bash -n` で確かめた。`lifecycle-pre-edit.js` `lifecycle-pre-commit.js` `herdr-agent-state.sh` は副作用を避けるため起動していない",
+      "logs: 修正前の状態は、Claude Code のセッション記録に残る `hook_non_blocking_error` で確かめた"
+    ],
+    "evidence": [
+      "stdout: 解決先。`harness/hooks/git-push-guard.js` `harness/hooks/lifecycle-pre-edit.js` `harness/hooks/lifecycle-pre-commit.js` `harness/hooks/herdr-agent-state.sh` はいずれも `exists=true syntax=ok`",
+      "stderr: push ガードの入出力（期待との不一致 0 件）",
+      "| cwd のブランチ | 配線 | フックに渡したコマンド | 終了コード | 標準エラー |",
+      "|---|---|---|---|---|",
+      "| main | 修正前 | `git push origin main` | 1 | `Error: Cannot find module '…/hooks/git-push-guard.js'` |",
+      "| main | 修正後 | `git push origin main` | 2 | `[Git Guard] Refusing to push to main.` |",
+      "| main | 修正後 | `git push` | 2 | `[Git Guard] Refusing to push to main.` |",
+      "| main | 修正後 | `git push origin HEAD:main` | 2 | `[Git Guard] Refusing to push to main.` |",
+      "| main | 修正後 | `cd /tmp && git push` | 2 | `[Git Guard] Refusing to push to main.` |",
+      "| main | 修正後 | `git push --dry-run origin main` | 0 | なし |",
+      "| main | 修正後 | `git commit -m \"git push origin main\"` | 0 | なし |",
+      "| main | 修正後 | `git push origin ovrsa/issue-28` | 0 | なし |",
+      "| main | 修正後 | `git push -u origin HEAD` | 0 | なし（下の Remaining Uncertainty） |",
+      "| 作業ブランチ | 修正後 | `git push` | 0 | なし |",
+      "| 作業ブランチ | 修正後 | `git push -u origin HEAD` | 0 | なし |",
+      "| 作業ブランチ | 修正後 | `git push origin main` | 2 | `[Git Guard] Refusing to push to main.` |",
+      "logs: セッション記録に `Cannot find module '/Users/kyo/.claude/hooks/git-push-guard.js'`（`exitCode: 1`）が 2026-10-06・07・08・12 に計103件。2026-09-29 までは、同じ置き場所の `lifecycle-pre-edit.js` と `lifecycle-pre-commit.js` に `hook_success` の記録がある"
+    ],
+    "remainingUncertainty": [
+      "マージして手元の `~/.claude` に取り込むまで、稼働中の設定は古いパスのまま。取り込んだ後のセッションで `hook_non_blocking_error` が消えることは未確認",
+      "`main` 上での `git push -u origin HEAD` は終了コード 0 で、push ガードは止めない。refspec の `HEAD` を現在のブランチに解決していないためで、配線とは別の問題。Issue の制約によりフックの判定は変えていない",
+      "助言の2本と herdr 連携は起動していない。助言の2本の挙動は `harness/tests/hooks/hooks.test.js` が、push ガードの判定は `harness/tests/hooks/git-push-guard.test.js` が扱っている。`herdr-agent-state.sh` を起動するテストは無い"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "missingValues": [],
+    "concreteEvidenceLines": [
+      "stderr: `sh -c '<settings.json のコマンド文字列>'` を `CLAUDE_PLUGIN_ROOT=<worktree のルート>` で起動し、フックの入力（`{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":...}}`）を標準入力に渡して、終了コードと標準エラーを記録した。cwd は使い捨ての git リポジトリで、`main` と作業ブランチの両方で行った。push は実行していない",
+      "process state: 4本の解決先は `fs.existsSync` と `node --check` / `bash -n` で確かめた。`lifecycle-pre-edit.js` `lifecycle-pre-commit.js` `herdr-agent-state.sh` は副作用を避けるため起動していない",
+      "logs: 修正前の状態は、Claude Code のセッション記録に残る `hook_non_blocking_error` で確かめた",
+      "stdout: 解決先。`harness/hooks/git-push-guard.js` `harness/hooks/lifecycle-pre-edit.js` `harness/hooks/lifecycle-pre-commit.js` `harness/hooks/herdr-agent-state.sh` はいずれも `exists=true syntax=ok`",
+      "stderr: push ガードの入出力（期待との不一致 0 件）",
+      "logs: セッション記録に `Cannot find module '/Users/kyo/.claude/hooks/git-push-guard.js'`（`exitCode: 1`）が 2026-10-06・07・08・12 に計103件。2026-09-29 までは、同じ置き場所の `lifecycle-pre-edit.js` と `lifecycle-pre-commit.js` に `hook_success` の記録がある"
+    ],
+    "hasConcreteEvidence": true,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Observation Summary\n\n## Behavior Checked\n\n- `settings.json` に書かれたコマンド文字列のまま push ガードを起動すると、`main` への push の入力で終了コード 2、作業ブランチへの push の入力で終了コード 0 になる\n- `settings.json` の4本のコマンド文字列が、実在して構文エラーの無いスクリプトに解決される\n\n## Method\n\n- stderr: `sh -c '<settings.json のコマンド文字列>'` を `CLAUDE_PLUGIN_ROOT=<worktree のルート>` で起動し、フックの入力（`{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":...}}`）を標準入力に渡して、終了コードと標準エラーを記録した。cwd は使い捨ての git リポジトリで、`main` と作業ブランチの両方で行った。push は実行していない\n- process state: 4本の解決先は `fs.existsSync` と `node --check` / `bash -n` で確かめた。`lifecycle-pre-edit.js` `lifecycle-pre-commit.js` `herdr-agent-state.sh` は副作用を避けるため起動していない\n- logs: 修正前の状態は、Claude Code のセッション記録に残る `hook_non_blocking_error` で確かめた\n\n## Evidence\n\n- stdout: 解決先。`harness/hooks/git-push-guard.js` `harness/hooks/lifecycle-pre-edit.js` `harness/hooks/lifecycle-pre-commit.js` `harness/hooks/herdr-agent-state.sh` はいずれも `exists=true syntax=ok`\n- stderr: push ガードの入出力（期待との不一致 0 件）\n\n  | cwd のブランチ | 配線 | フックに渡したコマンド | 終了コード | 標準エラー |\n  |---|---|---|---|---|\n  | main | 修正前 | `git push origin main` | 1 | `Error: Cannot find module '…/hooks/git-push-guard.js'` |\n  | main | 修正後 | `git push origin main` | 2 | `[Git Guard] Refusing to push to main.` |\n  | main | 修正後 | `git push` | 2 | `[Git Guard] Refusing to push to main.` |\n  | main | 修正後 | `git push origin HEAD:main` | 2 | `[Git Guard] Refusing to push to main.` |\n  | main | 修正後 | `cd /tmp && git push` | 2 | `[Git Guard] Refusing to push to main.` |\n  | main | 修正後 | `git push --dry-run origin main` | 0 | なし |\n  | main | 修正後 | `git commit -m \"git push origin main\"` | 0 | なし |\n  | main | 修正後 | `git push origin ovrsa/issue-28` | 0 | なし |\n  | main | 修正後 | `git push -u origin HEAD` | 0 | なし（下の Remaining Uncertainty） |\n  | 作業ブランチ | 修正後 | `git push` | 0 | なし |\n  | 作業ブランチ | 修正後 | `git push -u origin HEAD` | 0 | なし |\n  | 作業ブランチ | 修正後 | `git push origin main` | 2 | `[Git Guard] Refusing to push to main.` |\n\n- logs: セッション記録に `Cannot find module '/Users/kyo/.claude/hooks/git-push-guard.js'`（`exitCode: 1`）が 2026-10-06・07・08・12 に計103件。2026-09-29 までは、同じ置き場所の `lifecycle-pre-edit.js` と `lifecycle-pre-commit.js` に `hook_success` の記録がある\n\n## Remaining Uncertainty\n\n- マージして手元の `~/.claude` に取り込むまで、稼働中の設定は古いパスのまま。取り込んだ後のセッションで `hook_non_blocking_error` が消えることは未確認\n- `main` 上での `git push -u origin HEAD` は終了コード 0 で、push ガードは止めない。refspec の `HEAD` を現在のブランチに解決していないためで、配線とは別の問題。Issue の制約によりフックの判定は変えていない\n- 助言の2本と herdr 連携は起動していない。助言の2本の挙動は `harness/tests/hooks/hooks.test.js` が、push ガードの判定は `harness/tests/hooks/git-push-guard.test.js` が扱っている。`herdr-agent-state.sh` を起動するテストは無い\n\n## Guardrail Candidates\n\n- none\n"
+}

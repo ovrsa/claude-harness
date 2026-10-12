@@ -1,0 +1,34 @@
+{
+  "kind": "verification",
+  "source_path": "/Users/kyo/development/.claude/issue-28/verification-summary.md",
+  "captured_at": "2026-10-12T10:30:49.166Z",
+  "fingerprint": "",
+  "state": {
+    "scope": [
+      "Issue #28（仕様 fa420bc1757a）。`settings.json` のフック4本の配線と、`harness/scripts/ci/validate-runtime-surface.js` の検査範囲"
+    ],
+    "commandsRun": [
+      "`node harness/scripts/ci/validate-runtime-surface.js` → `Validated runtime surface: 38 files`、終了コード 0",
+      "`node harness/tests/ci/validators.test.js` → `Results: Passed: 152, Failed: 0`、終了コード 0",
+      "`node harness/tests/run-all.js` → 1481 件すべて成功、終了コード 0（56秒）",
+      "`npm run lint` → エラー 0、警告 1（`harness/scripts/eval-batch.js:82` の `eqeqeq`。今回触っていないファイルで、着手前からある）、終了コード 0",
+      "`npm run lint:architecture` → `no dependency violations found (89 modules, 99 dependencies cruised)`",
+      "build と型検査は、このリポジトリに配線が無いので実行していない",
+      "`node harness/scripts/ci/audit-harness-contract.js` → `PASS: harness contract audit`、終了コード 0",
+      "- worktree では `skills/show-me` のリンク先（`../../.agents/skills/show-me`）が解決できないため、`diagram-delegation` は出ない。`main` の作業ツリーでは着手前から1件出ている（Issue の対象外）"
+    ],
+    "verificationOutcome": [
+      "passed: 最後の修正（`ROOTED_SCRIPT` に波括弧なしの形を追加）の後に、Commands Run の4コマンドを取り直してすべて成功した"
+    ],
+    "assessment": [
+      "再実行可能な検査だけを記録した",
+      "受容に関わる懸念は `review-summary.md`、push ガードを起動した結果は `observation-summary.md` に置いた"
+    ],
+    "guardrailCandidates": [],
+    "guardrailCandidateWarnings": [],
+    "missingValues": [],
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Verification Summary\n\n## Scope\n\n- Issue #28（仕様 fa420bc1757a）。`settings.json` のフック4本の配線と、`harness/scripts/ci/validate-runtime-surface.js` の検査範囲\n\n## Commands Run\n\n- `node harness/scripts/ci/validate-runtime-surface.js` → `Validated runtime surface: 38 files`、終了コード 0\n- `node harness/tests/ci/validators.test.js` → `Results: Passed: 152, Failed: 0`、終了コード 0\n- `node harness/tests/run-all.js` → 1481 件すべて成功、終了コード 0（56秒）\n- `npm run lint` → エラー 0、警告 1（`harness/scripts/eval-batch.js:82` の `eqeqeq`。今回触っていないファイルで、着手前からある）、終了コード 0\n- `npm run lint:architecture` → `no dependency violations found (89 modules, 99 dependencies cruised)`\n- build と型検査は、このリポジトリに配線が無いので実行していない\n- `node harness/scripts/ci/audit-harness-contract.js` → `PASS: harness contract audit`、終了コード 0\n  - worktree では `skills/show-me` のリンク先（`../../.agents/skills/show-me`）が解決できないため、`diagram-delegation` は出ない。`main` の作業ツリーでは着手前から1件出ている（Issue の対象外）\n\n## RED Evidence\n\n- command: `node harness/tests/ci/validators.test.js`（テスト2件を足し、検査は未修正）\n- observed failure: `Results: Passed: 150, Failed: 2`。`fails when a hook points at a missing script outside harness/scripts/hooks` は検査が `Validated runtime surface: 0 files` を出して終了コード 0 を返し、`0 !== 1`。`counts tracked scripts wired from any directory under the root` は `0 files` と数えた\n- command: `node harness/scripts/ci/validate-runtime-surface.js`（検査を広げ、`settings.json` は未修正）\n- observed failure: 終了コード 1。`ERROR: runtime surface file is missing:` が `hooks/git-push-guard.js` `hooks/herdr-agent-state.sh` `hooks/lifecycle-pre-commit.js` `hooks/lifecycle-pre-edit.js` の4本を表示した\n- command: `node harness/tests/ci/validators.test.js`（波括弧なしの `$CLAUDE_PLUGIN_ROOT/` を使う配線をテストに足し、検査は未対応）\n- observed failure: `Results: Passed: 151, Failed: 1`。`Should read the root variable written without braces`\n\n## Verification Outcome\n\n- passed: 最後の修正（`ROOTED_SCRIPT` に波括弧なしの形を追加）の後に、Commands Run の4コマンドを取り直してすべて成功した\n\n## Guardrail Candidates\n\n- none\n\n## Assessment\n\n- 再実行可能な検査だけを記録した\n- 受容に関わる懸念は `review-summary.md`、push ガードを起動した結果は `observation-summary.md` に置いた\n"
+}
