@@ -73,6 +73,9 @@ upstream を追従していない。`skills/skill-stocktake` が `origin: ECC` �
 `grill-me/SKILL.md` は `Run a /grilling session.` の1行だけで、**これが正しい姿**である
 （元の環境で1度これを故障と誤診して上書きした記録が `AGENTS.md` にある）。
 
+出典ごとの著作権表示と許諾文は [skills/THIRD_PARTY_NOTICES.md](skills/THIRD_PARTY_NOTICES.md) にある。
+上の表に無い `find-skills` `prompt-engineering-patterns` `frontend-design` `stop-ai-slop-jp` の出典もそこに載せている。
+
 upstream 由来の `SKILL.md` を書き換えない。足りない要素は upstream ではなく `commands/` か `rules/` に置く。
 自動選択から外したいだけなら `settings.json` の `skillOverrides` を使う。
 
