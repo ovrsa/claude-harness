@@ -97,14 +97,17 @@ The SQLite store these hooks used to write was retired on 2026-08-20; the archiv
 
 ローカルで書いたものではない。編集する前に upstream を確認する。
 
-**この配布版では全件が実ファイルとして焼き込まれており、lock ファイルは同梱していない。**
+github.com/mattpocock/skills 由来の10個（`grilling` `grill-me` `grill-with-docs` `domain-modeling` `to-spec`
+`to-tickets` `tdd` `implement` `setup-matt-pocock-skills` `code-review`）は `skills/` に置かず、プラグイン
+`mattpocock-skills` が提供する（`settings.json` の `enabledPlugins`）。更新はプラグインの更新で入る。
+Codex は `node ~/.claude/harness/scripts/resolve-managed-skill.js <名前>` が返す `SKILL.md` を読む。
+
+**`skills/` に残る下の表の5個は実ファイルとして焼き込まれており、lock ファイルは同梱していない。**
 つまりどれを編集しても消えないが、**upstream の更新も入ってこない**。元の環境での「インストーラ管理下」列は、
 再インストールした時にどれが上書きされ得るかの目安として残す。
 
 | パス | upstream | 元の環境で lock 管理 |
 |---|---|---|
-| `skills/grill-me/` `skills/grilling/` | github.com/mattpocock/skills — `skills/productivity/` 配下 | **無し** |
-| `skills/grill-with-docs/` `skills/domain-modeling/` `skills/to-spec/` `skills/to-tickets/` `skills/tdd/` `skills/implement/` `skills/setup-matt-pocock-skills/` `skills/code-review/` | github.com/mattpocock/skills — `skills/engineering/` 配下（upstream には18本あり、入れているのは8本） | **有り** |
 | `skills/design-doc-mermaid/` | github.com/spillwavesolutions/design-doc-mermaid | **有り** |
 | `skills/python-code-style/` `skills/sql-optimization-patterns/` | github.com/wshobson/agents | **有り** |
 | `skills/sql-code-review/` `skills/sql-optimization/` | github.com/github/awesome-copilot | **有り** |

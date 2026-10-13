@@ -84,7 +84,7 @@ description: 実装前リサーチ。既存コード、関連フロー、ライ�
 
 - このコマンドは plan の後ではなく plan の前に使う
 - substantial task では結果を `research.md` または `{task}_research.md` に残す
-- research 完了後は `/grill-me` で決定を固め、`/docs-build` で design doc を書く段階へ進む
+- research 完了後は Grill で決定を固め、`/docs-build` で design doc を書く段階へ進む
 - research 段階ではコードを書かない
 
 ## 後続コマンド

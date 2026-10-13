@@ -138,7 +138,7 @@ Expected direction: `heavy-risky`, required approved plan or design spec, strong
 ## Relationship To Other Commands
 
 - `research-task` creates durable research artifacts only when durable context is needed.
-- The decisions are recorded by `/docs-build` into `docs/design/YYYY-MM-DD-<slug>.md` once `/grill-me` has settled them; there is no planning command.
+- The decisions are recorded by `/docs-build` into `docs/design/YYYY-MM-DD-<slug>.md` once the Grill has settled them; there is no planning command.
 - `execute-plan` runs approved work.
 - `verify` records rerunnable evidence.
 - `eval` judges whether the change is acceptable.

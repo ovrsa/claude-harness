@@ -27,7 +27,7 @@ node ~/.claude/harness/scripts/resolve-tracker.js --repo .
 ## 2. 大きさと重複を確かめる
 
 - 1つの会話で終わらない依頼（ゴール文面が 4,000 字に収まらない、30ターンで終わらない）は、このスキルで
-  起票しない。`/grill-me` → `/docs-build` で親 Issue を書き、`split-issue` で分ける
+  起票しない。Grill → `/docs-build` で親 Issue を書き、`split-issue` で分ける
 - 同じ成果を持つ開いた Issue があれば、起票せずにその番号を示し、`/start-issue <番号>` を案内する
 
 ```bash
@@ -93,4 +93,4 @@ gh issue create --repo <owner/repo> --title "<タイトル>" --body-file <本文
 - 承認の前に起票しない
 - 起票の前に実装を始めない。下書きを作業ツリーに置かない
 - 起票した後の本文を、人の確認なしに変えない
-- upstream のスキル（`grilling` など）を編集しない。欄の質問で決まらない設計は `/grill-me` に回す
+- upstream のスキル（`grilling` など）を編集しない。欄の質問で決まらない設計は Grill に回す

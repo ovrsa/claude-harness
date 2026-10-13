@@ -26,7 +26,7 @@ design doc の置き場所は管理先の宣言で分かれる。`.claude/tracke
 解決は `harness/scripts/resolve-tracker.js` が行い、GitHub を全プロジェクトに強制しない。
 
 入口: 書くべきかの判定は `writing-reference-docs` スキル、`docs/` 一式と親 Issue の本文は `/docs-build`
-（**`/grill-me` を通してから**）、`AGENTS.md` は `/repo-map`。
+（**Grill を通してから**）、`AGENTS.md` は `/repo-map`。
 
 ## 規模による段階
 

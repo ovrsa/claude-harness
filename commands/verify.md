@@ -100,5 +100,5 @@ $ARGUMENTS can be:
 - If verification fails, use `/build-fix` for mechanical failures or `/receive-review` for review-driven fixes.
 - If verification passes, run `/review-task`, then `/eval`.
 - **Refactoring happens in review, not here.** If review refactors, rerun `/verify` — the loop between
-  the two is expected (`skills/tdd` keeps refactoring outside the red/green cycle).
+  the two is expected (the plugin's `tdd` skill keeps refactoring outside the red/green cycle).
 - If behavior changed and observe evidence is missing, create or update `observation-summary.md` before acceptance.

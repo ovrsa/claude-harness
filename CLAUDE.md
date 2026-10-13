@@ -4,9 +4,9 @@ Entrypoint for my personal agent harness: decision rules, unusual constraints, a
 
 ## Before Writing Files
 
-- Non-trivial work starts with the managed plugin's `grilling` skill. Codex resolves it with
-  `node ~/.claude/harness/scripts/resolve-managed-skill.js grilling` and reads the returned
-  `SKILL.md` completely.
+- Non-trivial work starts with the managed plugin's `grilling` skill. Codex reads a plugin skill
+  by running `node ~/.claude/harness/scripts/resolve-managed-skill.js <name>` and reading the
+  returned `SKILL.md` completely.
 - The Grill ends with a final understanding and waits for confirmation. Confirmation does not
   authorize file changes: wait for an explicit next instruction.
 - With a declared tracker (`.claude/tracker.json`), work without an issue goes through
@@ -61,8 +61,8 @@ only for command names, file paths, API names, code identifiers, quoted output, 
   `start-issue` as a runtime goal when the project declares a tracker
 - search for an existing implementation before writing new code (`gh search code`, package
   registries, open source) and prefer porting a proven approach
-- diagnosis belongs to the Grill. Implement with `skills/tdd`: agree the seams, RED, minimum
-  GREEN. Refactoring belongs to review
+- diagnosis belongs to the Grill. Implement with the plugin's `tdd` skill: agree the seams, RED,
+  minimum GREEN. Refactoring belongs to review
 - do not implement heavy-risky work before explicit approval
 - do not skip review or evaluate for implementation and bug-fix work
 - do not claim done without verification evidence. For UI or runtime behavior changes, build and

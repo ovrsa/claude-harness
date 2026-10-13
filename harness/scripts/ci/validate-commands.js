@@ -100,7 +100,7 @@ function validateCommands() {
       }
     }
 
-    // Check skill directory references (e.g., "skills/grilling/")
+    // Check skill directory references (e.g., "skills/start-issue/")
     const skillRefs = contentNoCodeBlocks.matchAll(/skills\/([a-z][-a-z0-9]*)\//g);
     for (const match of skillRefs) {
       const refName = match[1];
