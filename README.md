@@ -75,8 +75,17 @@ Codex は `node harness/scripts/resolve-managed-skill.js <名前>` が返す `SK
 `skills/` の5個は**実体を焼き込んであり、lock ファイルは同梱していない**（元はシンボリックリンクで、
 zip に入れると壊れるため）。よって編集しても消えないが、**upstream の更新も入ってこない**。
 
-`skills/` に同梱している分の著作権表示と許諾文は [skills/THIRD_PARTY_NOTICES.md](skills/THIRD_PARTY_NOTICES.md) にある。
-上の表に無い `find-skills` `prompt-engineering-patterns` `frontend-design` `stop-ai-slop-jp` の出典もそこに載せている。
+`skills/` に複製を置いている外部由来のスキルの著作権表示は次のとおり。上の表に無い4個も含む。
+MIT の許諾文はルートの `LICENSE` と同じ文面である。
+
+| 出典 | ライセンス | 著作権表示 | スキル |
+|---|---|---|---|
+| [wshobson/agents](https://github.com/wshobson/agents) | MIT | Copyright (c) 2024 Seth Hobson | `python-code-style` `sql-optimization-patterns` `prompt-engineering-patterns` |
+| [github/awesome-copilot](https://github.com/github/awesome-copilot) | MIT | Copyright GitHub, Inc. | `sql-code-review` `sql-optimization` |
+| [vercel-labs/skills](https://github.com/vercel-labs/skills) | MIT | Copyright (c) 2026 Vercel, Inc. | `find-skills` |
+| [iKora128/stop-ai-slop-jp](https://github.com/iKora128/stop-ai-slop-jp) | MIT | Copyright (c) 2026 Daichi Nagashima | `stop-ai-slop-jp`（全文をフォルダに同梱） |
+| [spillwavesolutions/design-doc-mermaid](https://github.com/spillwavesolutions/design-doc-mermaid) | MIT（upstream の README の記述。LICENSE ファイルは無い） | upstream に記載が無い | `design-doc-mermaid` |
+| [anthropics/skills](https://github.com/anthropics/skills) | Apache-2.0 | 全文をフォルダに同梱（`LICENSE.txt`） | `frontend-design` |
 
 upstream 由来の `SKILL.md` を書き換えない。足りない要素は upstream ではなく `commands/` か `rules/` に置く。
 自動選択から外したいだけなら `settings.json` の `skillOverrides` を使う。
