@@ -10,7 +10,7 @@ Use the local pipeline by default for standard and heavy-risky implementation an
 
 - `/shape-task` as the explicit task-shaping surface for rough intent before planning, routing, or execution
 - `/route-task` as the explicit readonly routing surface for shaped tasks before execution or delegation
-- `/grill-me` as the depth pass on a sharpened task before any file is written
+- the Grill as the depth pass on a sharpened task before any file is written
 - `/docs-build` for persistent reference docs; it extracts the Grill Record from the grilling session
 - `/execute-plan` as the pipeline entrypoint when the work suits it
 - `/verify` to capture local rerunnable evidence when needed
@@ -23,11 +23,11 @@ Use the local pipeline by default for standard and heavy-risky implementation an
 ```
 1  調査             質問に答える。ここで終わることも多い              read-only
 2  /shape-task      意図を固める（重み判定・任意）                    read-only
-3  /grill-me        尋問（upstream skill / 実体は grilling）。診断もここ read-only
+3  Grill            尋問（どのスキルで行うかは CLAUDE.md）。診断もここ read-only
    ---- ここまで read-only。捨てるならここで捨てる ----
 4  worktree         書き込みが発生するならエージェントが作る（コマンドではない）
 5  /docs-build      決定を記録する = **実装の入力**（管理先あり: 親 Issue 本文 / なし: docs/design/）
-6  実装             skills/tdd（seam 合意 -> RED -> 最小 GREEN。refactor はしない）
+6  実装             プラグインの tdd スキル（seam 合意 -> RED -> 最小 GREEN。refactor はしない）
 7  検証             -> verification-summary.md（RED 証拠を含む。入口は /verify・任意）
 8  レビュー・仕上げ -> review-summary.md（refactor / 文章 / セキュリティ / コメント。修正後は再検証）
 9  受容判断         成果物を持たない。7・8・10 を読んで受容を答える（入口は /eval・任意）
@@ -47,7 +47,7 @@ Use the local pipeline by default for standard and heavy-risky implementation an
 修正タスクの例外は狭い — 診断は 3 の read-only 側なので、**診断が終われば実装前に書ける**。
 実装後まで待つのは「実装してみて初めて原因が分かった回」だけ。
 
-**8 で refactor すると 7 をやり直す必要がある。** `skills/tdd` が「refactoring は red->green ループの
+**8 で refactor すると 7 をやり直す必要がある。** プラグインの `tdd` スキルが「refactoring は red->green ループの
 外、review 段の仕事」と定めているため。7 -> 8 は一方向ではなくループになる回がある。
 
 **7〜9 の段は成果物であって、コマンドの起動ではない。** 保持期間中の全トランスクリプト
@@ -67,10 +67,10 @@ design doc（管理先があればブランチ名の Issue 番号から辿る Is
 [docs/design/2026-08-17-lifecycle-five-steps.md](../docs/design/2026-08-17-lifecycle-five-steps.md)
 と [docs/design/2026-08-20-retire-sqlite.md](../docs/design/2026-08-20-retire-sqlite.md)。
 
-`/shape-task` と `/grill-me` の棲み分け:
+`/shape-task` と Grill の棲み分け:
 
 - `/shape-task` は**広く浅く分類する**（task weight・spec 要否・次の一手）
-- `/grill-me` は**狭く深く尋問する**（却下した案・数字・触る契約・許容した負債）
+- Grill は**狭く深く尋問する**（却下した案・数字・触る契約・許容した負債）
 - `/shape-task` の重み判定が `/docs-build` の規模ゲート（Lynch 3問）に対応する
 
 11 を飛ばすと設計判断が消える。ドキュメント標準は `~/.claude/rules/common/documentation.md`。
@@ -164,7 +164,7 @@ Used to enter a repo cleanly and keep deeper references current.
 - `/sessions`
 
 `/repo-map` は `AGENTS.md` のみを扱う。`docs/` の永続リファレンスは `/docs-build` が担い、
-`/grill-me` を通してから実行する。標準は `~/.claude/rules/common/documentation.md`。
+Grill を通してから実行する。標準は `~/.claude/rules/common/documentation.md`。
 
 ### Capture And Health
 

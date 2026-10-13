@@ -50,8 +50,8 @@ Codexの新規フックは `/hooks` で信頼するまで発火しない。
 
 構造として効いているのは2点だけ。
 
-- **調査と `/grill-me` は read-only。** worktree はその後、最初の書き込みの直前に**エージェントが**作る
-- **design doc は実装の入力。** 決定は `/grill-me` で確定するので、実装前に書く。
+- **調査と Grill は read-only。** worktree はその後、最初の書き込みの直前に**エージェントが**作る
+- **design doc は実装の入力。** 決定は Grill で確定するので、実装前に書く。
   実装後にしか書けないのは「実装してみて初めて原因が分かった回」だけ。
   置き場所はプロジェクトの `.claude/tracker.json` で決まり、管理先があれば親 Issue の本文、無ければ `docs/design/`
 
@@ -166,10 +166,11 @@ git と design doc から復帰する方を選んだ。`run_state` は 2026-08-2
 
 ## upstream スキルのレーン（Pocock 系）
 
-本線とは別の、明示起動する道具立て。**編集しない**（upstream 由来）。一覧と upstream の所在は
-`AGENTS.md` の Upstream Assets が正本。
+本線とは別の、明示起動する道具立て。**編集しない**（upstream 由来）。10個はプラグイン `mattpocock-skills` が
+提供し、`skills/` には置いていない。Codex は `harness/scripts/resolve-managed-skill.js <名前>` が返す
+`SKILL.md` を読む。一覧と upstream の所在は `AGENTS.md` の Upstream Assets が正本。
 
-`/grill-me` 以外はこのレーンの中で閉じており、上の流れには**接続されていない**。
+Grill 以外はこのレーンの中で閉じており、上の流れには**接続されていない**。
 `CONTEXT.md` + `docs/adr/` を前提にする点もローカル規約（`docs/design/`）とは別系統。
 
 ## Open Issues

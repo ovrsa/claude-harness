@@ -91,6 +91,6 @@ Next Action:
 ## Next Handoff
 
 - If `NEEDS WORK`, return to `/receive-review`, `/implement-task`, or `/build-fix` based on the blocker.
-- If `BLOCKED`, return to `/grill-me` for the missing decision, then add a new design doc entry.
+- If `BLOCKED`, return to the Grill for the missing decision, then add a new design doc entry.
 - If `ACCEPT` and observe is required, ensure `observation-summary.md` is complete before commit.
 - If `ACCEPT` and observe is not required, proceed to the commit or branch-finishing path requested by the operator.

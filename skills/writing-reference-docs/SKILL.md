@@ -10,7 +10,7 @@ description: "Decide whether a persistent reference doc should exist, which kind
 繰り返した時点で契約が2つになり、必ず乖離する。
 
 構築の実行も担わない。判定が済んで書く段になったら `/docs-build`（`docs/` 一式）か
-`/repo-map`（`AGENTS.md`）へ渡す。`/docs-build` は `/grill-me` を通してから使う。
+`/repo-map`（`AGENTS.md`）へ渡す。`/docs-build` は Grill を通してから使う。
 却下した案と Non-goals は決定の場でしか出ないので、後から書くと推定になる。
 
 前提: **維持を前提にした doc は必ず嘘になる。嘘の doc は無い doc より悪い**（もっともらしいので疑われない）。

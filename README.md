@@ -58,22 +58,24 @@ Orca 1.4.215 の「Git無視ファイルを表示」はアプリ全体の設定�
 upstream を追従していない。`skills/skill-stocktake` が `origin: ECC` を宣言して残っているため、
 同梱の `LICENSE`（MIT / Copyright (c) 2026 Affaan Mustafa）を保持している。
 
-`skills/` の13件は外部リポジトリ由来である。**このパッケージには実体を焼き込んであり、lock ファイルは
-同梱していない**（元は5件がシンボリックリンクで、zip に入れると壊れるため）。よって編集しても消えないが、
-**upstream の更新も入ってこない**。
+外部リポジトリ由来のスキルは15個ある。10個はプラグインが提供し、5個は `skills/` にある。
 
 | 出典 | スキル |
 |---|---|
-| [mattpocock/skills](https://github.com/mattpocock/skills) | `tdd` `code-review` `implement` `to-spec` `to-tickets` `domain-modeling` `grill-with-docs` `setup-matt-pocock-skills` |
+| [mattpocock/skills](https://github.com/mattpocock/skills) | プラグイン `mattpocock-skills` が提供する10個（`skills/` には無い）: `grilling` `grill-me` `grill-with-docs` `domain-modeling` `to-spec` `to-tickets` `tdd` `implement` `setup-matt-pocock-skills` `code-review` |
 | [wshobson/agents](https://github.com/wshobson/agents) | `python-code-style` `sql-optimization-patterns` |
 | [github/awesome-copilot](https://github.com/github/awesome-copilot) | `sql-code-review` `sql-optimization` |
 | [spillwavesolutions/design-doc-mermaid](https://github.com/spillwavesolutions/design-doc-mermaid) | `design-doc-mermaid` |
 
-`grill-me` と `grilling` も upstream (mattpocock/skills) 由来だが lock には載っていなかった。
-`grill-me/SKILL.md` は `Run a /grilling session.` の1行だけで、**これが正しい姿**である
+プラグインの10個は `settings.json` の `enabledPlugins` で有効にしていて、更新はプラグインの更新で入る。
+Codex は `node harness/scripts/resolve-managed-skill.js <名前>` が返す `SKILL.md` を読む。
+`grill-me` の `SKILL.md` は `Run a /grilling session.` の1行だけで、**これが正しい姿**である
 （元の環境で1度これを故障と誤診して上書きした記録が `AGENTS.md` にある）。
 
-出典ごとの著作権表示と許諾文は [skills/THIRD_PARTY_NOTICES.md](skills/THIRD_PARTY_NOTICES.md) にある。
+`skills/` の5個は**実体を焼き込んであり、lock ファイルは同梱していない**（元はシンボリックリンクで、
+zip に入れると壊れるため）。よって編集しても消えないが、**upstream の更新も入ってこない**。
+
+`skills/` に同梱している分の著作権表示と許諾文は [skills/THIRD_PARTY_NOTICES.md](skills/THIRD_PARTY_NOTICES.md) にある。
 上の表に無い `find-skills` `prompt-engineering-patterns` `frontend-design` `stop-ai-slop-jp` の出典もそこに載せている。
 
 upstream 由来の `SKILL.md` を書き換えない。足りない要素は upstream ではなく `commands/` か `rules/` に置く。
@@ -88,11 +90,11 @@ upstream 由来の `SKILL.md` を書き換えない。足りない要素は upst
 ### ハーネス本体が名指ししているスキル
 
 以下は `CLAUDE.md` / `rules/` / `docs/how-to/run-a-task.md` が手順の中で名指ししている。
-消すと手順書が指す先を失う。
+消すと手順書が指す先を失う。プラグインの2個は、プラグインを無効にしても同じことが起きる。
 
 | スキル | 役割 |
 |---|---|
-| `grilling`（入口は `grill-me`） | 着手前の尋問。決定を固める |
-| `tdd` | RED -> 最小 GREEN。refactor はループの外（review 段の仕事） |
+| `grilling`（プラグイン。入口は `grill-me`） | 着手前の尋問。決定を固める |
+| `tdd`（プラグイン） | RED -> 最小 GREEN。refactor はループの外（review 段の仕事） |
 | `design-doc-mermaid` | design doc の図。再発明せず委譲する |
 | `writing-reference-docs` | doc を書くべきかの判定 |

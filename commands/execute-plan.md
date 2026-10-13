@@ -49,7 +49,7 @@ The wrapper must not:
    - read repo-local `AGENTS.md`
    - classify the track
    - identify permission-sensitive operations
-2. For unclear requirements, stop and return to `/shape-task` or `/grill-me` before planning. Do not start execution on unclear requirements.
+2. For unclear requirements, stop and return to `/shape-task` or the Grill before planning. Do not start execution on unclear requirements.
 3. For standard or heavy-risky work, pass through the pipeline plan gate.
 4. For standard or heavy-risky work only, once the plan gate has passed and execution is about to start, stamp run evidence via the local task queue before touching code. Treat this as best-effort and non-blocking — do not stop the run if it errors.
    - Compute `task_id` as a stable kebab-case slug of the task title (e.g. `add-user-export-endpoint`).
