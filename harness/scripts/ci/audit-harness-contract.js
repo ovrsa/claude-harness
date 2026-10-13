@@ -248,8 +248,8 @@ function checkDiagramSkillDelegation() {
 }
 
 // --- 8. 古いモデルIDが残っていないか -----------------------------------------
-// rules/common/performance.md が現行モデルを列挙している。そこに無い世代の ID は
-// 書いた時点で古くなるので置かない。
+// rules/common/performance.md は、指示にモデルの名前や版を書かないと定めている。
+// 古い世代の ID は書いた時点で古くなるので置かない。
 const STALE_MODEL_ID = /claude-(?:sonnet|opus|haiku)-[34](?:[-.]\d)?/i;
 
 function checkNoStaleModelIds() {
@@ -260,7 +260,7 @@ function checkNoStaleModelIds() {
     if (hit && !/haiku-4-5/i.test(hit[0])) {
       fail('stale-model-id',
         `skills/${name}/SKILL.md が古いモデルID "${hit[0]}" を持つ。` +
-        `rules/common/performance.md の現行一覧に合わせること`);
+        `現行のモデルに直すか、ID を書かない形にすること（rules/common/performance.md）`);
     }
   }
 }

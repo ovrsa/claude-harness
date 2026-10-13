@@ -974,6 +974,90 @@ function runTests() {
     cleanupTestDir(testDir);
   })) passed++; else failed++;
 
+  // The always-loaded set is CLAUDE.md beside the rules directory plus every rule without `paths`.
+  function alwaysLoadedFixture(claudeChars, rules) {
+    const root = createTestDir();
+    const rulesDir = path.join(root, 'rules');
+    fs.mkdirSync(path.join(rulesDir, 'common'), { recursive: true });
+    if (claudeChars > 0) fs.writeFileSync(path.join(root, 'CLAUDE.md'), 'c'.repeat(claudeChars));
+    for (const [name, content] of Object.entries(rules)) {
+      fs.writeFileSync(path.join(rulesDir, name), content);
+    }
+    return { root, rulesDir };
+  }
+
+  if (test('fails when always-loaded instructions exceed the limit', () => {
+    const { root, rulesDir } = alwaysLoadedFixture(7000, { 'common/a.md': 'r'.repeat(5001) });
+
+    const result = runValidatorWithDir('validate-rules', 'RULES_DIR', rulesDir);
+    assert.strictEqual(result.code, 1, 'Should fail one character over the limit');
+    assert.ok(result.stderr.includes('12001'), `Should report the total, got: ${result.stderr}`);
+    assert.ok(result.stderr.includes('12000'), 'Should report the limit');
+    assert.ok(/7000\s+CLAUDE\.md/.test(result.stderr), 'Should list CLAUDE.md with its size');
+    assert.ok(/5001\s+rules\/common\/a\.md/.test(result.stderr), 'Should list the rule with its size');
+    cleanupTestDir(root);
+  })) passed++; else failed++;
+
+  if (test('passes when always-loaded instructions are exactly at the limit', () => {
+    const { root, rulesDir } = alwaysLoadedFixture(7000, { 'common/a.md': 'r'.repeat(5000) });
+
+    const result = runValidatorWithDir('validate-rules', 'RULES_DIR', rulesDir);
+    assert.strictEqual(result.code, 0, `Should pass at the limit, got stderr: ${result.stderr}`);
+    assert.ok(result.stdout.includes('12000 / 12000'), `Should report total and limit, got: ${result.stdout}`);
+    cleanupTestDir(root);
+  })) passed++; else failed++;
+
+  if (test('does not count path-scoped rules toward the limit', () => {
+    const body = 's'.repeat(9000);
+    const { root, rulesDir } = alwaysLoadedFixture(7000, {
+      'common/a.md': 'r'.repeat(4000),
+      'common/list.md': `---\npaths:\n  - "docs/**"\n---\n${body}`,
+      'common/inline.md': `---\npaths: "src/**/*.ts"\n---\n${body}`,
+      'common/flow.md': `---\ndescription: scoped\npaths: ["docs/**", "*.md"]\n---\n${body}`,
+      'common/flush.md': `---\npaths:\n- docs/**\n---\n${body}`,
+      'common/crlf.md': `---\r\npaths:\r\n  - docs/**\r\n---\r\n${body}`,
+      'common/block.md': `---\npaths: >\n  docs/**\n---\n${body}`
+    });
+
+    const result = runValidatorWithDir('validate-rules', 'RULES_DIR', rulesDir);
+    assert.strictEqual(result.code, 0, `Should ignore path-scoped rules, got stderr: ${result.stderr}`);
+    assert.ok(result.stdout.includes('11000 / 12000'), `Should count only unscoped files, got: ${result.stdout}`);
+    assert.ok(result.stdout.includes('Validated 7'), 'Should still validate every rule file');
+    cleanupTestDir(root);
+  })) passed++; else failed++;
+
+  if (test('counts rules whose paths field cannot scope them', () => {
+    const cases = {
+      'frontmatter without paths': `---\ndescription: always on\n---\n${'x'.repeat(13000)}`,
+      'empty paths field': `---\npaths:\n---\n${'x'.repeat(13000)}`,
+      'empty paths list': `---\npaths: []\n---\n${'x'.repeat(13000)}`,
+      'empty quoted paths': `---\npaths: ""\n---\n${'x'.repeat(13000)}`,
+      'null paths (~)': `---\npaths: ~\n---\n${'x'.repeat(13000)}`,
+      'null paths (null)': `---\npaths: null\n---\n${'x'.repeat(13000)}`,
+      'an empty block scalar': `---\npaths: >\n---\n${'x'.repeat(13000)}`,
+      'only a comment after paths': `---\npaths: # none yet\n---\n${'x'.repeat(13000)}`,
+      'an empty list item': `---\npaths:\n  - ""\n---\n${'x'.repeat(13000)}`,
+      'a nested paths key': `---\nmeta:\n  paths: ["docs/**"]\n---\n${'x'.repeat(13000)}`,
+      'paths outside frontmatter': `# Rule\n\npaths:\n  - "docs/**"\n\n${'x'.repeat(13000)}`,
+      'frontmatter not at the top': `\n---\npaths:\n  - "docs/**"\n---\n${'x'.repeat(13000)}`
+    };
+    for (const [label, content] of Object.entries(cases)) {
+      const { root, rulesDir } = alwaysLoadedFixture(0, { 'common/a.md': content });
+      const result = runValidatorWithDir('validate-rules', 'RULES_DIR', rulesDir);
+      assert.strictEqual(result.code, 1, `Should count a rule with ${label}`);
+      cleanupTestDir(root);
+    }
+  })) passed++; else failed++;
+
+  if (test('counts CLAUDE.md on its own when the rules are within the limit', () => {
+    const { root, rulesDir } = alwaysLoadedFixture(12001, { 'common/a.md': '# Small rule' });
+
+    const result = runValidatorWithDir('validate-rules', 'RULES_DIR', rulesDir);
+    assert.strictEqual(result.code, 1, 'Should fail on an oversized CLAUDE.md');
+    assert.ok(/12001\s+CLAUDE\.md/.test(result.stderr), `Should name CLAUDE.md, got: ${result.stderr}`);
+    cleanupTestDir(root);
+  })) passed++; else failed++;
+
   // ==========================================
   // Round 19: Whitespace and edge-case tests
   // ==========================================

@@ -1,0 +1,47 @@
+{
+  "kind": "review",
+  "source_path": "/Users/kyo/development/.claude/issue-30/review-summary.md",
+  "captured_at": "2026-10-12T14:16:34.842Z",
+  "fingerprint": "",
+  "state": {
+    "reviewScope": [
+      "design compliance, security, comment adequacy, code quality, and test adequacy",
+      "対象は Issue #30（仕様 5f4e6736d3df）の差分10ファイル: `CLAUDE.md`、`rules/common/` の4ファイル、`harness/scripts/ci/validate-rules.js`、`harness/tests/ci/validators.test.js`、`harness/scripts/ci/audit-harness-contract.js`、`docs/architecture.md`、`skills/writing-reference-docs/SKILL.md`"
+    ],
+    "findings": [
+      "MEDIUM: `@path` の取り込みで読み込まれるファイルを、上限の検査が数えていない。`CLAUDE.md` かルールに `@big.md` と書けば、検査に見つからずに上限を超える量を読み込ませられる。いまの5ファイルに取り込みは無い。Issue が定めた数える対象に入っていないので、今回は足していない"
+    ],
+    "residualRisks": [
+      "余裕は 71 字しかない。着手前の見積もり（約 10,000 字）は外れ、判断基準と制約を残すと 11,929 字になった。次に指示を足す時は、何かを削るか、上限の定数（`ALWAYS_LOADED_LIMIT`）を人が上げる必要がある",
+      "指示を減らした後にエージェントの動きが悪くならないかは、テストでは確かめられない。対応表でのレビューと、取り込んだ後のセッションの観察で確かめる。戻す時は PR を revert する",
+      "マージしても、手元の `~/.claude` に取り込むまで稼働中の指示は古いまま。Codex も同じ `CLAUDE.md` と `rules/` を読むので、取り込みと同時に変わる",
+      "worktree では `skills/show-me` のリンク先が無く、`diagram-delegation` の検査が走らない。本体での監査の成功は、取り込んだ後に確かめる",
+      "`docs/how-to/run-a-task.md` に古い記述が残る（`~/.claude/scripts/task-completion.js` という古いパス、remote の無いローカル運用、Grill は一度に1問）。`CLAUDE.md` は正しいコマンドのパスを持つ。how-to は追加only の文書で、Issue の範囲にも無いので触っていない",
+      "ローカルの `skills/grilling`（古い版）とプラグインの `grilling` が並んでいる。次のタスク（コマンドとスキルの棚卸し）で扱う"
+    ],
+    "nextAction": "none",
+    "guardrailCandidates": [
+      {
+        "failure_pattern": "数字の受け入れ条件を、下書きを作る前の目算で決めた。節ごとに残す割合を見積もって約 10,000 字と伝えたが、実際は 11,929 字で、上限 12,000 字にほぼ余裕が無くなった",
+        "source": "Issue #30 の Grill（2026-10-12）。見積もりと結果の差は 19%",
+        "recommended_layer": "skill",
+        "confidence": "low"
+      }
+    ],
+    "guardrailCandidateWarnings": [],
+    "parsedFindings": [
+      {
+        "severity": "MEDIUM",
+        "message": "`@path` の取り込みで読み込まれるファイルを、上限の検査が数えていない。`CLAUDE.md` かルールに `@big.md` と書けば、検査に見つからずに上限を超える量を読み込ませられる。いまの5ファイルに取り込みは無い。Issue が定めた数える対象に入っていないので、今回は足していない",
+        "raw": "MEDIUM: `@path` の取り込みで読み込まれるファイルを、上限の検査が数えていない。`CLAUDE.md` かルールに `@big.md` と書けば、検査に見つからずに上限を超える量を読み込ませられる。いまの5ファイルに取り込みは無い。Issue が定めた数える対象に入っていないので、今回は足していない"
+      }
+    ],
+    "invalidFindings": [],
+    "missingValues": [],
+    "blockingFindings": [],
+    "hasBlockingFindings": false,
+    "missingSections": [],
+    "complete": true
+  },
+  "body": "# Review Summary\n\n## Review Scope\n\n- design compliance, security, comment adequacy, code quality, and test adequacy\n- 対象は Issue #30（仕様 5f4e6736d3df）の差分10ファイル: `CLAUDE.md`、`rules/common/` の4ファイル、`harness/scripts/ci/validate-rules.js`、`harness/tests/ci/validators.test.js`、`harness/scripts/ci/audit-harness-contract.js`、`docs/architecture.md`、`skills/writing-reference-docs/SKILL.md`\n\n## Design Compliance\n\n- 受け入れ条件 1: 合計 11,929 字（上限 12,000 字）。着手前は 29,943 字。行数は 660 行から 255 行、`CLAUDE.md` は 221 行から 107 行\n- 受け入れ条件 2: `validate-rules.js` が超過で終了コード 1 を返し、合計、上限、ファイルごとの字数を表示する。書き直す前の5ファイルに対して失敗した（`verification-summary.md` の RED Evidence）\n- 受け入れ条件 3: 日付の記載は 19 箇所から 0 箇所。古い記述3件（モデルの一覧、`~/.claude` を remote の無いリポジトリとした記述、`development-workflow.md` への参照）は5ファイルに無い\n- 受け入れ条件 4: 対応表を PR のコメントに付ける。着手前の節ごとに扱いと在り処を書いた。判断基準と制約で行き先なしに消えたものは無い\n  - 確かめ方: 着手前の5ファイルの識別子（延べ 194 個）のうち、書き直した後に無い 65 個を1個ずつ分類した。この確認で Task Finishing の規則2つ（影響する検査をやり直す、最終差分と証拠を読んでから記録する）が落ちていたのを見つけ、戻した\n- 受け入れ条件 5: 移した手順は無い。消した手順は、同じ内容が `commands/docs-build.md`、`commands/COMMANDS.md`、`docs/how-to/run-a-task.md`、`commands/worktree-start.md`、各スキルにあることを検索で確かめた\n- 受け入れ条件 6: `documentation.md` の図の委譲先に `show-me` を足した。本体のスキル一覧に監査と同じ判定を当てると、挙げ漏れは書き直す前が `show-me` の1件、書き直した後が 0 件\n- 受け入れ条件 7: worktree で `npm test` が終了コード 0（`run-all.js` 1486 件、監査 PASS）\n- 制約: フックとスクリプトの動作は、`validate-rules.js` の検査の追加と監査のメッセージ1件のほかは変えていない。`docs/design/`、upstream のスキル、リポジトリの `AGENTS.md` には触れていない。`writing-reference-docs` はローカルのスキル（`AGENTS.md` の Upstream Assets に無い）\n- 仕様に書いていない変更（PR に明記する）:\n  - `CLAUDE.md` の節を組み替えた（Managed Grill Entry と Work Without An Issue を Before Writing Files に、Track-Based Artifact Chain を Tracks And Artifacts に、Context Rules を Context And Recovery に、ほか）。節の名前を参照しているのは監査のメッセージの `Core Rule` だけで、その名前は残した\n  - `performance.md` の「数字を書かない」を、モデルの名前と版にも広げた（古くなったモデルの一覧を消した理由と同じ）\n  - ルール4ファイルの見出しは変えていない\n\n## Security\n\n- 触れた面: 検査の判定（あるルールを数えるか、数えないか）。許可や認証、シェルや SQL の組み立て、秘密情報、ネットワークの送信先には触れていない\n- 上限をすり抜ける書き方と壊れた入力を、検査の実コードに通した（22 通り、期待との不一致 0 件）\n\n  | 観点 | 入力 | 結果 |\n  |---|---|---|\n  | 境界値 | 合計が上限ちょうど / 1字超過 | 通る / 終了コード 1 |\n  | 絞れていない `paths` | `Paths:`（大文字）、`paths:` の後が空白だけ、`[ , ]`、`NULL`、リストの前にコメント行や空行 | 数える（終了コード 1） |\n  | frontmatter の形 | BOM つき、閉じていない、本文の途中にある2つ目 | 数える |\n  | ファイルの形 | 深い階層、`.md` で終わるディレクトリの中、シンボリックリンク、`CLAUDE.md` がシンボリックリンク | 数える |\n  | 壊れた入力 | 壊れたリンク、読めないファイル | 終了コード 1（エラーを表示） |\n  | 対象外 | `.md` でないファイル、`CLAUDE.md` がディレクトリ | 数えない |\n  | 極大と不正なバイト列 | 200万字、UTF-8 として不正 | 数える（終了コード 1） |\n  | 拾えない形 | `CLAUDE.md` に `@big.md` と書いて取り込む | 数えない（Findings） |\n\n- テストには、絞れていない `paths` を 12 通り（空、`[]`、`\"\"`、`~`、`null`、空のブロック、コメントだけ、空の項目、入れ子、本文の中、先頭でない frontmatter、`paths` の無い frontmatter）と、絞れている書き方を 6 通り入れた\n\n## Comment Adequacy\n\n- 落とした: なし（コードのコメント）。5ファイルの経緯の記述は、この作業の対象として消した\n- 残した: `validate-rules.js` の既存の JSDoc\n- 足した: `validate-rules.js` の定数に3行（何を数えるか、なぜ数えるか、`@path` の取り込みは追わないこと）。`isPathScoped` の JSDoc（空の `paths` を数える理由）と、値が次の行に来る形についての1行\n- 比率: `validate-rules.js` は 20%（22/109 行）。`harness/scripts/ci/` 全体は 12%。高いのは既存と追加の JSDoc のためで、判定の理由を書いた行だけを足した。追加したテスト 84 行はコメント1行で、同じ節の既存テストと揃えた\n\n## Code Quality\n\n- Refactoring: unchanged | `validate-rules.js` に関数1つと集計を足しただけで、重複や不要な処理は無い。テストは共通の準備を `alwaysLoadedFixture` にまとめてある\n- Documents: changed | `docs/architecture.md` の「常時ロードされるもの」を検査がある状態に直し、最終更新日を変えた。`skills/writing-reference-docs/SKILL.md` の参照から、消した節（Documentation Checklist）を外した。監査の `stale-model-id` のコメントとメッセージを、モデルの一覧が無い状態に合わせた\n- Comments: changed | `validate-rules.js` の定数と `isPathScoped` に、数える対象と判定の理由を足した。ファイル冒頭の説明に上限の検査を足した\n- Verification: passed | 最後の修正後に `npm test` が終了コード 0（`run-all.js` 1486/1486、`validators.test.js` 157/157、監査 PASS、`Always-loaded instructions: 11929 / 12000 chars`）。`npm run lint` はエラー 0\n- Observation: not-required | 変わるのは文書と検査で、検査の出力は検証で確かめた。エージェントの動きへの影響は、取り込んだ後のセッションでしか見られない（Residual Risks）\n- Revision: a7a3cd10f05190ebefdd5a5880df0d7e66ac74d8bea53e97f4e04da50fca6f93\n\n## Test Adequacy\n\n- RED/GREEN evidence: `verification-summary.md` の RED Evidence に3回分。テストだけ足した時点で5件失敗、検査を実装した時点で実リポジトリの5ファイルが 29,943 字で失敗、`paths: ~` の数え落としで1件失敗。いずれも修正後に成功\n- BDD scenarios: 合計が上限を1字超えると失敗し、合計と上限とファイルごとの字数を出す / 上限ちょうどなら通る / `paths` で絞ったルールは数えない / 絞れていない `paths` は数える / `CLAUDE.md` だけで超えても失敗する\n- integration/E2E evidence: 既存の `passes on real project rules` が実リポジトリの5ファイルを検査する。書き直す前は失敗し、書き直した後に成功した。`npm test` を通しで実行した\n- observe evidence: 不要（Code Quality の Observation）\n\n## Findings\n\n- MEDIUM: `@path` の取り込みで読み込まれるファイルを、上限の検査が数えていない。`CLAUDE.md` かルールに `@big.md` と書けば、検査に見つからずに上限を超える量を読み込ませられる。いまの5ファイルに取り込みは無い。Issue が定めた数える対象に入っていないので、今回は足していない\n\n## Residual Risks\n\n- 余裕は 71 字しかない。着手前の見積もり（約 10,000 字）は外れ、判断基準と制約を残すと 11,929 字になった。次に指示を足す時は、何かを削るか、上限の定数（`ALWAYS_LOADED_LIMIT`）を人が上げる必要がある\n- 指示を減らした後にエージェントの動きが悪くならないかは、テストでは確かめられない。対応表でのレビューと、取り込んだ後のセッションの観察で確かめる。戻す時は PR を revert する\n- マージしても、手元の `~/.claude` に取り込むまで稼働中の指示は古いまま。Codex も同じ `CLAUDE.md` と `rules/` を読むので、取り込みと同時に変わる\n- worktree では `skills/show-me` のリンク先が無く、`diagram-delegation` の検査が走らない。本体での監査の成功は、取り込んだ後に確かめる\n- `docs/how-to/run-a-task.md` に古い記述が残る（`~/.claude/scripts/task-completion.js` という古いパス、remote の無いローカル運用、Grill は一度に1問）。`CLAUDE.md` は正しいコマンドのパスを持つ。how-to は追加only の文書で、Issue の範囲にも無いので触っていない\n- ローカルの `skills/grilling`（古い版）とプラグインの `grilling` が並んでいる。次のタスク（コマンドとスキルの棚卸し）で扱う\n\n## Guardrail Candidates\n\n- failure_pattern: 数字の受け入れ条件を、下書きを作る前の目算で決めた。節ごとに残す割合を見積もって約 10,000 字と伝えたが、実際は 11,929 字で、上限 12,000 字にほぼ余裕が無くなった\n  source: Issue #30 の Grill（2026-10-12）。見積もりと結果の差は 19%\n  recommended_layer: skill\n  confidence: low\n\n## Next Action\n\n- none\n"
+}
