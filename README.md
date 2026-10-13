@@ -75,6 +75,9 @@ Codex は `node harness/scripts/resolve-managed-skill.js <名前>` が返す `SK
 `skills/` の5個は**実体を焼き込んであり、lock ファイルは同梱していない**（元はシンボリックリンクで、
 zip に入れると壊れるため）。よって編集しても消えないが、**upstream の更新も入ってこない**。
 
+`skills/` に同梱している分の著作権表示と許諾文は [skills/THIRD_PARTY_NOTICES.md](skills/THIRD_PARTY_NOTICES.md) にある。
+上の表に無い `find-skills` `prompt-engineering-patterns` `frontend-design` `stop-ai-slop-jp` の出典もそこに載せている。
+
 upstream 由来の `SKILL.md` を書き換えない。足りない要素は upstream ではなく `commands/` か `rules/` に置く。
 自動選択から外したいだけなら `settings.json` の `skillOverrides` を使う。
 
