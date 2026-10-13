@@ -10,7 +10,6 @@
 | 出典 | 著作権表示 | 同梱しているもの |
 |---|---|---|
 | [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) | Copyright (c) 2026 Affaan Mustafa | ツリー全体の出発点と `skills/skill-stocktake`。全文はルートの `LICENSE` |
-| [mattpocock/skills](https://github.com/mattpocock/skills) | Copyright (c) 2026 Matt Pocock | `skills/` の `tdd` `code-review` `implement` `to-spec` `to-tickets` `domain-modeling` `grill-with-docs` `setup-matt-pocock-skills` `grill-me` `grilling` |
 | [wshobson/agents](https://github.com/wshobson/agents) | Copyright (c) 2024 Seth Hobson | `skills/` の `python-code-style` `sql-optimization-patterns` `prompt-engineering-patterns` |
 | [github/awesome-copilot](https://github.com/github/awesome-copilot) | Copyright GitHub, Inc. | `skills/` の `sql-code-review` `sql-optimization` |
 | [vercel-labs/skills](https://github.com/vercel-labs/skills) | Copyright (c) 2026 Vercel, Inc. | `skills/find-skills` |
