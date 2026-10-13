@@ -34,8 +34,8 @@ GitHub では `tracker.repo` のリポジトリの Issue に書く。他の管�
 
 ## Required behavior
 
-1. **grilling セッションを通っているか確認する。** 入口は `/grill-me`、実体は `grilling`（どちらも upstream skill）。
-   通っていなければ**構築を始めず**、`/grill-me` を促して止まる。
+1. **grilling セッションを通っているか確認する。** どのスキルで行うかは `CLAUDE.md` にある。
+   通っていなければ**構築を始めず**、Grill を促して止まる。
    理由: **却下した案と Non-goals は後から書けない**。決定の場を通らずに書くと推定になる。
 
    **例外は1つだけ。すでに決定・実装済みの手順を書き起こす `docs/how-to/`。**
@@ -88,7 +88,7 @@ Grill Record に無い項目（`Glossary` / `Scenarios` / `Security & Privacy` /
 
 ## Hard guardrails
 
-- **`/grill-me` を飛ばさない。** 通っていないなら構築せず止まる。
+- **Grill を飛ばさない。** 通っていないなら構築せず止まる。
   例外は既存手順の `docs/how-to/` のみ（Required behavior 1）。**その場で新しい例外を作らない**
 - **upstream skill (`grill-me` / `grilling`) を書き換えない。** `grill-me` は1行の入口スキルで、それが正しい姿。
   足りない要素はこのコマンド側に置く

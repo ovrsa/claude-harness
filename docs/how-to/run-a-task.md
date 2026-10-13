@@ -10,7 +10,7 @@
 
 ## 前提
 
-- [ ] 何をするタスクか1文で言える（言えないなら `/grill-me` がその作業）
+- [ ] 何をするタスクか1文で言える（言えないなら Grill がその作業）
 - [ ] トラックの見当がついている
   - `trivial` — 変更面の検証だけ
   - `standard` — design doc + 検証証拠 + 軽い受容判断
@@ -26,7 +26,7 @@
 - セッション開始・終了時にゲートの証拠を `runs/<date>-<slug>/` へ退避
 - compaction 前に、どの証拠成果物が存在するかのスナップショット（状態の要約はしない）
 - **design doc の執筆**（`/docs-build` がやる。人間は決定を答えるだけ）
-- **実装** — `skills/tdd` の RED -> 最小 GREEN。**seam の合意だけは人間に取る**（下の「手で行う部分」の3）
+- **実装** — プラグインの `tdd` スキルの RED -> 最小 GREEN。**seam の合意だけは人間に取る**（下の「手で行う部分」の3）
 - **証拠成果物の執筆** — `verification-summary.md` / `review-summary.md` /
   `observation-summary.md`。**コマンドを打つ必要はない**（下の「確認」を参照）
 - **仕上げ** — 変更したコード、文章、コメントを見直し、必要な修正と再検証を行う。
@@ -38,11 +38,11 @@
 
 **手で行うのはこの4つ。** 他は自動か、エージェントに任せる。
 
-1. **`/grill-me` と打つ。**
-   - `/grill-me` は**モデルからは起動できない**（`disable-model-invocation: true`）。
+1. **Grill を始める。**
+   - 入口の `grill-me` スキルは**モデルからは起動できない**（`disable-model-invocation: true`）。
      ただし実体の `grilling` には制限が無いので、**エージェント側から始めることはできる**。
      ゲートが守るのは「grilling を飛ばさないこと」であって、誰が始めるかではない
-   - 一度に1問しか来ない。**事実はエージェントが自分で調べる。答えるのは決定だけ**
+   - いま聞ける質問がまとめて来る。**事実はエージェントが自分で調べる。答えるのは決定だけ**
    - **バグ修正でも先にここへ来る。** 診断は read-only なのでこの段の仕事。
      原因が分かってから実装に入る
    - 止め時の目安 — Objective が1文 / Non-goals が1つ以上 / 却下した案と理由 /
@@ -56,7 +56,7 @@
    - 承認したら実装はエージェントに任せる
 
 3. **seam に合意する。**
-   - 実装は `skills/tdd` の RED -> 最小 GREEN で進む。**refactor はループの外**（review 段の仕事）
+   - 実装はプラグインの `tdd` スキルの RED -> 最小 GREEN で進む。**refactor はループの外**（review 段の仕事）
    - upstream skill が定める唯一の人間ゲート:
      「**Test only at pre-agreed seams.** No test is written at an unconfirmed seam」
    - seam とは、内部に手を入れずに挙動を観測できる公開境界のこと。**全部はテストできないので、
@@ -117,7 +117,7 @@
 - [ ] 仕上げの対象と判断理由、実装で判明した `触る対象` と Open Issues の整理結果を確認する。
   更新作業はエージェントが完了報告前に行う。
 
-**refactor は verification の後、review 段でやる**（`skills/tdd` が「refactoring は red→green ループの外」
+**refactor は verification の後、review 段でやる**（プラグインの `tdd` スキルが「refactoring は red→green ループの外」
 と定めている）。refactor したら検証をやり直す。
 
 ### 完了前の仕上げ
@@ -185,8 +185,8 @@ for (const c of ['ls', 'git status && rm -Rf ~', 'cat x | sh']) {
 引用符 / コマンド置換 / 境界値（空・極大）。
 
 `agents/code-reviewer.md` に Security (CRITICAL) のチェックリストがあり、
-`skills/code-review` は Standards と Spec を並列サブエージェントで見る。
-**どちらも user-invocable-only** なので、必要なら自分で呼ぶ。
+プラグインの `code-review` スキルは Standards と Spec を並列サブエージェントで見る。
+**どちらも自動では走らせない**ので、必要なら自分で呼ぶ。
 
 ### コマンドの使用実績を測る
 
@@ -250,7 +250,7 @@ done
 
 ## 失敗した時
 
-- **`/grill-me` が何も起こさない** → `/grill-me` はユーザーが打つしかない。
+- **入口の `grill-me` スキルが何も起こさない** → `grill-me` はユーザーが打つしかない。
   エージェントに始めさせたいなら `grilling` を名指しする（そちらは制限が無い）
 - **`/goal` が使えない** → hooks が無効な設定や、信頼していないワークスペースでは使えない（理由は `/goal` 自身が表示する）。
   エージェントにそう伝えると、同じ文面を終了条件にして会話の中で繰り返す

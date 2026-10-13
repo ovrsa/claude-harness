@@ -39,9 +39,9 @@ Use this command when local durable review evidence is needed.
    case, flag order, chaining across `;` `&&` `||` `|`, quoting, command substitution,
    and boundary values (empty, oversized).
 
-   `agents/code-reviewer.md` carries a Security (CRITICAL) checklist, and `skills/code-review`
-   runs a Standards/Spec pass in parallel sub-agents. Both are user-invocable only — name them
-   to the operator rather than spawning them.
+   `agents/code-reviewer.md` carries a Security (CRITICAL) checklist, and the plugin's `code-review`
+   skill runs a Standards/Spec pass in parallel sub-agents. Name them to the operator rather than
+   spawning them.
 6. **Comment adequacy.** Judge every comment the change added or touched:
    - **remove** chronology — what was removed when, and why, belongs in `docs/design/`.
      Keeping it in code puts the same contract in two places
@@ -112,18 +112,18 @@ Use this command when local durable review evidence is needed.
 
 ## Refactoring belongs here
 
-`skills/tdd` keeps refactoring **outside** the red/green loop and assigns it to the review stage.
+The plugin's `tdd` skill keeps refactoring **outside** the red/green loop and assigns it to the review stage.
 So this is where structural cleanup happens — not during implementation.
 
 Two consequences:
 
 - **Refactoring here invalidates the earlier `/verify` run.** Rerun it. The loop between review and
   verify is expected, not a mistake
-- For a wider pass, `skills/code-review` reviews the diff since a fixed point along two axes
-  (Standards and Spec) in parallel sub-agents. It is `user-invocable-only` because it spawns agents —
-  invoke it explicitly, it will not be selected automatically
+- For a wider pass, the plugin's `code-review` skill reviews the diff since a fixed point along two
+  axes (Standards and Spec) in parallel sub-agents. Because it spawns agents, run it only when the
+  operator invokes it explicitly
 
-`skills/code-review` reports "no spec available" for its Spec axis in repos without an issue tracker.
+The plugin's `code-review` skill reports "no spec available" for its Spec axis in repos without an issue tracker.
 That is expected here; the Standards axis reads `rules/common/`.
 
 ## Next Handoff

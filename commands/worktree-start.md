@@ -24,7 +24,7 @@ description: Manual override for worktree creation. The agent normally creates t
 
 ## Preconditions
 
-1. `/grill-me` を通過していること(read-only。ここで捨てるタスクに worktree を作らない)
+1. Grill を通過していること(read-only。ここで捨てるタスクに worktree を作らない)
 2. これから**リポジトリ内のファイルを書く**こと。read-only 作業なら worktree は不要
 3. `slug` がチケット/機能を一意に表せること
 4. (Detached Mode のみ)現在の作業ツリーに未コミットの変更がないこと(必要なら先に退避)。既定モードでは `EnterWorktree` 自体が独立した作業ディレクトリを作るため、この前提は適用されない
@@ -214,7 +214,7 @@ echo "claude --dangerous"
 
 ## Recommended Flow
 
-調査 → `/grill-me` → **worktree**(通常はエージェントが作る。このコマンドは上書き用)→ `/docs-build` → 実装 → `/verify` → `/review-task` → `/eval` → observe if required → design doc 確定 → commit
+調査 → Grill → **worktree**(通常はエージェントが作る。このコマンドは上書き用)→ `/docs-build` → 実装 → `/verify` → `/review-task` → `/eval` → observe if required → design doc 確定 → commit
 
 全体像は `~/.claude/commands/COMMANDS.md` の Ordered Path を参照。
 
