@@ -8,7 +8,6 @@ Use it as the fastest command map after `CLAUDE.md`. It does not replace the com
 
 Use the local pipeline by default for standard and heavy-risky implementation and bug-fix work.
 
-- `/next-action` as the operator-facing status surface for the current recommended next step
 - `/shape-task` as the explicit task-shaping surface for rough intent before planning, routing, or execution
 - `/route-task` as the explicit readonly routing surface for shaped tasks before execution or delegation
 - `/grill-me` as the depth pass on a sharpened task before any file is written
@@ -150,7 +149,6 @@ Used while moving a task through execution when manual local control or local wr
 - `/execute-plan`
 - `/implement-task`
 - `/build-fix`
-- `/test-coverage`
 - `/code-review`
 
 `/execute-plan` is the preferred local pipeline entrypoint. It should preserve pipeline stop conditions rather than reimplement a parallel home-grown runner.
@@ -161,10 +159,8 @@ Used while moving a task through execution when manual local control or local wr
 
 Used to enter a repo cleanly and keep deeper references current.
 
-- `/next-action`
 - `/repo-map`
 - `/docs-build`
-- `/update-codemaps`
 - `/sessions`
 
 `/repo-map` は `AGENTS.md` のみを扱う。`docs/` の永続リファレンスは `/docs-build` が担い、
@@ -172,14 +168,10 @@ Used to enter a repo cleanly and keep deeper references current.
 
 ### Capture And Health
 
-Secondary surface. Use when a pattern is worth extracting, or to inspect harness health.
+Secondary surface. Use to read past run evidence, or to inspect harness health.
 
 instinct 系（evolve / promote / instinct-*）は 2026-08-18 に continuous-learning-v2 ごと撤去した。
 
-- `/learn`
-- `/learn-eval`
-- `/post-commit-capture`
-- `/guardrail-status`
 - `/runs`
 - `/trace-status`
 - `/health-status`
@@ -189,17 +181,6 @@ instinct 系（evolve / promote / instinct-*）は 2026-08-18 に continuous-lea
 `/runs` は過去タスクの証拠本文を読む入口。`/trace-status` `/health-status` が集計なのに対し、
 こちらは生の記録を返す。`/improve-harness` は 2026-08-18 に**集計ではなく生トレースを先に読む**
 指示に変えた（根拠は `commands/improve-harness.md` の「Why raw evidence, not summaries」）。
-
-### Advanced Orchestration And Loops
-
-Preferred advanced workflows for multi-agent, long-running, or orchestrated work.
-
-- `/orchestrate`
-- `/multi-plan`
-- `/multi-execute`
-- `/multi-workflow`
-- `/loop-start`
-- `/loop-status`
 
 ### Optional Builders And Utilities
 
